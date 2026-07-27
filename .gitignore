@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+credentials.json
+*.local
+
+# Office temporary lock files
+~$*
+~$*.docx
+~$*.xlsx
+~$*.pptx
+~$*.pdf
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs and caches
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.cache/
+dist/
+build/
+.next/
+out/
+coverage/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
