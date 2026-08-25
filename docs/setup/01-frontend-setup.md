@@ -151,7 +151,7 @@ Ver [07-tipos.md](../frontend/07-tipos.md).
 
 | Variable | Ámbito | Obligatoria | Descripción | Ejemplo |
 |---|---|---|---|---|
-| `NEXT_PUBLIC_API_URL` | public | **Sí** | Base HTTPS del API Nest **sin** trailing slash | `http://localhost:3001` |
+| `NEXT_PUBLIC_API_URL` | public | **Sí** | Base HTTPS del API Nest **sin** trailing slash | `http://localhost:3011` |
 | `NEXT_PUBLIC_API_PREFIX` | public | No | Prefijo de paths (`""` o `/api/v1`). Hoy los DTOs no fijan `/api/v1` — parametrizar | `""` |
 | `NEXT_PUBLIC_APP_ENV` | public | Recomendada | `development` \| `staging` \| `production` (banners no productivos) | `development` |
 | `NEXT_PUBLIC_DEFAULT_LOCALE` | public | No | Locale UI | `es-MX` |
@@ -170,7 +170,7 @@ Archivo propuesto en `apps/web/.env.example` (o raíz del package web). **No com
 
 ```env
 # --- Público (browser) ---
-NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_API_URL=http://localhost:3011
 NEXT_PUBLIC_API_PREFIX=
 NEXT_PUBLIC_APP_ENV=development
 NEXT_PUBLIC_DEFAULT_LOCALE=es-MX
@@ -189,7 +189,7 @@ NEXT_PUBLIC_FF_ADMIN_API=false
 NEXT_PUBLIC_FF_CUPO_VISTA=false
 
 # --- Solo server (si aplica BFF / verificación de sesión en Next) ---
-# API_INTERNAL_URL=http://localhost:3001
+# API_INTERNAL_URL=http://localhost:3011
 # SESSION_SECRET=
 ```
 
@@ -205,7 +205,7 @@ NEXT_PUBLIC_FF_CUPO_VISTA=false
 
 - Solo variables seguras en browser con prefijo `NEXT_PUBLIC_*`.
 - Nunca `DATABASE_URL` ni claves de canales/IA en el frontend.
-- CORS / cookies SameSite: acordar con backend si el panel y el API están en orígenes distintos (dev típico: `localhost:3000` ↔ `localhost:3001`).
+- CORS / cookies SameSite: acordar con backend si el panel y el API están en orígenes distintos (dev típico: `localhost:3010` ↔ `localhost:3011`).
 
 ---
 
@@ -252,7 +252,7 @@ Dependencias de referencia a incluir en el scaffold (no inventar versiones exact
 
 | Script | Comando típico | Propósito |
 |---|---|---|
-| `dev` | `next dev` | Servidor de desarrollo (puerto default **3000**) |
+| `dev` | `next dev -p 3010` | Servidor de desarrollo (puerto local **3010**) |
 | `build` | `next build` | Build de producción |
 | `start` | `next start` | Servir build (prod-like local) |
 | `lint` | `next lint` / `eslint .` | Análisis estático |
@@ -375,7 +375,7 @@ const base =
 // GET `${base}/conversaciones`
 ```
 
-- Puerto del API en docs de ejemplo: **no fijado en infra**; convención local frecuente `3001` mientras Next usa `3000` — **confirmar en kick-off**.
+- Puertos locales fijados tras escaneo: Next **3010**, API **3011** — ver [05-escaneo](05-escaneo-entorno-y-dependencias.md).
 - Prefijo `/api/v1`: **no adoptado aún en DTOs**; usar env.
 
 ### 6.3 Envelope
@@ -434,7 +434,7 @@ No llamar webhooks Meta/Twilio desde el frontend.
 
 ### 7.2 Post-scaffold (checklist operativa de arranque)
 
-Asumiendo monorepo con `apps/web` y API en `http://localhost:3001`:
+Asumiendo monorepo con `apps/web` y API en `http://localhost:3011`:
 
 ```bash
 # 1) Entrar al repo
@@ -456,7 +456,7 @@ cp apps/web/.env.example apps/web/.env.local
 
 # 6) Arrancar panel
 pnpm --filter web dev
-# Abrir http://localhost:3000
+# Abrir http://localhost:3010
 ```
 
 ### 7.3 Primer login
@@ -519,7 +519,7 @@ UAT F1–F7: [producto/04-escenarios §6](../producto/04-escenarios-rol-carga-te
 |---|---|---|
 | No hay `package.json` / `npm install` falla | Scaffold aún no existe | Trabajar contra docs; no inventar app ad hoc fuera del contrato |
 | `NEXT_PUBLIC_API_URL` undefined en browser | `.env.local` ausente o var sin prefijo `NEXT_PUBLIC_` | Copiar `.env.example`; reiniciar `next dev` (Next solo lee env al arrancar) |
-| CORS en login | API no permite origen del panel | Configurar CORS Nest para `http://localhost:3000`; o rewrite/BFF |
+| CORS en login | API no permite origen del panel | Configurar CORS Nest para `http://localhost:3010`; o rewrite/BFF |
 | 401 inmediato tras login | Token no enviado (cookie vs Bearer inconsistente) | Alinear `credentials: 'include'` o header; revisar SameSite |
 | Cookie no se setea en localhost cross-port | SameSite / Secure / dominio | Preferir BFF same-origin o Bearer en memoria + refresh acordado |
 | 403 en rutas de coord siendo asesor | Esperado (RBAC) | Usar usuario correcto; UI debe redirect/toast, no crash |
@@ -550,7 +550,7 @@ El entorno de desarrollo del panel se considera **listo** cuando se cumplen **to
 | # | Criterio | Evidencia |
 |---|---|---|
 | E1 | Install reproducible con lockfile | `pnpm install` limpio en máquina nueva |
-| E2 | Dev server estable | `dev` en `:3000` (o puerto doc) sin crash de boot |
+| E2 | Dev server estable | `dev` en `:3010` sin crash de boot |
 | E3 | Build verde | `build` exit 0 |
 | E4 | Lint/typecheck verdes | CI o local |
 | E5 | Auth end-to-end contra API | Login → sesión → `/me` → home por rol |

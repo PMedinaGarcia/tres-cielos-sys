@@ -14,11 +14,13 @@ Documento de aceptación de **producto completo** (no solo setup). Define cuánd
 | Roles, carga, F1–F7, telemetría | [../producto/04-escenarios-rol-carga-telemetria.md](../producto/04-escenarios-rol-carga-telemetria.md) |
 | Dominios NestJS | [../backend/01-dominios.md](../backend/01-dominios.md) |
 | Orquestador / RAG / ingesta | [../backend/02-orquestador-agentico.md](../backend/02-orquestador-agentico.md), [03](../backend/03-rag-avanzado.md), [04](../backend/04-ingesta-conocimiento.md) |
+| Aceptación multimodal / matriz tests | [../backend/09-aceptacion-y-matriz-tests.md](../backend/09-aceptacion-y-matriz-tests.md) (D-MED-*, UI-KNW-*, T-MED-*, ports, fixtures) |
 | DTOs y contratos | [../backend/05-dtos-y-tipos.md](../backend/05-dtos-y-tipos.md) |
 | RBAC | [../backend/06-guards-y-rbac.md](../backend/06-guards-y-rbac.md) |
 | Superficies UI | [../frontend/00-superficies.md](../frontend/00-superficies.md), [02-routing](../frontend/02-routing-y-paginas.md) |
 | Modelo y catálogo | [../database/01-modelo-conceptual.md](../database/01-modelo-conceptual.md), [02](../database/02-catalogo-paquetes.md) |
-| Infra | [../infrastructure/01-stack-y-entornos.md](../infrastructure/01-stack-y-entornos.md) |
+| Infra | [../infrastructure/01-stack-y-entornos.md](../infrastructure/01-stack-y-entornos.md), [../infrastructure/02-plan-implementacion-chatbot-infra.md](../infrastructure/02-plan-implementacion-chatbot-infra.md) |
+| **Gate go-live chatbot** | [09-criterios-salida-produccion-chatbot.md](09-criterios-salida-produccion-chatbot.md) — C3/C5/C4, D-BOT/D-MED, UAT firmable, rollback, NO-GO |
 
 ---
 
@@ -58,6 +60,9 @@ Y el equipo operativo puede:
 | DoD-10 | UAT §3 de fases firmado; F1–F7 y C3/C5 en verde; G1–G11 | Cumplido |
 | DoD-11 | Capacitación ≤8 h impartida; guía entregada | Cumplido |
 | DoD-12 | Anti-alcance §12 respetado (sin features excluidas “por accidente”) | Cumplido |
+| DoD-13 | Ingesta multimodal operable: PDF/Word/XLS-split/foto/video con object storage, tariff/OCR gate y C3=0 (detalle [backend/09](../backend/09-aceptacion-y-matriz-tests.md)) | Cumplido |
+
+**DoD multimodal (breve):** uploads allowlist MIME → `StoragePort` → job parser (scrub tarifas) → embed/FTS solo narrativa → publicar con frescura **&lt; 60 s** (C4); montos **nunca** desde OCR/PDF/foto (C3); fragmentos de media pasan rerank ≥ **0.85** (C5). Matriz D-MED-*/T-MED-* en [backend/09](../backend/09-aceptacion-y-matriz-tests.md).
 
 **Producto terminado ≠** BI comercial, PDF automático de cotización, segundo jardín activo, drips multi-día, widget web, scoring ML.
 
@@ -199,11 +204,38 @@ Cada criterio es **verificable**. Prioridad MoSCoW en §9.
 | ID | Criterio | Umbral | Evidencia |
 |---|---|---|---|
 | D-KNW-1 | Solo documentos `publicado` indexados para el bot | Borrador no aparece | Pregunta prueba |
-| D-KNW-2 | Publicar/archivar → inválida versión anterior; job &lt; **60 s** a `listo` | C4 / G9 | Job + pregunta |
+| D-KNW-2 | Publicar/archivar → inválida versión anterior; job &lt; **60 s** a `listo` (incluye PDF/Word/foto/video) | C4 / G9 | Job + pregunta |
 | D-KNW-3 | Documento archivado deja de recuperarse de inmediato | 100 % | UAT 3.6 |
 | D-KNW-4 | Existe `RegistroRecuperacion` auditable en respuestas RAG | C6 | Admin drill-down |
 | D-KNW-5 | Inventario mínimo go-live: K01, K02, K04, K08, K09 (+ K05 opcional) | G8 | Checklist firma |
 | D-KNW-6 | Job &gt; 60 s o error → alerta admin actionable | Sin spinner infinito | UI conocimiento |
+| D-KNW-7 | Foto (jpeg/png/webp) vía Vision: narrativa indexable; tarifa → OCR gate (no monto recuperable) | C3; ver D-MED-8/10 | UAT U-MED-5/6 + [backend/09](../backend/09-aceptacion-y-matriz-tests.md) |
+| D-KNW-8 | Video (mp4/mov): transcript (ffmpeg + TranscriptionPort) indexable; mismo SLA C4 a `listo` | Job + cita | UAT U-MED-7 |
+| D-KNW-9 | Adjunto de lead (canal) no publica a biblioteca K global ni entra a hybrid search operativo | 100 % | UAT U-MED-8 |
+| D-KNW-10 | Object storage obligatorio para binarios fuente; DB solo metadatos + `storageKey` | D-MED-3 | Infra + integration |
+
+Detalle MIME, parsers, UI-KNW, T-MED y fixtures: [../backend/09-aceptacion-y-matriz-tests.md](../backend/09-aceptacion-y-matriz-tests.md).
+
+### 3.8b Media / MIME / pipeline (D-MED-*)
+
+Resumen de aceptación multimodal. Tabla completa y suites en [backend/09](../backend/09-aceptacion-y-matriz-tests.md) §2.
+
+| ID | Criterio | Umbral | Evidencia |
+|---|---|---|---|
+| D-MED-1 | Allowlist MIME conocimiento (PDF, Word, XLS/CSV, jpeg/png/webp, mp4/mov) | Fuera de lista → 422 `UNSUPPORTED_MIME` | T-MED-MIME |
+| D-MED-2 | MIME por magic bytes, no solo extensión / `Content-Type` client | Spoof → rechazo o reclasificación segura | Unit |
+| D-MED-3 | Upload vía `StoragePort`; key opaca en API/logs | 100 % | T-MED-STOR |
+| D-MED-4 | Estados job: `recibido` → `parseando` → `chunking` → `embebiendo` → `listo` \| `error` | Visibles en UI | UI-KNW-3 |
+| D-MED-5 | PDF: scrub tablas/tarifas; 0 montos indexados como precio recuperable | C3 | T-MED-PDF |
+| D-MED-6 | Word: chunks por heading + mismo scrub de montos | C3 | T-MED-DOCX |
+| D-MED-7 | XLS **split**: precios → catálogo Prisma; narrativa → K sin montos | Nunca chunk hoja precios → pgvector | T-MED-XLS |
+| D-MED-8 | Foto → `VisionPort`; meta `origen=vision` | Mock en CI | T-MED-IMG |
+| D-MED-9 | Video → ffmpeg + `TranscriptionPort` | Worker con ffmpeg | T-MED-VID |
+| D-MED-10 | OCR / tariff gate → `no_recuperable_precio`; orquestador no responde montos desde esos chunks | 100 % golden tariff | T-MED-OCR |
+| D-MED-11 | Adjunto lead ≠ publicación K | Scope conversación | T-MED-LEAD |
+| D-MED-12 | Límites tamaño por MIME (PDF/Word ≤25 MB; XLS ≤10; img ≤8; video ≤100) | 413 / `PAYLOAD_TOO_LARGE` | Contract |
+| D-MED-13 | Fallo Vision/Transcription/S3 → job `error` + alerta; sin versión searchable a medias | NF-R-2 | T-MED-FAIL |
+| D-MED-14 | Post-`listo`, frescura bot &lt; 60 s | C4 / D-KNW-2 | UAT / `@live` |
 
 ### 3.9 Catálogo de paquetes
 
@@ -262,7 +294,7 @@ Mapa de rutas: [../frontend/02-routing-y-paginas.md](../frontend/02-routing-y-pa
 | **Expediente** | `/expedientes/[id]` | Ficha + brief + editar + etapa + tipificar perdido + timeline | A asignados / C+D sede | UAT 3.2 |
 | **Pipeline** | `/pipeline` | Columnas/lista por etapa; tarjeta mínima; sin métricas campaña | A/C/D | UI |
 | **Asignación/carga** | `/asignacion` | Tabla métricas + cola sin dueño + regla en lenguaje claro + Reasignar; **asesor 403** | C/D | F2, F6 |
-| **Conocimiento** | `/conocimiento` | Biblioteca; estados publicación; job &lt;60 s; publicar/archivar | Admin (+C pacto) | UAT 3.6 |
+| **Conocimiento** | `/conocimiento` | Biblioteca multimodal; upload+progress; estados publicación; job &lt;60 s; publicar/archivar; badge scrub tarifas; RBAC (UI-KNW-*) | Admin (+C pacto) | UAT 3.6 + [backend/09](../backend/09-aceptacion-y-matriz-tests.md) |
 | **Catálogo** | `/catalogo` | SKUs, precios, import, historial, preview tools (admin) | C lectura / D write | UAT 3.3 |
 | **Cupo** | `/cupo` | Consumo vs 1,000 + aviso tope | C/D | Vista |
 | **Admin** | `/admin/*` | Usuarios, sedes, criterios, tipificaciones, enrutador | D write / C L | Smoke |
@@ -403,6 +435,7 @@ Fuente: [../infrastructure/01-stack-y-entornos.md](../infrastructure/01-stack-y-
 | INF-10 | RPO/RTO sugeridos v1: RPO ≤ **24 h** (backup diario); RTO ≤ **8 h** laborales ante fallo crítico DB (ajustar si el contrato comercial fija otros) | Runbook | Restore drill |
 | INF-11 | Health endpoints públicos mínimos (`/health` API) sin exponer secretos | Probe | HTTP 200 |
 | INF-12 | Sin SIEM ni guardia 24/7 en membresía base | Explícito en alcance | — |
+| INF-13 | Object storage S3-compatible **obligatorio** para binarios K + adjuntos; worker video con **ffmpeg** | D-KNW-10 / D-MED-3/9 | Bucket + imagen worker |
 
 ---
 
@@ -414,18 +447,19 @@ El repo aún puede estar en fase documental; estos umbrales aplican **cuando exi
 
 | Capa | Qué cubrir | Prioridad |
 |---|---|---|
-| Unit | Calificación, `listo_para_cotizar`, algoritmo asignación, predicados ownership, validación brief | Must |
-| Integration API | Auth, bandeja F1, reasignación F6, telemetría F7, publicar conocimiento &lt;60 s (staging), tools `SIN_PRECIO_VIGENTE` | Must |
-| Contract | Enums/Zod ↔ DTOs; envelope error | Must |
-| E2E / UAT scripted | Flujos §3 de [02-fases-golive](../producto/02-fases-golive.md) en staging | Must |
+| Unit | Calificación, `listo_para_cotizar`, algoritmo asignación, predicados ownership, validación brief, **MIME/scrub/tariff gate** | Must |
+| Integration API | Auth, bandeja F1, reasignación F6, telemetría F7, publicar conocimiento &lt;60 s (staging), tools `SIN_PRECIO_VIGENTE`, **parsers T-MED-* con fixtures** | Must |
+| Contract | Enums/Zod ↔ DTOs; envelope error; **UNSUPPORTED_MIME / PAYLOAD_TOO_LARGE** | Must |
+| E2E / UAT scripted | Flujos §3 de [02-fases-golive](../producto/02-fases-golive.md) en staging; **U-MED por MIME** ([backend/09](../backend/09-aceptacion-y-matriz-tests.md) §9) | Must |
+| `@live` staging | Vision/Transcription/Rerank reales; T-MED-FRESH | Should (bloquea go-live media) |
 | Load (opcional v1) | Smoke de webhooks concurrentes bajos | Could |
 
 ### 8.2 Umbrales sugeridos
 
 | Señal | Umbral sugerido | Notas |
 |---|---|---|
-| Coverage líneas (servicios de dominio crítico: calificación, asignación, orquestador routing, RBAC) | ≥ **70 %** | No exigir 70 % global si hay UI generada; sí en módulos listados |
-| Coverage branches en anti-alucinación / handoff | ≥ **80 %** | C3/C5 |
+| Coverage líneas (servicios de dominio crítico: calificación, asignación, orquestador routing, RBAC, **parsers/MIME/storage iface**) | ≥ **70 %** | No exigir 70 % global si hay UI generada; sí en módulos listados |
+| Coverage branches en anti-alucinación / handoff / **scrub tariff** | ≥ **80 %** | C3/C5; D-MED-5/6/10 |
 | Lint / format | 0 errores en CI | ESLint/Prettier o equivalente acordado |
 | Typecheck | `tsc --noEmit` / Nest build verde | CI |
 | CI pipeline | lint + typecheck + unit + integration en PR | Badge verde obligatorio para merge a main |
@@ -446,6 +480,8 @@ El repo aún puede estar en fase documental; estos umbrales aplican **cuando exi
 | Precio solo catálogo | C3 |
 | Rerank bajo → handoff | C5 |
 | Republicación &lt; 60 s | C4 |
+| PDF/foto tarifa → scrub; monto solo tools | C3 + D-MED-10 |
+| Suites T-MED-* (mock ports) | [backend/09](../backend/09-aceptacion-y-matriz-tests.md) |
 | Jardín 2 no operativo | UAT 3.7 |
 
 ---
@@ -465,9 +501,9 @@ Leyenda: **Must (P0)** = bloquea go-live · **Should (P1)** = esperado en corte 
 | G1–G11 | Criterio go-live fases |
 | D-CH-1..3 | Canales del corte (FB/IG; WA si incluido en el mismo corte) |
 | D-BOT-*, D-CAL-*, D-ASG-1..8, D-CRM-1..6 | Dominios críticos |
-| D-KNW-1..5, D-CAT-1..5 | Conocimiento mínimo + catálogo |
-| NF-S-1..5, INF-1..5, INF-7 | Seguridad e infra mínima |
-| CI verde + tests F1/F6/C3 | Calidad |
+| D-KNW-1..10, D-MED-1..14, D-CAT-1..5 | Conocimiento mínimo + multimodal + catálogo |
+| NF-S-1..5, INF-1..5, INF-7, **INF-13 storage** | Seguridad e infra mínima |
+| CI verde + tests F1/F6/C3 + T-MED mock | Calidad |
 
 ### 9.2 Should / P1
 
@@ -481,6 +517,7 @@ Leyenda: **Must (P0)** = bloquea go-live · **Should (P1)** = esperado en corte 
 | NF-A-3 teclado básico | |
 | Coordinador lectura telemetría sede | Preferido para SLA |
 | Restore drill backup | Pre go-live |
+| `@live` T-MED-FRESH / Vision real en staging | Bloquea go-live media (DoD-13) |
 
 ### 9.3 Could / P2
 
@@ -514,7 +551,8 @@ Completar **todos** los ítems. Fuente alineada a G1–G11 + UAT §3.
 
 - [ ] Meta Business / páginas FB–IG productivas
 - [ ] Twilio + WA Business + plantillas (si WA en corte)
-- [ ] Credenciales LLM / embeddings / Cohere Rerank en gestor de secretos prod
+- [ ] Credenciales LLM / embeddings / Cohere Rerank / **OpenAI Vision+Transcription** en gestor de secretos prod
+- [ ] Object storage S3-compatible (`S3_*`) configurado; worker con **ffmpeg** para video
 - [ ] SMTP/email si aplica
 - [ ] Usuarios panel (asesores, coordinador, admin) creados y roles correctos
 
@@ -525,6 +563,7 @@ Completar **todos** los ítems. Fuente alineada a G1–G11 + UAT §3.
 - [ ] Catálogo y 0 precios inventados
 - [ ] Asignación + notificaciones + F1–F7
 - [ ] Frescura &lt; 60 s + RegistroRecuperacion
+- [ ] UAT multimodal U-MED-1…8 (PDF, Word, XLS split, foto, foto tarifa, video, adjunto lead) — [backend/09](../backend/09-aceptacion-y-matriz-tests.md) §9
 - [ ] Solo Jardín 1 operativo
 - [ ] C3 y C5 en verde (G10); F1, F5, F7 (G11)
 
@@ -647,12 +686,12 @@ Lo siguiente **no** forma parte del éxito del producto en go-live Jardín 1. Im
 |---|---|
 | §1 DoD / visión | producto/01 embudo; producto/02 G1–G11; README arquitectura |
 | §2 Roles | producto/04; frontend/00 §4; backend/06 |
-| §3 Dominios | backend/01; orquestador/RAG/ingesta; producto/03 |
-| §4 Superficies | frontend/00, 02, 03; F1–F7 |
+| §3 Dominios | backend/01; orquestador/RAG/ingesta; producto/03; **backend/09 (D-MED)** |
+| §4 Superficies | frontend/00, 02, 03; F1–F7; UI-KNW en backend/09 |
 | §5 API | backend/05; frontend/05 |
 | §6 NFR | infrastructure/01; producto umbrales F3/C4; RBAC |
-| §7 Infra | infrastructure/01 (+ umbrales operativos sugeridos explícitos aquí) |
-| §8 Calidad | Derivado de necesidad de verificar F/C/G; no hay aún suite en repo |
+| §7 Infra | infrastructure/01 (+ umbrales operativos sugeridos explícitos aquí; storage/ffmpeg) |
+| §8 Calidad | Derivado de F/C/G + matriz T-MED en backend/09 |
 | §9 MoSCoW | Síntesis de Must = G + C críticos + F + anti-alcance |
 | §10 Go-live | producto/02 §3 y §5 |
 | §11 Evidencias | producto/02–04 tablas “evidencia” |
@@ -671,3 +710,13 @@ Lo siguiente **no** forma parte del éxito del producto en go-live Jardín 1. Im
 ## 14. Criterio de cierre de este entregable
 
 Quedan definidos: DoD de producto Jardín 1, logros por actor/rol, criterios medibles por dominio y superficie, contratos API/DTO, NFR, infra/ops, calidad/CI, matriz MoSCoW P0–P2, checklist go-live, evidencias de aceptación y anti-alcance explícito — alineados a la documentación de producto, backend, frontend, database e infraestructura del repo, sin inventar features fuera de esas fuentes.
+
+---
+
+## 15. Gate de salida a producción del chatbot
+
+Este documento cubre el **DoD de producto completo** (panel + CRM + bot). El candado operativo específico para **encender el Agentic RAG en prod** (checklists pre-prod/prod, matriz UAT firmable del bot, rollback API/worker/flag, criterios NO-GO como alucinación de montos o Cohere ausente) está en:
+
+**[09 — Criterios de salida a producción del chatbot](09-criterios-salida-produccion-chatbot.md)**
+
+Plan de infra asociado: [../infrastructure/02-plan-implementacion-chatbot-infra.md](../infrastructure/02-plan-implementacion-chatbot-infra.md).

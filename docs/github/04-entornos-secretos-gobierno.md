@@ -4,7 +4,7 @@ Gobierno del repositorio **[`PMedinaGarcia/tres-cielos-sys`](https://github.com/
 
 **Fecha de inspección remota:** 2026-07-27 (vía `gh` API, autenticado como admin del repo).
 
-**Alineación:** [../setup/01-frontend-setup.md](../setup/01-frontend-setup.md), [../setup/02-backend-setup.md](../setup/02-backend-setup.md), [../setup/03-infraestructura-setup.md](../setup/03-infraestructura-setup.md), [../setup/04-criterios-de-exito.md](../setup/04-criterios-de-exito.md) (NF-S-*, INF-*, §8 CI, §10 go-live), [../infrastructure/01-stack-y-entornos.md](../infrastructure/01-stack-y-entornos.md).
+**Alineación:** [../setup/01-frontend-setup.md](../setup/01-frontend-setup.md), [../setup/02-backend-setup.md](../setup/02-backend-setup.md), [../setup/03-infraestructura-setup.md](../setup/03-infraestructura-setup.md), [../setup/04-criterios-de-exito.md](../setup/04-criterios-de-exito.md) (NF-S-*, INF-*, §8 CI, §10 go-live), [../infrastructure/01-stack-y-entornos.md](../infrastructure/01-stack-y-entornos.md), [../backend/09-aceptacion-y-matriz-tests.md](../backend/09-aceptacion-y-matriz-tests.md) (ports / `@live`).
 
 **Relacionados en esta carpeta:** [03-actions-ci-cd.md](03-actions-ci-cd.md) (pipelines), [02-flujo-trabajo-y-prs.md](02-flujo-trabajo-y-prs.md) (PRs / protección de ramas en detalle de proceso).
 
@@ -162,18 +162,26 @@ Fuente: [../setup/02-backend-setup.md](../setup/02-backend-setup.md) §3, [../se
 | `TWILIO_WHATSAPP_FROM` | variable/secret | | | | |
 | `TWILIO_WEBHOOK_AUTH` | **secret** | | recomendada | recomendada | |
 | `LLM_API_KEY` / provider key | **secret** | sí | sí | sí | Preferible proyectos separados |
+| `OPENAI_API_KEY` | **secret** | sí | sí | sí | LlmPort + Embeddings + **Vision** + **Transcription** (puede unificar o separar proyectos) |
 | `LLM_MODEL` | variable | | | | |
-| `EMBEDDINGS_API_KEY` | **secret** | | | | Puede = LLM |
+| `EMBEDDINGS_API_KEY` | **secret** | | | | Puede = `OPENAI_API_KEY` |
 | `EMBEDDINGS_MODEL` | variable | | | | Dimensión fija |
 | `COHERE_API_KEY` | **secret** | sí | sí | sí | Rerank |
 | `RERANK_THRESHOLD` | variable | `0.85` | `0.85` | `0.85` | Producto C5 |
 | `SMTP_*` / `EMAIL_API_KEY` | **secret** | Mailhog | test | prod | Si alertas pactadas |
 | `EMAIL_FROM` | variable | | | | |
-| `STORAGE_*` / `S3_*` | **secret** | opcional | si uploads | si uploads | |
+| `S3_BUCKET` | variable/secret | local/MinIO | **sí** | **sí** | Object storage **obligatorio** (D-KNW-10 / INF-13) |
+| `S3_ACCESS_KEY_ID` | **secret** | local | **sí** | **sí** | StoragePort |
+| `S3_SECRET_ACCESS_KEY` | **secret** | local | **sí** | **sí** | StoragePort |
+| `S3_REGION` | variable | | sí | sí | |
+| `S3_ENDPOINT` | variable | MinIO URL | si compatible | si compatible | R2 / MinIO / Railway |
+| `FFMPEG_PATH` | variable | opcional | path en worker | path en worker | Worker video; imagen debe incluir **ffmpeg** (backend/09 D-MED-9) |
 | `RATE_LIMIT_WEBHOOK_*` | variable | laxo | medio | prod | |
 | `CUPO_MENSUAL_MENSAJES` | variable | `1000` | `1000` | `1000` | |
 | `FF_DEVOLVER_A_BOT` | variable | `false` | `false` | `false` | |
 | `ACTIVE_SEDE_*` | variable | Jardín 1 | | Jardín 1 | G7 |
+
+**Nota media:** en staging/prod, `OPENAI_API_KEY` (o equivalentes), `COHERE_API_KEY` y el bloque `S3_*` son **Must** antes de UAT multimodal (DoD-13). CI de PR **no** inyecta OpenAI/Cohere reales; usa ports mock ([../backend/09-aceptacion-y-matriz-tests.md](../backend/09-aceptacion-y-matriz-tests.md) §8). El runtime del **worker** debe empaquetar ffmpeg (o exponer `FFMPEG_PATH`).
 
 **Estado remoto:** ninguno de estos nombres existe aún como GitHub secret/variable.
 
@@ -195,7 +203,7 @@ Fuente: [../setup/01-frontend-setup.md](../setup/01-frontend-setup.md) §3, [../
 
 **Nunca** como secretos/vars del panel (ni Actions del job `web` que las inyecte a client bundle):
 
-`DATABASE_URL`, `META_*`, `TWILIO_*`, `COHERE_API_KEY`, `LLM_*`, `EMBEDDINGS_*`, `JWT_SECRET` de API (salvo diseño BFF explícito documentado).
+`DATABASE_URL`, `META_*`, `TWILIO_*`, `COHERE_API_KEY`, `OPENAI_API_KEY`, `LLM_*`, `EMBEDDINGS_*`, `S3_SECRET_ACCESS_KEY`, `JWT_SECRET` de API (salvo diseño BFF explícito documentado).
 
 ### 2.5 Secrets solo de CI (objetivo)
 
@@ -214,7 +222,8 @@ Preferir **OIDC** (§3) sobre PATs y access keys estáticas.
 |---|---|---|---|---|---|
 | `DATABASE_URL` | sí | sí (migrate/smoke) | sí | **sí** | **fuente** |
 | Meta / Twilio | sandbox | UAT | prod | **sí** | **fuente** |
-| LLM / Cohere | sí | sí | sí | **sí** | **fuente** |
+| LLM / Cohere / OpenAI | sí | sí | sí | **sí** | **fuente** |
+| `S3_*` (object storage) | MinIO/local | sí | sí | **sí** | **fuente** — obligatorio staging/prod |
 | `JWT_SECRET` | sí | sí | sí | **sí** | **fuente** |
 | `NEXT_PUBLIC_*` | sí | vars | vars | **sí** | opcional |
 
@@ -226,8 +235,10 @@ GitHub no sustituye el gestor Medina: es un **consumidor** para CI/CD.
 |---|---|
 | NF-S-3 | Secretos fuera del repo; separados por entorno |
 | INF-4 | `dev` / `staging` / `prod` aislados |
-| §8.2 setup 04 | Secrets en CI no hardcode; scan básico |
+| INF-13 / D-KNW-10 | Object storage S3 + secretos `S3_*`; worker ffmpeg |
+| §8.2 setup 04 | Secrets en CI no hardcode; scan básico; T-MED mock vs `@live` |
 | §10.2 / §10.5 | Credenciales prod + runbook rotación |
+| backend/09 | Ports OpenAI/Cohere/Storage; matriz UAT media |
 
 ---
 

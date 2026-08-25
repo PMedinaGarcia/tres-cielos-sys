@@ -68,7 +68,8 @@ Evitar como look por defecto: púrpura genérico SaaS, cream+terracotta “AI la
 | Bot / Humano | Quién controla el hilo |
 | Canal FB / IG / WA | Origen |
 | Precio desactualizado | Brief con catálogo stale |
-| Job: cola / indexando / listo / error | Ingesta conocimiento |
+| Job: cola / procesando / indexando / listo / error | Ingesta conocimiento multimodal |
+| MIME: pdf / docx / imagen / video / … | `TipoMaterial` en biblioteca |
 
 Implementar como `Badge` + variante semántica; no inventar iconografía emoji.
 
@@ -148,11 +149,11 @@ Sin métricas de conversión/campaña.
 
 | Superficie | Componentes clave |
 |---|---|
-| Conocimiento | `DocumentoTable`, `PublishActions`, `IngestJobStatus` (&lt; 60 s feedback) |
-| Catálogo | `SkuTable`, `PaqueteDetail`, `ImportCatalogoForm`, `ImportHistory`, `ToolPreview` (admin) |
+| Conocimiento | `ConocimientoDropzone`, `MimeTypeBadge`, `JobPipelineBar`, `DocumentoConocimientoTable`, `DocumentoPreviewPanel`, `PublishArchivarActions`, `XlsxDestinoDialog`, `PipelineErrorAlert` — ver [08-cableado-conocimiento-multimodal.md](08-cableado-conocimiento-multimodal.md) |
+| Catálogo | `SkuTable`, `PaqueteDetail`, `ImportCatalogoForm`, `ImportHistory`, `ToolPreview` (admin) — **separado** del dropzone RAG |
 | Cupo | `CupoMeter`, `DesgloseCanal`, `UsoAgenticRag` |
 | Admin | Forms/tables de usuarios, sedes, criterios, tipificaciones, params enrutador |
-| Telemetría | `SedeOpsSummary`, `EventoOperativoTimeline`, `RegistroRecuperacionDetail`, `ConsultaCatalogoDetail` |
+| Telemetría | `SedeOpsSummary`, `EventoOperativoTimeline`, `RegistroRecuperacionDetail` (badge `tipoMaterial`), `ConsultaCatalogoDetail` |
 
 ---
 
@@ -182,7 +183,7 @@ Bandeja y telemetría por hilo: selección en lista actualiza panel sin perder c
 
 ### 7.2 Feedback de jobs
 
-Publicar documento/catálogo: estado visible en línea (`en_cola` → `listo` / `error`) con objetivo &lt; 60 s. Error → mensaje actionable, no spinner infinito.
+Publicar documento multimodal / precio de catálogo: estado visible en línea (`en_cola` → `procesando` → `indexando` → `listo` / `error`) con SLA según material (texto &lt; 60 s, foto &lt; 90 s, video &lt; 5 min). Error → toast (`PIPELINE_ERROR`, …) + mensaje actionable, no spinner infinito. Import catálogo usa filas OK/error, no `pipelineEstado` RAG.
 
 ### 7.3 SLA visual
 

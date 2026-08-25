@@ -2,7 +2,7 @@
 
 El frontend (Next.js) es la superficie de trabajo del equipo comercial y de operación. No es un sitio de marketing. Este documento define **qué pantallas existen** y **quién ve qué**.
 
-Arquitectura: [01-estructura.md](01-estructura.md) · Rutas: [02-routing-y-paginas.md](02-routing-y-paginas.md) · Componentes: [03-componentes.md](03-componentes.md) · Datos: [04-estado-y-datos.md](04-estado-y-datos.md) · API: [05-api-y-hooks.md](05-api-y-hooks.md) · Auth: [06-auth-y-config.md](06-auth-y-config.md) · Tipos: [07-tipos.md](07-tipos.md).
+Arquitectura: [01-estructura.md](01-estructura.md) · Rutas: [02-routing-y-paginas.md](02-routing-y-paginas.md) · Componentes: [03-componentes.md](03-componentes.md) · Datos: [04-estado-y-datos.md](04-estado-y-datos.md) · API: [05-api-y-hooks.md](05-api-y-hooks.md) · Auth: [06-auth-y-config.md](06-auth-y-config.md) · Tipos: [07-tipos.md](07-tipos.md) · Cableado multimodal: [08-cableado-conocimiento-multimodal.md](08-cableado-conocimiento-multimodal.md) · Plan chatbot UI: [09-plan-implementacion-chatbot-ui.md](09-plan-implementacion-chatbot-ui.md).
 
 El bot de producto es Agentic RAG; el panel debe permitir **publicación dinámica** de conocimiento y **gestión del catálogo de paquetes**, además del brief de cotización en el expediente.
 
@@ -134,16 +134,17 @@ Muestra / edita:
 - Tipificaciones de perdido.
 - Parámetros del enrutador documentados (sede, disponibilidad, round-robin).
 
-### 3.7 Conocimiento (documentos RAG)
+### 3.7 Conocimiento (documentos RAG multimodal)
 
 Muestra:
 
-- Biblioteca de documentos fuente (FAQ, sedes, políticas, safe replies, apoyo narrativo).
-- Estado: borrador / publicado / archivado.
+- Biblioteca de documentos fuente (FAQ, sedes, políticas, safe replies, apoyo narrativo) con **materiales** pdf / docx / xlsx·csv narrativo / imagen / video.
+- Badges MIME (`TipoMaterial`) y estado: borrador / publicado / archivado.
 - Versión, `publicado_en`, alcance global o por sede.
-- Estado del job de ingesta (en cola / indexando / listo / error) con objetivo &lt; 60 s.
+- Estado del job de ingesta (`pipelineEstado`: en cola / procesando / indexando / listo / error) con SLA texto &lt; 60 s, foto &lt; 90 s, video &lt; 5 min.
+- Dropzone admin + preview de metadatos (sin reenviar media de la biblioteca al lead en v1).
 
-Acciones: cargar/actualizar contenido autorizado, publicar, archivar. Al publicar, feedback claro de “vigente para el bot”. No requiere que el asesor edite “código” del bot.
+Acciones: cargar/actualizar contenido autorizado (multipart), publicar, archivar. Al publicar, feedback claro de “vigente para el bot”. XLS de **precios** no se gestiona aquí → `/catalogo`. Contrato FE: [08-cableado-conocimiento-multimodal.md](08-cableado-conocimiento-multimodal.md).
 
 ### 3.8 Catálogo de paquetes
 
@@ -151,9 +152,9 @@ Muestra:
 
 - Lista de SKUs con estado, sede, tipo de evento, aforo, versión.
 - Detalle: inclusiones tipadas, precios con vigencia, reglas.
-- Historial de `ImportacionCatalogo` (filas OK/error).
+- Historial de `ImportacionCatalogo` (filas OK/error) — import Excel/CSV **separado** del pipeline narrativo RAG.
 
-Acciones (admin): CRUD, import Excel/CSV, publicar/archivar paquete o precio, ver preview de lo que devolverían las tools.
+Acciones (admin): CRUD, import Excel/CSV de precios, publicar/archivar paquete o precio, ver preview de lo que devolverían las tools.
 
 ### 3.9 Uso y cupo
 
@@ -194,7 +195,9 @@ Propósito: auditar cómo trabaja el bot y cómo trabaja el agente. No es dashbo
 | Reasignar | No* | Sí | Sí |
 | Gestionar usuarios / roles | No | Lectura limitada | Sí |
 | Publicar documentos de conocimiento | No | No** | Sí |
+| Upload multimodal (pdf/docx/img/video…) | No | No** | Sí |
 | Gestionar catálogo de paquetes | No | Lectura | Sí |
+| Import Excel precios (`/catalogo`) | No | No | Sí |
 | Ver cupo / uso | No | Sí | Sí |
 | Configurar reglas de asignación | No | Lectura | Sí |
 | Ver telemetría operativa (resumen sede) | No | Lectura limitada** | Sí |
@@ -232,12 +235,12 @@ Propósito: auditar cómo trabaja el bot y cómo trabaja el agente. No es dashbo
 2. Inspecciona ruta del bot, tools/RAG y latencia humana post-handoff.
 3. Corrige catálogo/conocimiento si hay fallo de precisión o frescura.
 
-### Admin — conocimiento dinámico
+### Admin — conocimiento dinámico (multimodal)
 
-1. Recibe copy aprobado de Tres Cielos.
-2. Carga/actualiza documento.
-3. Publica → espera estado “listo” (&lt; 60 s) → el bot ya recupera el contenido nuevo.
-4. Archiva versiones obsoletas.
+1. Recibe copy / material aprobado de Tres Cielos (PDF, Word, FAQ en hoja, foto, video ≤ 5 min).
+2. Carga vía dropzone → espera `pipelineEstado` terminal.
+3. Publica → estado “listo” / “vigente para el bot” → el bot recupera el contenido nuevo (texto + cita; **sin** reenviar el binario al lead).
+4. Archiva versiones obsoletas. Precios siempre por catálogo, no por OCR/RAG.
 
 ### Admin — catálogo / precio del día
 

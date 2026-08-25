@@ -88,15 +88,15 @@ Alineada a [../infrastructure/01-stack-y-entornos.md](../infrastructure/01-stack
 
 | Componente | Despliegue típico v1 | Notas |
 |---|---|---|
-| Panel Next.js | PaaS (p. ej. Vercel) o contenedor | SSR/middleware; `NEXT_PUBLIC_API_URL` → API |
-| API NestJS | Contenedor o PaaS Node (ECS, Cloud Run, Railway, Fly, etc.) | Debe exponer URL **pública estable** para webhooks |
+| Panel Next.js | **Railway** (servicio `web`) | SSR/middleware; `NEXT_PUBLIC_API_URL` → API |
+| API NestJS | **Railway** (servicio `api`) | URL **pública estable** para webhooks |
 | Worker ingesta | Mismo imagen/proceso separado o cola consumida | Prioridad alta en `documento.publicado` ([../backend/04-ingesta-conocimiento.md](../backend/04-ingesta-conocimiento.md)) |
-| PostgreSQL | Gestionado (RDS, Cloud SQL, Neon, Supabase, etc.) con **pgvector** | Misma DB para CRM + vectores + FTS en v1 |
-| Redis (si BullMQ) | Gestionado o contenedor local | Solo si se elige BullMQ; alternativa SQS/equivalente |
+| PostgreSQL | **Railway Postgres** (+ pgvector) | Misma DB para CRM + vectores + FTS en v1; ver [07-railway-deploy](07-railway-deploy.md) |
+| Redis (si BullMQ) | **Railway Redis** | v0: `QUEUE_DRIVER=inline`; Redis listo para BullMQ |
 | Object storage | S3-compatible | Opcional v1; fuentes PDF/Word |
 | Email | SMTP / Resend / SES / SendGrid | Alertas; no marketing masivo |
 
-**Decisión abierta:** cloud vendor único. La documentación de producto **no exige** AWS, GCP ni Azure; exige comportamiento (HTTPS, backups, secretos separados por entorno, frescura &lt; 60 s).
+**Vendor PaaS:** Railway ([07-railway-deploy](07-railway-deploy.md)). La documentación de producto exige comportamiento (HTTPS, backups, secretos separados por entorno, frescura &lt; 60 s).
 
 ### 1.4 Escala esperada go-live
 
@@ -180,7 +180,7 @@ En go-live: **solo Jardín 1 activo** ([../producto/02-fases-golive.md](../produ
 
 | Entorno | Panel | API |
 |---|---|---|
-| local | `http://localhost:3000` | `http://localhost:3001` (o puerto Nest) |
+| local | `http://localhost:3010` | `http://localhost:3011` |
 | staging | `https://app.staging.<dominio>` | `https://api.staging.<dominio>` |
 | prod | `https://app.<dominio>` | `https://api.<dominio>` |
 
@@ -264,15 +264,15 @@ Ver §9. Vendor (Grafana Cloud, Datadog, CloudWatch, etc.): **Decisión abierta*
 Servicios mínimos para desarrollo:
 
 ```yaml
-# Ilustrativo — aún no versionado en el repo
+# Versionado en la raíz del repo: docker-compose.yml
 services:
   postgres:
-    image: pgvector/pgvector:pg16   # o postgres + install extension
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: trescielos
       POSTGRES_PASSWORD: localdev
       POSTGRES_DB: trescielos_dev
-    ports: ["5432:5432"]
+    ports: ["5440:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U trescielos"]
@@ -280,16 +280,15 @@ services:
       timeout: 5s
       retries: 10
 
-  redis:                             # solo si BullMQ
+  redis:
     image: redis:7-alpine
-    ports: ["6379:6379"]
+    ports: ["6390:6379"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       retries: 10
 
-  # api / worker / web: preferible `pnpm dev` en host en v1 local;
-  # contenedorizar cuando exista scaffold estable.
+  # api / worker / web: `pnpm --filter … dev` en host (puertos 3011 / 3010)
 volumes:
   pgdata:
 ```
@@ -387,7 +386,7 @@ Nombres ilustrativos alineados a [../infrastructure/01-stack-y-entornos.md](../i
 | `RERANK_THRESHOLD` | `0.85` | `0.85` | `0.85` | Override solo con acuerdo UAT |
 | `SMTP_*` / `EMAIL_API_KEY` | Mailhog/local | proveedor test | prod | |
 | `STORAGE_BUCKET` / keys | opcional | sí si uploads | sí | |
-| `CORS_ORIGINS` | `http://localhost:3000` | URL panel staging | URL panel prod | Lista explícita |
+| `CORS_ORIGINS` | `http://localhost:3010` | URL panel staging | URL panel prod | Lista explícita |
 | `PUBLIC_API_URL` | tunnel URL | `https://api.staging…` | `https://api…` | Para callbacks/docs |
 | `RATE_LIMIT_WEBHOOK_*` | laxo | medio | prod | [../infrastructure/01-stack-y-entornos.md](../infrastructure/01-stack-y-entornos.md) §7 |
 
@@ -679,18 +678,18 @@ Un entorno se considera **listo y operable** cuando se cumplen **todos** los ít
 
 | # | Gap | Impacto |
 |---|---|---|
-| G-I1 | Sin código ni IaC en el repo | No se puede “levantar” el sistema solo con este doc |
-| G-I2 | Vendor cloud / PaaS no elegido | Bloquea dominios, secretos, pipelines concretos |
-| G-I3 | Sin Docker Compose / Dockerfiles | Dev parity DB/Redis no estandarizada |
-| G-I4 | Sin CI/CD | Sin gates de calidad ni deploy reproducible |
-| G-I5 | Sin `.env.example` | Onboarding frágil |
-| G-I6 | Sin endpoints `/health` `/ready` | Orquestadores y UAT infra incompletos |
-| G-I7 | Cola: BullMQ vs SQS no decidido | Afecta Compose y secretos |
+| G-I1 | Scaffold mínimo existe; dominios de negocio incompletos | Desarrollar por fases |
+| G-I2 | **Cerrado:** PaaS = Railway ([07](07-railway-deploy.md)) | Configurar proyecto y secretos |
+| G-I3 | **Cerrado (local):** `docker-compose.yml` versionado | Dockerfiles app opcionales |
+| G-I4 | Sin CI/CD materializado | Implementar Actions |
+| G-I5 | **Cerrado:** `.env.example` en repo | Completar secretos reales fuera de git |
+| G-I6 | **Parcial:** `/health` `/health/ready` en scaffold | Ampliar checks |
+| G-I7 | Cola: v0 `inline`; Redis listo para BullMQ | Activar BullMQ en ingesta |
 | G-I8 | Object storage opcional sin política | Riesgo de ad-hoc en uploads |
 | G-I9 | Accesos Meta/Twilio/cliente | Bloquean Etapas 2 y 9 aunque staging esté listo |
 | G-I10 | Refresh/logout auth aún con gaps de contrato | Afecta cookies cross-env ([../frontend/06-auth-y-config.md](../frontend/06-auth-y-config.md)) |
-| G-I11 | `docs/README.md` aún no indexa carpeta `setup/` | Descubrimiento; actualizar cuando exista suite setup completa |
-| G-I12 | Versiones exactas Node/Next/Postgres | Por fijar en scaffold |
+| G-I11 | **Cerrado:** `docs/README.md` indexa setup 00–08 | — |
+| G-I12 | **Parcial:** Node 22 + deps en package.json | Mantener lockfile |
 
 ---
 

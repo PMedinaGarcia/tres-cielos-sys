@@ -2,7 +2,7 @@
 
 Cómo entra el material autorizado al sistema, cómo se versiona y cómo el bot refleja cambios **el mismo día** (incluso de un minuto a otro) sin alucinar sobre versiones viejas.
 
-SLA de frescura de producto: **&lt; 60 segundos** desde “Publicar” (documento o precio de catálogo) hasta que la siguiente respuesta del bot use la versión nueva.
+SLA de frescura de producto (**texto** PDF/Word/FAQ): **&lt; 60 segundos** desde “Publicar” hasta que la siguiente respuesta del bot use la versión nueva. Foto y video tienen SLAs propios (§5.5 y [08-ingesta-multimodal.md](08-ingesta-multimodal.md)).
 
 ## 1. Propósito
 
@@ -26,6 +26,12 @@ Cada ítem = un `DocumentoFuente` (o varios si se parte por sede).
 | K08 | Escalación y límites del bot | FAQ operativa | Global | Qué no puede resolver; cuándo pide humano | Alta |
 | K09 | Plantillas de respuesta safe | FAQ | Global | “Te conecto con un asesor”, “no tengo ese dato” | Alta |
 | K10 | Diferencias entre sedes (si aplica) | Comparativo | Global | Solo cuando Jardín 2 esté próximo a activarse | Baja en go-live |
+| K11 | Módulos atómicos de inclusión | Módulo | Por concepto | Un archivo por inclusión (locación, cóctel, banquete, …); alimentan K05. Corpus: `fixtures/negocio/ediciones/*/modulos/` | Alta (contenido Julio 2026) |
+| K12 | Hospedaje y cortesías (prosa) | Promoción narrativa | Global | Condiciones de cortesía **sin montos**; umbrales en catálogo/promociones | Media |
+| K13 | Upgrades / add-ons estacionales | Módulo | Global | Sección vacía a propósito; nuevas filas de promoción, no parche al SKU | Media |
+| K14 | Condiciones comerciales de cotización | Política | Global | Vigencia 30 días, IVA, no aparta fecha, horario de evento; evergreen | Alta |
+
+Detalle de composición, anti-monto y edición activa: [../negocio/04-inventario-k-negocio.md](../negocio/04-inventario-k-negocio.md). Contrato de archivos: [`fixtures/negocio/`](../../fixtures/negocio/README.md).
 
 ### Fuera del inventario v1 (no indexar en vector)
 
@@ -54,13 +60,16 @@ Reglas:
 
 ## 4. Parseo inteligente
 
+El enrutado por MIME, allowlist, object storage obligatorio, estados de job y límites (video ≤ 5 min) están detallados en **[08-ingesta-multimodal.md](08-ingesta-multimodal.md)**. Este documento resume el destino de negocio por tipo.
+
 ### 4.1 PDF / Word (narrativa)
 
 1. Extraer texto por secciones/páginas.
-2. Detectar y **excluir o marcar** tablas que parezcan precios/tarifas (no indexar montos).
-3. Chunking semántico (por heading / párrafo), con overlap moderado.
-4. Metadatos: `documento_id`, `version`, `sede`, `tipo`, `nombre_archivo` (para citas), `orden`.
-5. Generar embedding + `tsvector`.
+2. Detectar y **excluir o marcar** tablas que parezcan precios/tarifas (no indexar montos) → flag `no_recuperable_precio` si queda prosa adyacente.
+3. Páginas escaneadas sin texto → Vision (ver doc 08); el resultado es texto derivado indexable.
+4. Chunking semántico (por heading / párrafo), con overlap moderado.
+5. Metadatos: `documento_id`, `version`, `sede`, `tipo`, `tipo_material`, `nombre_archivo` (para citas), `orden`, `origen_derivacion`.
+6. Generar embedding + `tsvector`.
 
 ### 4.2 Excel / CSV
 
@@ -72,7 +81,29 @@ Reglas:
 
 **Nunca** hacer chunk de una hoja de precios completa hacia pgvector como fuente de verdad de montos.
 
-## 5. Publicación, invalidación y frescura (&lt; 60 s)
+### 4.3 Foto (biblioteca K)
+
+1. Upload admin → object storage (obligatorio).
+2. Pipeline Vision → `texto_derivado` (descripción / texto visible).
+3. Scrub de tarifas; si hay montos OCR → `no_recuperable_precio` (no cotizar desde este material).
+4. Chunk del texto derivado + embedding + FTS; `tipo_material = foto`.
+5. SLA publicar → searchable: **&lt; 90 s** (§5.5).
+6. Cita al lead: `[Fuente: archivo | tipo: foto]`.
+
+No usar fotos de canal del prospecto como publicación K automática.
+
+### 4.4 Video (biblioteca K)
+
+1. Validar duración **≤ 5 minutos** y MIME allowlist; si excede → `rechazado`.
+2. Object storage → demux audio → Whisper → transcripción.
+3. Scrub de tarifas en la transcripción (mismo criterio que PDF/foto).
+4. Chunk + embed + FTS; `tipo_material = video`; guardar `duracion_ms`.
+5. SLA publicar → searchable: **&lt; 5 min** (§5.5).
+6. Cita: `[Fuente: archivo | tipo: video]`.
+
+Detalle de estados (`recibido` → `listo` / `error` / `rechazado`): [08-ingesta-multimodal.md](08-ingesta-multimodal.md) §7.
+
+## 5. Publicación, invalidación y frescura (SLAs por tipo)
 
 ### 5.1 Al publicar un documento
 
@@ -98,20 +129,42 @@ Reglas:
 
 | Métrica | Objetivo |
 |---|---|
-| Latencia publicar documento → searchable | **&lt; 60 s** |
+| Latencia publicar **documento texto** (PDF/Word/FAQ) → searchable | **&lt; 60 s** |
+| Latencia publicar **foto** → searchable | **&lt; 90 s** |
+| Latencia publicar **video** (≤ 5 min) → searchable | **&lt; 5 min** |
 | Latencia publicar precio → tool result nuevo | **inmediato post-commit** (mismo orden de magnitud operativo) |
-| Respuestas con versión stale tras SLA | **0** en UAT |
+| Respuestas con versión stale tras el SLA de su tipo | **0** en UAT |
+
+Alertas de cola: si un job de texto supera 60 s, de foto 90 s o de video 5 min, notificar a admin/Medina (infra + telemetría).
+
+### 5.5 SLAs diferenciados por tipo de material
+
+```
+Publicar DocumentoFuente
+        ↓
+MediaRouter (MIME) ──► texto ──► SLA &lt; 60 s
+                   ──► foto  ──► SLA &lt; 90 s  (Vision)
+                   ──► video ──► SLA &lt; 5 min (Whisper; dur ≤ 5 min)
+                   ──► xls precios ──► Prisma (sin embeddings)
+```
+
+Prioridad de cola y allowlist: [08-ingesta-multimodal.md](08-ingesta-multimodal.md) §4 y §8. El path de **adjuntos de canal** (no biblioteca) usa los mismos parsers/SLAs de extracción pero **no** publica a K.
 
 ## 6. UAT de cambios día a día
 
 Casos obligatorios:
 
-1. **Copy:** publicar cambio en K02 (“nuevo horario de visitas”) → preguntar al bot antes de 60 s → debe reflejar el texto nuevo y citar fuente.
+1. **Copy:** publicar cambio en K02 (“nuevo horario de visitas”) → preguntar al bot antes de 60 s → debe reflejar el texto nuevo y citar fuente (con tipo de material).
 2. **Precio:** publicar nuevo `PaquetePrecio` → preguntar “cuánto cuesta SKU X” → monto nuevo; existe `RegistroConsultaCatalogo`.
 3. **Doble cambio el mismo día:** alterar K01 y un precio; ambos reflejados en turnos sucesivos.
 4. **Archivado:** archivar K04 → deja de recuperarse; no aparece en citas.
 5. **Borrador:** documento en borrador nunca aparece en respuestas.
-6. **Regresión stale:** forzar pregunta a los 70 s post-publicación; falla el caso si aún responde versión anterior.
+6. **Regresión stale:** forzar pregunta tras el SLA de su tipo; falla el caso si aún responde versión anterior.
+7. **Foto:** publicar imagen de salón sin precios → searchable &lt; 90 s; cita `tipo: foto`; pregunta de ambiente puede anclarse al derivado.
+8. **Foto con tarifas OCR:** flag `no_recuperable_precio`; “cuánto cuesta” → tools/handoff, nunca monto del OCR.
+9. **Video:** clip ≤ 5 min → listo &lt; 5 min; clip &gt; 5 min → rechazado.
+
+Casos multimodal ampliados: [08-ingesta-multimodal.md](08-ingesta-multimodal.md) §11.
 
 ## 7. Responsabilidades de entrega de contenido
 
@@ -137,4 +190,4 @@ La recuperación documental y el catálogo **complementan** el guion; no lo reem
 
 ## 9. Criterio de cierre de este entregable
 
-Inventario K01–K10 (K05 redefinido), parseo inteligente, ciclo publicar/archivar con invalidación, SLA &lt; 60 s y casos UAT de frescura dinámica documentados para implementación del worker de ingesta y del panel de Conocimiento/Catálogo.
+Inventario K01–K10 (K05 redefinido), parseo inteligente (PDF/Word/XLS + foto/video), ciclo publicar/archivar con invalidación, SLAs diferenciados (texto &lt; 60 s, foto &lt; 90 s, video &lt; 5 min) y casos UAT de frescura dinámica documentados para implementación del worker de ingesta y del panel de Conocimiento/Catálogo. Contrato multimodal completo: [08-ingesta-multimodal.md](08-ingesta-multimodal.md). Proveedores IA: [07-pipeline-openai-y-proveedores.md](07-pipeline-openai-y-proveedores.md).

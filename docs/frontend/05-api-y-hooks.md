@@ -85,12 +85,17 @@ Roles: **A** asesor · **C** coordinador · **D** admin. Scope real en API.
 | `GET` | `/catalogo/paquetes/:id` | `PaqueteDto` | C(L)/D | Detalle |
 | `POST` | `/catalogo/paquetes` / `PATCH`… | CRUD (**detalle campos por confirmar**) | D | Catálogo |
 | `POST` | `/catalogo/paquetes/:id/publicar` | — | D | Publicar |
-| `POST` | `/catalogo/importaciones` | multipart → `ImportacionCatalogo` | D | Import |
-| `GET` | `/conocimiento/documentos` | `DocumentoFuenteDto[]` (**list implícito**) | D (+C borrador?) | Conocimiento |
-| `POST` | `/conocimiento/documentos` | borrador + archivo | D | Cargar |
-| `POST` | `/conocimiento/documentos/:id/publicar` | job &lt; 60 s | D | Publicar |
+| `POST` | `/catalogo/importaciones` | multipart Excel/CSV **precios/SKUs** → `ImportacionCatalogo` (`filasOk` / `filasError`) | D | Import catálogo (**no** RAG) |
+| `GET` | `/catalogo/importaciones` | historial importaciones | C(L)/D | Catálogo |
+| `GET` | `/conocimiento/documentos` | `DocumentoFuenteDto[]` + meta; query `tipoMaterial?`, `estado?` | C(L)/D | Conocimiento |
+| `GET` | `/conocimiento/documentos/:id` | `DocumentoFuenteDto` + `job` (`pipelineEstado`) | C(L)/D | Detalle / poll |
+| `POST` | `/conocimiento/documentos` | **multipart** `file`+`titulo`+`tipo`+`sedeId?` → `{ documento, jobId }` | D | Upload multimodal |
+| `GET` | `/conocimiento/jobs/:jobId` | `JobIngestaDto` (`pipelineEstado`, `progresoPct`, error) | C(L)/D | Poll job |
+| `POST` | `/conocimiento/documentos/:id/publicar` | encola ingesta; SLA texto &lt; 60 s / foto &lt; 90 s / video &lt; 5 min | D | Publicar |
 | `POST` | `/conocimiento/documentos/:id/archivar` | — | D | Archivar |
 | `GET` | `/cupo` o `/cupo/uso` | consumo vs tope (**gap DTO**) | C/D | Uso y cupo |
+
+Cableado UI completo (flujos, toasts, RBAC, UI-KNW): [08-cableado-conocimiento-multimodal.md](08-cableado-conocimiento-multimodal.md). Allowlist MIME: pdf, docx, xlsx, csv, jpeg, png, webp, mp4, mov, webm. XLS de **precios** solo por `/catalogo/importaciones`; XLS narrativo (FAQ) sí puede ir a conocimiento.
 
 \* Asesor: solo recursos con asignación vigente (Ownership).  
 **(L)** = lectura.
@@ -179,11 +184,19 @@ Convención: `use` + dominio; wrappers de `useQuery` / `useMutation` con keys de
 | `useTelemetriaSede(sedeId, periodo)` | D/(C) | |
 | `useRegistroRecuperacion(id)` | D | lazy al abrir drill-down |
 | `useRegistroCatalogo(id)` | D | |
-| `useDocumentosConocimiento(q)` | D | |
-| `usePublicarDocumento()` | D | poll `jobIngesta` hasta terminal |
+| `useDocumentosConocimiento(q)` | C/D | lista; filtros `tipoMaterial` |
+| `useDocumentoConocimiento(id)` | C/D | detail; `refetchInterval` ~2 s si `pipelineEstado` ∈ {`en_cola`,`procesando`,`indexando`} |
+| `useJobIngesta(jobId)` | C/D | poll dedicado `GET /conocimiento/jobs/:id`; same interval rule |
+| `useUploadDocumentoConocimiento()` | D | `postForm` multipart; invalidate `conocimiento/*`; arranca poll |
+| `usePublicarDocumento()` | D | POST publicar; poll hasta `listo`\|`error` |
+| `useArchivarDocumento()` | D | invalidate list/detail |
+| `useReintentarIngesta(id)` | D | reingesta propuesta; mismo poll |
 | `usePaquetes(q)` / `usePaquete(id)` | C/D | |
-| `useImportarCatalogo()` | D | multipart + resultado filas |
+| `useImportarCatalogo()` | D | multipart catálogo; **no** keys de job RAG |
+| `useImportacionesCatalogo(q)` | C/D | historial import |
 | `useCupo(periodo?)` | C/D | **cuando exista DTO** |
+
+Detalle de invalidaciones y anti-alcance (no reenviar media al lead): [08-cableado-conocimiento-multimodal.md](08-cableado-conocimiento-multimodal.md) §5–§8.
 
 ### 4.5 Capabilities helper
 
@@ -192,9 +205,12 @@ function useCan() {
   const { user } = useAuth();
   return {
     verCarga: user?.rol === 'coordinador' || user?.rol === 'admin',
+    verConocimiento: user?.rol === 'admin' || user?.rol === 'coordinador',
+    mutarConocimiento: user?.rol === 'admin',
     publicarCatalogo: user?.rol === 'admin',
+    importarCatalogo: user?.rol === 'admin',
     verTelemetriaSede: user?.rol === 'admin' || user?.rol === 'coordinador',
-    // … espejo matriz 00-superficies §4
+    // … espejo matriz 00-superficies §4 y frontend/08 §9
   };
 }
 ```
@@ -211,8 +227,10 @@ Solo UX; no sustituye 403.
 | PATCH oportunidad | `oportunidades/detail`, `brief`, `pipeline`, `conversaciones/list` |
 | Reasignar | `carga`, `conversaciones/list`, `oportunidades/detail`, `notificaciones` |
 | Atender notificación | `notificaciones/list`, posiblemente bandeja |
-| Publicar conocimiento | `conocimiento/*` (+ poll job) |
-| Publicar catálogo | `catalogo/*`; briefs abiertos si montados |
+| Upload / publicar conocimiento | `conocimiento/documentos`, `conocimiento/documento`, `conocimiento/job` (+ poll hasta terminal) |
+| Archivar conocimiento | `conocimiento/*` |
+| Importar catálogo | `catalogo/importaciones`, `catalogo/paquetes` (**no** `conocimiento/job`) |
+| Publicar catálogo / precio | `catalogo/*`; briefs abiertos si montados |
 
 ---
 
@@ -229,6 +247,8 @@ Solo UX; no sustituye 403.
 
 Códigos de negocio (`SIN_PRECIO_VIGENTE`, etc.) son del bot/tools; el panel admin de catálogo muestra el mismo `error.code` en preview si el backend lo reexpone.
 
+Códigos de upload/pipeline conocimiento → toast ([08](08-cableado-conocimiento-multimodal.md) §7): `MIME_NO_PERMITIDO`, `VIDEO_DEMASIADO_LARGO`, `ARCHIVO_DEMASIADO_GRANDE`, `PIPELINE_ERROR`.
+
 ---
 
 ## 7. Gaps respecto a backend DTOs
@@ -237,7 +257,8 @@ Códigos de negocio (`SIN_PRECIO_VIGENTE`, etc.) son del bot/tools; el panel adm
 |---|---|
 | Sin `POST /auth/logout` ni refresh documentados | Definir en kick-off; ver [06-auth-y-config.md](06-auth-y-config.md) |
 | Sin DTO HTTP de **cupo/uso** | Superficie 3.9 bloqueada a contrato |
-| List/CRUD catálogo y conocimiento incompletos en §4 (solo publicar/import/archivar parcial) | Completar paths al implementar Nest |
+| Detalle fino de retry job / URL firmada Asset | Completar al implementar Nest + [08](08-cableado-conocimiento-multimodal.md) |
+| List/CRUD catálogo campos CRUD aún parciales en DTOs backend | Completar paths al implementar Nest |
 | Admin usuarios/sedes/enrutador sin paths | Feature flag hasta contrato |
 | Canal realtime no especificado en infra | Polling fallback documentado en 04 |
 | Prefijo `/api/v1` no fijado | Env `NEXT_PUBLIC_API_PREFIX` |
@@ -246,4 +267,4 @@ Códigos de negocio (`SIN_PRECIO_VIGENTE`, etc.) son del bot/tools; el panel adm
 
 ## 8. Criterio de cierre
 
-Quedan el cliente envelope, la tabla endpoint→DTO→superficie→rol, la capa `*Api`, los hooks por dominio y las invalidaciones. **Código implementado: ninguno.** Próximo paso de engineering: scaffold + `api.client` + hooks de auth y bandeja como vertical slice.
+Quedan el cliente envelope, la tabla endpoint→DTO→superficie→rol (incl. multipart conocimiento + jobs + import catálogo), la capa `*Api`, los hooks por dominio (poll `pipelineEstado`) y las invalidaciones. **Código implementado: ninguno.** Detalle UI multimodal: [08-cableado-conocimiento-multimodal.md](08-cableado-conocimiento-multimodal.md). Próximo paso de engineering (post Fase Doc): scaffold + `api.client` + hooks de auth y bandeja como vertical slice.

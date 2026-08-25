@@ -177,7 +177,7 @@ Meta / Twilio ──webhooks──► API NestJS ──► PostgreSQL
 Panel Next.js ──HTTPS/JWT──► API NestJS
 ```
 
-Diagrama de turno del bot: [../backend/02-orquestador-agentico.md](../backend/02-orquestador-agentico.md) §3.
+Diagrama de turno del bot: [../backend/02-orquestador-agentico.md](../backend/02-orquestador-agentico.md) §3. Plan de implementación por fases (módulos, `POST /orchestrator/turn`, PRs): [../backend/10-plan-implementacion-chatbot.md](../backend/10-plan-implementacion-chatbot.md).
 
 ### 2.4 Envelope y convenciones API
 
@@ -199,10 +199,10 @@ Ya fijados en [../backend/05-dtos-y-tipos.md](../backend/05-dtos-y-tipos.md) §1
 | Variable | Obligatoria | Descripción | Default sugerido (dev) |
 |---|---|---|---|
 | `NODE_ENV` | Sí | `development` \| `staging` \| `production` | `development` |
-| `PORT` | Sí | Puerto HTTP API | `3001` (dejar `3000` al Next) **[propuesta]** |
+| `PORT` | Sí | Puerto HTTP API | `3011` (dejar `3010` al Next) |
 | `APP_ENV` | Recomendada | Alias operativo Medina (`dev` / `staging` / `prod`) | `dev` |
 | `API_PREFIX` | No | Prefijo global Nest (`""` o `api/v1`) | `""` hasta decisión |
-| `CORS_ORIGINS` | Sí (panel) | Orígenes del frontend (CSV) | `http://localhost:3000` |
+| `CORS_ORIGINS` | Sí (panel) | Orígenes del frontend (CSV) | `http://localhost:3010` |
 | `LOG_LEVEL` | No | `debug` \| `info` \| `warn` \| `error` | `debug` en dev |
 
 ### 3.2 Base de datos
@@ -213,13 +213,13 @@ Ya fijados en [../backend/05-dtos-y-tipos.md](../backend/05-dtos-y-tipos.md) §1
 | `DATABASE_URL_DIRECT` | No | URL sin pooler (migraciones Prisma) si se usa pooler en runtime |
 
 Ejemplo forma (no real):  
-`postgresql://trescielos:secret@localhost:5432/tres_cielos_dev?schema=public`
+`postgresql://trescielos:localdev@localhost:5440/trescielos_dev?schema=public`
 
 ### 3.3 Cola / Redis
 
 | Variable | Obligatoria | Descripción |
 |---|---|---|
-| `REDIS_URL` | Condicional* | `redis://localhost:6379` |
+| `REDIS_URL` | Condicional* | `redis://localhost:6390` |
 | `QUEUE_DRIVER` | No | `bullmq` \| `sqs` \| `inline` (dev sync) **[propuesta]** |
 | `INGEST_JOB_TIMEOUT_MS` | No | Alinear a alerta SLA 60 s | p. ej. `60000` |
 
@@ -433,7 +433,15 @@ Nombres de filter/scripts: **placeholder** hasta que el monorepo exista.
 3. Migraciones + seed (una vez).  
 4. API Nest (`PORT`).  
 5. Worker.  
-6. (Opcional) panel Next con `NEXT_PUBLIC_API_URL=http://localhost:3001`.
+6. (Opcional) panel Next con `NEXT_PUBLIC_API_URL=http://localhost:3011`.
+
+Smoke health (puertos locales fijados):
+
+```bash
+curl -sS "http://localhost:3011/health"
+```
+
+(Ver checklist completo en [06-checklist-testeo-inicial](06-checklist-testeo-inicial.md).)
 
 ### 5.5 Modos de desarrollo degradados
 
@@ -520,19 +528,19 @@ redis-cli -u "$REDIS_URL" PING
 #### B. API viva
 
 ```bash
-curl -sS "http://localhost:3001/health"
+curl -sS "http://localhost:3011/health"
 # Esperado: 200 + envelope data.status=ok
 ```
 
 #### C. Auth
 
 ```bash
-curl -sS -X POST "http://localhost:3001/auth/login" \
+curl -sS -X POST "http://localhost:3011/auth/login" \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"admin@local.dev\",\"password\":\"...\"}"
 # Esperado: data.accessToken, data.user.rol=admin
 
-curl -sS "http://localhost:3001/auth/me" \
+curl -sS "http://localhost:3011/auth/me" \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -542,7 +550,7 @@ curl -sS "http://localhost:3001/auth/me" \
 # Token asesor → debe fallar
 curl -sS -o /dev/null -w "%{http_code}" \
   -H "Authorization: Bearer <asesorToken>" \
-  "http://localhost:3001/carga"
+  "http://localhost:3011/carga"
 # Esperado: 403
 ```
 
@@ -610,14 +618,16 @@ El panel **no** llama webhooks. Solo la API:
 - Responde por el mismo canal de origen.  
 - Contabiliza cupo ([dominios §9](../backend/01-dominios.md)).
 
-### 8.4 Puertos locales sugeridos **[PROPUESTA]**
+### 8.4 Puertos locales (fijados tras escaneo 2026-07-28)
 
-| Servicio | Puerto |
+| Servicio | Puerto host |
 |---|---|
-| Next.js `apps/web` | `3000` |
-| NestJS `apps/api` | `3001` |
-| Postgres | `5432` |
-| Redis | `6379` |
+| Next.js `apps/web` | `3010` |
+| NestJS `apps/api` | `3011` |
+| Postgres | `5440` |
+| Redis | `6390` |
+
+Detalle: [05-escaneo-entorno-y-dependencias](05-escaneo-entorno-y-dependencias.md).
 
 ---
 
@@ -636,7 +646,7 @@ Problemas que aparecerán **después** del scaffold; hoy el síntoma #0 es “no
 | 403 inesperado | Rol/sede/ownership | Revisar matriz [guards §4](../backend/06-guards-y-rbac.md); predicados §5 |
 | Asesor ve hilos ajenos | Bug F1 / listado sin filtro | Prioridad P0; tests dos asesores |
 | Webhook Meta 403/fail | Verify token o firma | `META_VERIFY_TOKEN` / `META_APP_SECRET`; no usar JWT panel |
-| CORS error desde `:3000` | Origen no listado | `CORS_ORIGINS` |
+| CORS error desde `:3010` | Origen no listado | `CORS_ORIGINS` |
 | `orgId` undefined en UI | Gap DTO | Extender `/auth/me` ([frontend auth §1.2](../frontend/06-auth-y-config.md)) |
 | Worker no procesa | API y worker no comparten Redis/DB | Misma `REDIS_URL` + `DATABASE_URL` |
 | Seed duplicado / unique violation | Re-seed sin reset | `migrate reset` solo en **dev** (destructivo; nunca en prod) |

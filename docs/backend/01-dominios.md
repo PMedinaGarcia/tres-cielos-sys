@@ -2,7 +2,9 @@
 
 El backend (NestJS) es el centro operativo. Aquí se detalla **qué debe hacer** cada dominio de negocio, sin endpoints ni firmas de código. La inteligencia conversacional de producto es **Agentic RAG** (orquestador + tools de catálogo + RAG avanzado + handoff), no un agente libre multi-día.
 
-Detalle técnico: [02-orquestador-agentico.md](02-orquestador-agentico.md), [03-rag-avanzado.md](03-rag-avanzado.md), [04-ingesta-conocimiento.md](04-ingesta-conocimiento.md).
+Detalle técnico: [02-orquestador-agentico.md](02-orquestador-agentico.md), [03-rag-avanzado.md](03-rag-avanzado.md), [04-ingesta-conocimiento.md](04-ingesta-conocimiento.md), [07-pipeline-openai-y-proveedores.md](07-pipeline-openai-y-proveedores.md), [08-ingesta-multimodal.md](08-ingesta-multimodal.md).
+
+Plan de ejecución del cerebro (fases, módulos Nest, PRs): [10-plan-implementacion-chatbot.md](10-plan-implementacion-chatbot.md).
 
 ## 1. Identidad y acceso
 
@@ -178,3 +180,9 @@ Comportamientos:
 ## 12. Criterio de cierre de este entregable
 
 Cada dominio tiene comportamientos observables alineados a las etapas 2–6 y 9, con Agentic RAG acotado (tools + RAG + handoff), enrutador preciso, telemetría bot+humano (`EventoOperativo`) y límites claros de v1 (sin drips, sin canales extra, sin agente multi-día autónomo).
+
+### Referencias de implementación
+
+- Contrato de routing y telemetría: [02-orquestador-agentico.md](02-orquestador-agentico.md)
+- Ejecución ordenada del chatbot backend: [10-plan-implementacion-chatbot.md](10-plan-implementacion-chatbot.md)
+- Aceptación / tests: [09-aceptacion-y-matriz-tests.md](09-aceptacion-y-matriz-tests.md), [../setup/04-criterios-de-exito.md](../setup/04-criterios-de-exito.md) (D-BOT)

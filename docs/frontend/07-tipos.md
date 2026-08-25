@@ -58,6 +58,21 @@ export const MotivoPerdido = z.enum([
 ]);
 export const EstadoPublicacion = z.enum(['borrador', 'publicado', 'archivado']);
 export const RutaOrquestador = z.enum(['guion', 'catalogo', 'rag', 'handoff', 'safe']);
+
+/** Material de biblioteca K / Asset (multimodal) — database/03, backend/08 */
+export const TipoMaterial = z.enum([
+  'pdf', 'docx', 'xlsx', 'csv', 'imagen', 'video',
+]);
+
+/** Job de ingesta (texto / visión / whisper → embed+FTS) */
+export const PipelineEstado = z.enum([
+  'en_cola', 'procesando', 'indexando', 'listo', 'error',
+]);
+
+/** Origen del texto indexado (auditoría; telemetría) */
+export const OrigenDerivacion = z.enum([
+  'texto_nativo', 'vision', 'whisper', 'xls_narrativo',
+]);
 // … resto §2 según necesidad de UI
 ```
 
@@ -86,7 +101,9 @@ Prioridad de implementación (vertical slice):
 | `NotificacionDto` | §4.5 | Alertas |
 | `EventoOperativo` (+ payloads) | §3.2–3.4 | Telemetría / timeline |
 | `PaqueteDto` / import result | §4.7 | Catálogo |
-| `DocumentoFuenteDto` | §4.8 | Conocimiento |
+| `DocumentoFuenteDto` / `JobIngestaDto` | §4.8 + multimodal | Conocimiento |
+| `TipoMaterial` / `PipelineEstado` | database/03, backend/08 | Upload, badges, poll |
+| `RegistroRecuperacionDto` (+ `tipoMaterial`) | telemetría | Drill-down |
 
 Envelope genérico:
 
@@ -134,7 +151,38 @@ type BriefCompletenessVM = {
   listoParaCotizar: boolean;
   missingFields: string[]; // labels ES para el asesor
 };
+
+/** Upload / job — solo UI; DTO canónico en JobIngestaDto */
+type UploadConocimientoFormVM = {
+  titulo: string;
+  tipoDocumento: string; // TipoDocumento
+  sedeId: string | null;
+  file: File | null;
+  tipoMaterialInferido?: TipoMaterial;
+  destinoXlsx?: 'catalogo' | 'narrativo'; // bifurcar UI
+};
+
+type JobPipelineVM = {
+  jobId: string;
+  documentoId: string;
+  pipelineEstado: PipelineEstado;
+  progresoPct: number | null;
+  mensajeEstado: string;
+  slaLabel: string;           // "< 60 s" / "foto < 90 s" / "video < 5 min"
+  isTerminal: boolean;        // listo | error
+  isPolling: boolean;
+  errorCode?: string | null;  // MIME_NO_PERMITIDO | PIPELINE_ERROR | …
+};
+
+type DocumentoBibliotecaRowVM = DocumentoFuenteDto & {
+  mimeBadge: TipoMaterial;
+  job: JobPipelineVM | null;
+  canPublish: boolean;
+  canArchive: boolean;
+};
 ```
+
+Cableado completo: [08-cableado-conocimiento-multimodal.md](08-cableado-conocimiento-multimodal.md).
 
 Cálculo de `missingFields` alineado a backend §6.1–6.2 (calificado / listo_para_cotizar), no a criterios inventados.
 
@@ -154,6 +202,8 @@ Cálculo de `missingFields` alineado a backend §6.1–6.2 (calificado / listo_p
 | Carga asesor | `CargaAsesor.metricas` | |
 | Alertas | `NotificacionDto.tipo` | Incluye valor enum `listo_para_cotizar` |
 | Telemetría rutas | `RutaOrquestador` en payload | |
+| Material RAG | `tipoMaterial` / `TipoMaterial` | Badge biblioteca + drill-down |
+| Job ingesta | `pipelineEstado` / `PipelineEstado` | Poll UI; no confundir con import catálogo |
 | Rol menú | `user.rol` | |
 
 Inconsistencia a vigilar: en producto/docs a veces aparece `listo_para_cotizar` (snake) como **nombre de flag de dominio**; en JSON de API es **`listoParaCotizar`**. El frontend TypeScript usa camelCase en props de DTO.
@@ -204,10 +254,11 @@ type LoginResponse = {
 | `orgId` no en LoginResponse | Extender `/auth/me` |
 | Refresh token | Añadir a LoginResponse o cookie-only |
 | List endpoints catálogo/conocimiento | Query params + `PaqueteListItem` si difiere de `PaqueteDto` completo |
-| Realtime event payload | Tipar `PanelRealtimeEvent` (ver 04) en shared |
+| URL firmada Asset (preview admin) | Tipar cuando backend la exponga; ver frontend/08 |
+| Realtime event payload | Tipar `PanelRealtimeEvent` (ver 04) en shared; incluir `pipelineEstado` en `conocimiento.job` |
 
 ---
 
 ## 9. Criterio de cierre
 
-Quedan la estrategia Zod/shared, la lista de schemas prioritarios, view models, la matriz UI↔DTO y los gaps. **Tipos en código: ninguno aún.** Primer entregable de engineering: `packages/shared` con enums + `BandejaItem` + `UserDto` parseando fixtures del doc backend.
+Quedan la estrategia Zod/shared, la lista de schemas prioritarios (incl. `TipoMaterial`, `PipelineEstado`, view models de upload/job), la matriz UI↔DTO y los gaps. **Tipos en código: ninguno aún.** Primer entregable de engineering: `packages/shared` con enums + `BandejaItem` + `UserDto` parseando fixtures del doc backend.

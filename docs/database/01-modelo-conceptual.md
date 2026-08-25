@@ -9,6 +9,7 @@ Verdades de negocio que debe persistir el sistema. Implementación prevista: Pos
 - **Historial inmutable de hechos:** mensajes, asignaciones, recuperaciones, consultas de catálogo y eventos operativos (bot + humano) se registran; no se reescriben en silencio.
 - **Separación estricta:** datos duros de paquetes/precios (relacional) vs memoria semántica narrativa (fragmentos vectoriales + FTS).
 - **Versión vigente única:** documentos y paquetes publicados tienen una versión activa; al republicar se invalida la anterior para el bot.
+- **Originales en object storage:** PDF/Word/XLS/imagen/video viven como `Asset`; el RAG indexa solo texto derivado (nativo, Vision, Whisper, XLS narrativo).
 
 ## 2. Mapa de entidades
 
@@ -26,9 +27,11 @@ Organizacion
         │                       ├── RegistroRecuperacion (0..1)
         │                       └── RegistroConsultaCatalogo (0..1)
         ├── Notificacion
-        ├── DocumentoFuente ──► FragmentoVectorial
+        ├── Asset (object storage: pdf|docx|xlsx|csv|imagen|video)
+        │     ├── DocumentoFuente ──► FragmentoVectorial (derivados multimodales)
+        │     └── AdjuntoMensaje (canal; no auto-publica a K)
         ├── Paquete ──► PaqueteInclusion / PaquetePrecio / PaqueteRegla
-        ├── ImportacionCatalogo
+        ├── ImportacionCatalogo (XLS/CSV → datos duros; sin vectores de montos)
         ├── GuionPlantilla (metadatos)
         └── ContadorUso (mensajería / Agentic RAG del periodo)
 ```
@@ -132,23 +135,35 @@ Producto: [../producto/04-escenarios-rol-carga-telemetria.md](../producto/04-esc
 
 ## 4. Entidades de conocimiento documental (PG Vector + FTS)
 
+Detalle multimodal (Asset, índices, invariantes, XLS vs narrativo, adjuntos de canal): [03-assets-y-fragmentos-multimodales.md](03-assets-y-fragmentos-multimodales.md).
+
+### 4.0 Asset
+
+Binario en object storage (obligatorio) con metadatos de pipeline.
+
+Atributos clave: `tipo_material` (`pdf` | `docx` | `xlsx` | `csv` | `imagen` | `video`), MIME, `storage_key`, checksum, bytes, `duracion_sec` (video ≤ 5 min), `pipeline_estado` (`pendiente` | `procesando` | `listo` | `parcial` | `error`), propósito (`conocimiento` | `import_catalogo` | `adjunto_canal`).
+
 ### 4.1 DocumentoFuente
 
-Pieza de verdad narrativa autorizada (FAQ, fichas, políticas). **No** es la fuente primaria de precios/montos.
+Pieza de verdad narrativa autorizada (FAQ, fichas, políticas). **No** es la fuente primaria de precios/montos. En v1 multimodal apunta a un `Asset` original.
 
-Atributos: título, tipo (FAQ, ficha de sede, política, tipos de evento, safe replies), sede (global o por jardín), versión, estado (borrador / publicado / archivado), fecha de publicación, `publicado_en`, responsable de aprobación, nombre de archivo para citas.
+Atributos: título, tipo (FAQ, ficha de sede, política, tipos de evento, safe replies), sede (global o por jardín), versión, estado (borrador / publicado / archivado), fecha de publicación, `publicado_en`, responsable de aprobación, nombre de archivo para citas, FK `asset_id`, espejo de `tipo_material` / `pipeline_estado`.
 
 ### 4.2 FragmentoVectorial
 
-Pasaje indexable del documento.
+Pasaje indexable del documento (siempre texto, aunque derive de foto/video).
 
-Atributos: texto del pasaje, orden dentro del documento, metadatos de filtro (sede, tipo, vigencia, `documento_version_id`), embedding para similitud, representación FTS (`tsvector` o equivalente), estado activo (solo versión publicada vigente).
+Atributos: texto del pasaje, orden dentro del documento, metadatos de filtro (sede, tipo, vigencia, `documento_version_id`), embedding para similitud, representación FTS (`tsvector` o equivalente), estado activo (solo versión publicada vigente), `origen_derivacion` (`texto_nativo` | `vision` | `whisper` | `xls_narrativo`), flag `no_recuperable_precio`, opcionales `page_or_slide`, `t_start_ms` / `t_end_ms`.
 
 ### 4.3 RegistroRecuperacion
 
 Trazabilidad de qué se usó para responder vía RAG.
 
-Atributos: pregunta o mensaje del lead, candidatos hybrid, scores de rerank, fragmentos finales enviados al LLM, umbral aplicado, conversación/mensaje asociado, timestamp, bandera handoff por baja confianza.
+Atributos: pregunta o mensaje del lead, candidatos hybrid, scores de rerank, fragmentos finales enviados al LLM, umbral aplicado, conversación/mensaje asociado, timestamp, bandera handoff por baja confianza, `tipo_material` / `origen_derivacion` de fragmentos usados.
+
+### 4.4 AdjuntoMensaje
+
+Media de canal ligada a `Mensaje` vía `Asset` (`proposito = adjunto_canal`). Clasificación ligera para el expediente; **no** indexa automáticamente en la biblioteca K ni autoriza montos desde OCR.
 
 ## 5. Entidades de catálogo (datos duros)
 
@@ -179,7 +194,10 @@ Por sede (o cuenta) y mes calendario:
 | Oportunidad → Asignacion | 1 a muchos | Historial; una vigente |
 | Oportunidad → EventoOperativo | 1 a muchos | Telemetría bot + humano |
 | Conversacion / Mensaje → EventoOperativo | 0 a muchos | Decisiones por turno |
+| Asset → DocumentoFuente | 0 a 1 | Biblioteca K; storage obligatorio |
 | DocumentoFuente → Fragmento | 1 a muchos | Indexación; solo versión activa recuperable |
+| Mensaje → AdjuntoMensaje | 0 a muchos | Media canal; no auto-publica a K |
+| AdjuntoMensaje → Asset | 1 | Mismo almacén, distinto propósito |
 | Mensaje → RegistroRecuperacion | 0 a 1 | Solo si hubo consulta documental |
 | Mensaje → RegistroConsultaCatalogo | 0 a 1 | Solo si hubo tool de catálogo |
 | EventoOperativo → RegistroRecuperacion | 0 a 1 | Si la decisión usó RAG |
@@ -205,6 +223,10 @@ Según [../producto/01-diseno-estrategico.md](../producto/01-diseno-estrategico.
 
 `borrador` → `publicado` → `archivado`.
 
+### Pipeline de Asset / ingesta
+
+`pendiente` → `procesando` → `listo` | `parcial` | `error`. El bot solo recupera fragmentos de documentos `publicado` + `listo`.
+
 ### Sede
 
 `activa` | `inactiva`.
@@ -216,8 +238,9 @@ Según [../producto/01-diseno-estrategico.md](../producto/01-diseno-estrategico.
 - Contenido creativo de anuncios.
 - Widgets web o canales fuera de Meta + WhatsApp.
 - Embeddings de filas Excel de precios (prohibido como fuente de montos).
+- Auto-publicación de adjuntos de canal a la biblioteca K.
 - BI comercial / reportes marketing (distinto de `EventoOperativo` y telemetría operativa del panel).
 
 ## 10. Criterio de cierre de este entregable
 
-Quedan fijadas las entidades de CRM, conversación/mensaje, brief, asignación, notificación, cupo, `EventoOperativo` (telemetría bot+humano), el trío documental DocumentoFuente → FragmentoVectorial → RegistroRecuperacion, y el catálogo de paquetes como fuente de verdad de datos duros.
+Quedan fijadas las entidades de CRM, conversación/mensaje, brief, asignación, notificación, cupo, `EventoOperativo` (telemetría bot+humano), el trío documental DocumentoFuente → FragmentoVectorial → RegistroRecuperacion, el catálogo de paquetes como fuente de verdad de datos duros, y el eje multimodal `Asset` / fragmentos derivados / `AdjuntoMensaje` (detalle en [03-assets-y-fragmentos-multimodales.md](03-assets-y-fragmentos-multimodales.md)).

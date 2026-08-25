@@ -22,16 +22,17 @@ Maximizar respuestas **precisas y auditables** en el ramo de eventos sociales, c
 | `ToolsCatalogModule` | Function calling → Prisma (paquetes, precios, inclusiones, reglas) |
 | `RagPipelineModule` | Hybrid search + rerank + LLM estricto |
 | `HandoffModule` | Estado `escalado`, notificación, pausa de bot |
-| `KnowledgeIngestionModule` | Publicar/archivar docs, invalidación, jobs de índice |
+| `KnowledgeIngestionModule` | Publicar/archivar docs, invalidación, jobs de índice; MediaRouter multimodal |
 | `CrmModule` | Lead, oportunidad, brief, calificación |
 | `AssignmentModule` | Reglas de asignación |
 | `QuotaModule` | Contadores de mensajería y uso de IA |
 | `AuditModule` | Timeline operativo + emisión de `EventoOperativo` |
+| Proveedores IA (ports) | OpenAI (LLM/embeddings/Vision/Whisper) + Cohere Rerank — [07-pipeline-openai-y-proveedores.md](07-pipeline-openai-y-proveedores.md) |
 
 ## 3. Flujo por mensaje
 
 ```
-MensajeProspecto
+MensajeProspecto (± adjuntos)
       ↓
 ¿Bot activo en el hilo? ──no──► Solo registrar (humano controla)
       │ sí
@@ -39,12 +40,15 @@ MensajeProspecto
 ¿Pedido de humano / conflicto / toxicidad? ──sí──► Handoff
       │ no
       ↓
-¿Turno de captura del guion? ──sí──► ScriptModule (sin RAG)
+¿Hay adjuntos? ──sí──► Validar MIME/límites + encolar MediaRouter (§4.6)
+      │
+¿Turno de captura del guion? ──sí──► ScriptModule (sin RAG; adjunto async si aplica)
       │ no
       ↓
 Clasificar intención (LLM ligero o reglas + LLM)
       ├─ datos_duros / cotización / paquete / precio / inclusiones
       │         ↓
+      │   Gate no_recuperable_precio (§4.5): ignorar montos OCR/RAG
       │   ToolsCatalogModule (Prisma)
       │         ↓
       │   ¿Filas vigentes? ──no──► Safe + Handoff
@@ -55,16 +59,16 @@ Clasificar intención (LLM ligero o reglas + LLM)
       │
       └─ pregunta_documental / política / FAQ / ficha
                 ↓
-          RagPipelineModule
+          RagPipelineModule (incluye fragmentos derivados foto/video si publicados)
                 ↓
           ¿Rerank ≥ 0.85 y cita posible? ──no──► Safe + Handoff
                 │ sí
                 ▼
-          Respuesta anclada + [Fuente: archivo]
+          Respuesta anclada + [Fuente: archivo | tipo: material] (§5.1)
           RegistroRecuperacion
       ↓
 Evaluar calificación / listo_para_cotizar
-Contabilizar cupo
+Contabilizar cupo (mensajería + tokens IA)
 Enviar por canal de origen
 ```
 
@@ -95,6 +99,48 @@ Cualquier mención de:
 - LLM no puede citar fuente en rama RAG.
 - Objeción legal, queja, fechas “bloqueadas”, descuento fuera de catálogo.
 - Ambigüedad de sede cuando Jardín 2 no está operativo y el lead insiste en otra ubicación no cubierta.
+- Adjunto no soportado / video &gt; 5 min / fallo Vision–Whisper cuando el turno depende de ese media.
+- Cupo IA hard limit (si está pactado) — ver [07-pipeline-openai-y-proveedores.md](07-pipeline-openai-y-proveedores.md) §8.
+
+### 4.5 Gate `no_recuperable_precio` (anti-cotización desde OCR/RAG)
+
+Los fragmentos (texto nativo o **derivados** de Vision/Whisper) pueden llevar `no_recuperable_precio = true` cuando la ingesta detectó tarifas/OCR de montos ([08-ingesta-multimodal.md](08-ingesta-multimodal.md) §6, [03-rag-avanzado.md](03-rag-avanzado.md) §6).
+
+| Condición | Acción del orquestador |
+|---|---|
+| Intención = precio / paquete / inclusiones / “cuánto sale” | **Siempre** `ToolsCatalogModule` (Prisma). Ignorar montos en cualquier fragmento o texto derivado |
+| Rama RAG recupera solo fragmentos con el flag y la pregunta es monetaria | No redactar cifra desde contexto → tools si aplica; si no hay fila → safe + handoff (`sin_catalogo` o `material_ocr_tarifas`) |
+| Rama RAG recupera fragmentos con flag pero la pregunta es narrativa (ambiente, ubicación) | Permitir prosa **sin** emitir montos; el generador tiene prohibido copiar números de tarifa del contexto |
+| Adjunto de canal con tarifas visibles | Scrub; no cotizar; ofrecer catálogo vía tools o handoff |
+
+**Prohibido:** usar OCR, Vision, Whisper o RAG como fuente de verdad de precios. El flag es la señal dura; la intención monetaria es el segundo candado.
+
+### 4.6 Adjuntos entrantes (canal)
+
+Cuando el mensaje trae media (foto, video, documento):
+
+```
+Mensaje + adjunto(s)
+      ↓
+¿MIME / tamaño / duración OK? ──no──► Safe + handoff (adjunto_no_soportado)
+      │ sí
+      ↓
+put ObjectStorage + encolar MediaRouter (async)
+      ↓
+¿Guion bloqueante por el adjunto? ──no──► Seguir guion / routing de texto del mensaje
+      │ sí (lead: “¿está bien este croquis?” / “cotiza con esta foto”)
+      ↓
+Esperar texto derivado (SLA foto &lt; 90 s / video &lt; 5 min) o handoff si timeout
+      ↓
+Aplicar §4.2–4.5 sobre texto del mensaje + texto derivado
+      (montos → tools; narrativa → RAG; flag precio → no cotizar desde media)
+```
+
+Reglas:
+
+- El adjunto de canal **no** se publica solo a la biblioteca K.
+- El bot no “lee” el binario en el hilo síncrono del webhook; usa el resultado del job.
+- Detalle de allowlist y estados: [08-ingesta-multimodal.md](08-ingesta-multimodal.md).
 
 ## 5. Function calling — contrato con el LLM orquestador
 
@@ -114,6 +160,24 @@ Tras tool result, la redacción al lead:
 - Usa **únicamente** campos devueltos.
 - Incluye SKU/nombre de paquete cuando hay precio.
 - Si el result trae `sin_precio_vigente` → no reintenta “estimar”.
+- No mezcla montos de tool con números vistos en adjuntos u OCR.
+
+### 5.1 Citas con tipo de material (rama RAG)
+
+Toda respuesta RAG exitosa termina con cita que incluye el **tipo de material** del fragmento usado (metadato de ingesta):
+
+| `tipo_material` | Ejemplo de cita |
+|---|---|
+| `pdf` / `word` / `faq` | `[Fuente: ficha-jardin-1.pdf \| tipo: pdf]` |
+| `foto` | `[Fuente: salon-principal.jpg \| tipo: foto]` |
+| `video` | `[Fuente: recorrido-salon.mp4 \| tipo: video]` |
+| `narrativa` (texto panel) | `[Fuente: FAQ general \| tipo: faq]` |
+
+Reglas:
+
+- Si el modelo omite la cita o el tipo → tratar como fallo y handoff (igual que sin fuente).
+- Si hubo varios fragmentos, citar el principal (o los acordados en prompt); no citar adjuntos de canal como si fueran inventario K.
+- Fragmentos con `no_recuperable_precio` pueden citarse solo en respuestas **no monetarias**; jamás como respaldo de un monto.
 
 ## 6. Estado conversacional
 
@@ -135,7 +199,7 @@ Al invocar handoff:
 2. Bot deja de responder ese hilo.
 3. Notificación prioritaria (panel ± email) con SLA 15–30 min.
 4. Mensaje safe al lead (copy K09 aprobado).
-5. Expediente muestra motivo de escalación (`rerank_bajo` | `sin_catalogo` | `solicitud_usuario` | `conflicto` | otro).
+5. Expediente muestra motivo de escalación (`rerank_bajo` | `sin_catalogo` | `solicitud_usuario` | `conflicto` | `adjunto_no_soportado` | `material_ocr_tarifas` | `proveedor_ia` | `cupo_ia` | otro).
 
 ## 8. Telemetría operativa del bot
 
@@ -164,7 +228,9 @@ La telemetría del **agente humano** (toma de control, latencia SLA, reasignaci�
 | Tools de catálogo | SQL libre / browser tools |
 | Handoff a asesores | Cierre de venta autónomo |
 | Brief de cotización | Emisión automática de PDF contractual |
+| Adjuntos canal + biblioteca multimodal (vía jobs) | Cotizar desde OCR/Vision/Whisper/RAG |
+| SDK oficial OpenAI + Cohere Rerank | Vercel AI SDK, OpenAI Assistants API |
 
 ## 10. Criterio de cierre de este entregable
 
-Flujo de decisión, módulos NestJS conceptuales, políticas de routing, contrato de tools y handoff documentados como cerebro único Meta/WhatsApp.
+Flujo de decisión, módulos NestJS conceptuales, políticas de routing (incl. gate `no_recuperable_precio` y adjuntos), contrato de tools, citas con tipo de material y handoff documentados como cerebro único Meta/WhatsApp. Proveedores: [07-pipeline-openai-y-proveedores.md](07-pipeline-openai-y-proveedores.md); media: [08-ingesta-multimodal.md](08-ingesta-multimodal.md).

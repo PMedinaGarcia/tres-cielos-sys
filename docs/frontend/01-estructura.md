@@ -13,6 +13,8 @@ Referencias:
 - [05-api-y-hooks.md](05-api-y-hooks.md) — cliente HTTP y hooks
 - [06-auth-y-config.md](06-auth-y-config.md) — sesión, env, feature flags
 - [07-tipos.md](07-tipos.md) — Zod/shared alineado a DTOs
+- [08-cableado-conocimiento-multimodal.md](08-cableado-conocimiento-multimodal.md) — upload K / UI-KNW
+- [09-plan-implementacion-chatbot-ui.md](09-plan-implementacion-chatbot-ui.md) — plan fases bandeja, handoff, telemetría bot
 - [../backend/05-dtos-y-tipos.md](../backend/05-dtos-y-tipos.md) — wire format + Zod compartido
 - [../backend/06-guards-y-rbac.md](../backend/06-guards-y-rbac.md) — espejo Auth/Roles en UI
 - [../infrastructure/01-stack-y-entornos.md](../infrastructure/01-stack-y-entornos.md) — panel Next.js ↔ API NestJS

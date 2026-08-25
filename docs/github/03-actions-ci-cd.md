@@ -273,7 +273,7 @@ Alineación de aislamiento: [../infrastructure/01-stack-y-entornos.md](../infras
 |---|---|---|
 | GHCR (`ghcr.io/PMedinaGarcia/...`) | Imágenes api/worker | **Objetivo** / **Decisión abierta** |
 | Vercel | Panel Next.js | **Decisión abierta** ([../setup/03-infraestructura-setup.md](../setup/03-infraestructura-setup.md) §1.3) |
-| ECS / Cloud Run / Fly / Railway | API + worker | **Decisión abierta** |
+| ECS / Cloud Run / Fly / Railway | API + worker | **Railway elegido** — ver [../setup/07-railway-deploy.md](../setup/07-railway-deploy.md) |
 
 OIDC (`permissions: id-token: write`) preferible a access keys de larga vida cuando el vendor lo permita.
 

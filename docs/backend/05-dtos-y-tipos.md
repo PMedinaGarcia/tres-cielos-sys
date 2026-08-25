@@ -2,7 +2,7 @@
 
 Contratos de datos del sistema Event Master / Tres Cielos para API NestJS, panel Next.js y telemetría. Derivados del modelo conceptual y dominios de producto; **aún no hay código NestJS/Prisma/Next.js en el repo** — al implementar, estos shapes son la fuente de verdad de wire format hasta que existan DTOs/Zod en código (entonces el código gana y este doc se alinea).
 
-Referencias: [01-dominios.md](01-dominios.md), [02-orquestador-agentico.md](02-orquestador-agentico.md), [../database/01-modelo-conceptual.md](../database/01-modelo-conceptual.md), [../database/02-catalogo-paquetes.md](../database/02-catalogo-paquetes.md), [../producto/01-diseno-estrategico.md](../producto/01-diseno-estrategico.md), [../producto/03-criterios-exito-cotizacion.md](../producto/03-criterios-exito-cotizacion.md), [../producto/04-escenarios-rol-carga-telemetria.md](../producto/04-escenarios-rol-carga-telemetria.md), [../frontend/00-superficies.md](../frontend/00-superficies.md).
+Referencias: [01-dominios.md](01-dominios.md), [02-orquestador-agentico.md](02-orquestador-agentico.md), [../database/01-modelo-conceptual.md](../database/01-modelo-conceptual.md), [../database/02-catalogo-paquetes.md](../database/02-catalogo-paquetes.md), [../database/03-assets-y-fragmentos-multimodales.md](../database/03-assets-y-fragmentos-multimodales.md), [../producto/01-diseno-estrategico.md](../producto/01-diseno-estrategico.md), [../producto/03-criterios-exito-cotizacion.md](../producto/03-criterios-exito-cotizacion.md), [../producto/04-escenarios-rol-carga-telemetria.md](../producto/04-escenarios-rol-carga-telemetria.md), [../frontend/00-superficies.md](../frontend/00-superficies.md).
 
 ## 1. Convenciones
 
@@ -65,6 +65,7 @@ Reglas comunes:
 | Inclusiones tipadas | `PaqueteInclusion` | Idem; no mezclar SKUs |
 | Disponibilidad de fecha concreta | Proceso humano (sin calendario ops en v1) | No afirmar; handoff |
 | Políticas / FAQ | Fragmentos publicados rerank ≥ 0.85 + cita | Safe + handoff (`rerank_bajo`) |
+| Montos desde OCR / Vision / Whisper / PDF | — | Flag `noRecuperablePrecio` + tools o handoff |
 | Descuentos no catalogados | — | Handoff (`conflicto` / otro) |
 
 ## 2. Enums y types de dominio (cerrados)
@@ -109,7 +110,7 @@ type RutaOrquestador = "guion" | "catalogo" | "rag" | "handoff" | "safe";
 /** Actor de EventoOperativo / auditoría */
 type ActorOperativo = "bot" | "asesor" | "coordinador" | "admin" | "sistema";
 
-/** Motivos de handoff */
+/** Motivos de handoff (Fase A5: + media/IA) */
 type MotivoHandoff =
   | "solicitud_usuario"
   | "rerank_bajo"
@@ -119,7 +120,11 @@ type MotivoHandoff =
   | "queja"
   | "descuento_fuera_catalogo"
   | "sede_no_cubierta"
-  | "ambiguiedad"
+  | "ambiguedad"
+  | "adjunto_no_soportado"
+  | "material_ocr_tarifas"
+  | "proveedor_ia"
+  | "cupo_ia"
   | "otro";
 
 /** Tipo de evento / ocasión (ramo eventos sociales) */
@@ -232,6 +237,35 @@ type FechaTentativa =
   | { tipo: "dia"; fecha: string /* YYYY-MM-DD */; flexible: boolean }
   | { tipo: "rango"; desde: string; hasta: string; flexible: boolean }
   | { tipo: "mes"; anio: number; mes: number; flexible: boolean };
+
+/** Material binario de conocimiento / canal / import */
+type TipoMaterial = "pdf" | "docx" | "xlsx" | "csv" | "imagen" | "video";
+
+/** Estado del job de ingesta multimodal */
+type PipelineEstado =
+  | "pendiente"
+  | "procesando"
+  | "listo"
+  | "parcial"
+  | "error";
+
+/** Cómo se obtuvo el texto indexable del fragmento */
+type OrigenDerivacion =
+  | "texto_nativo"
+  | "vision"
+  | "whisper"
+  | "xls_narrativo";
+
+/** Propósito del Asset en object storage */
+type PropositoAsset = "conocimiento" | "import_catalogo" | "adjunto_canal";
+
+/** Clasificación ligera de adjunto entrante (canal) */
+type ClasificacionAdjunto =
+  | "desconocido"
+  | "ambiente_sede"
+  | "posible_tarifa"
+  | "documento"
+  | "otro";
 ```
 
 ### 2.1 Mapa enum → entidad conceptual
@@ -248,6 +282,11 @@ type FechaTentativa =
 | `TipoEventoOperativo*` | `EventoOperativo.tipo` |
 | `MotivoHandoff` | Escalación / payload handoff |
 | `EstadoPublicacion` | `DocumentoFuente`, `Paquete`, `PaquetePrecio` |
+| `TipoMaterial` | `Asset.tipoMaterial`, `DocumentoFuente`, `FragmentoVectorial` |
+| `PipelineEstado` | `Asset.pipelineEstado` (espejo en documento / job DTO) |
+| `OrigenDerivacion` | `FragmentoVectorial.origenDerivacion` |
+| `PropositoAsset` | `Asset.proposito` |
+| `ClasificacionAdjunto` | `AdjuntoMensaje.clasificacionIntent` |
 
 ## 3. Payloads JSON clave (shapes canónicos)
 
@@ -399,6 +438,8 @@ Payload RAG (cuando `ruta = "rag"`):
     "umbral": 0.85,
     "fragmentoIds": ["uuid-f1", "uuid-f2"],
     "fuentesCita": ["faq-horarios-v3.pdf"],
+    "tipoMaterial": "pdf",
+    "origenDerivacion": "texto_nativo",
     "handoffPorBajaConfianza": false
   },
   "tools": [],
@@ -690,6 +731,7 @@ Relación: `Usuario` ↔ `Sede` (N:M). RBAC filtra todos los DTO de lectura post
 | `consumioCupo` | boolean | + |
 | `ruta?` | `RutaOrquestador` | Saliente bot |
 | `plantillaUtilityId?` | string | WA fuera de ventana |
+| `adjuntos?` | `AdjuntoMensajeDto[]` | Media canal (§4.8) |
 
 **`POST /conversaciones/:id/mensajes` — EnviarMensajeHumanoRequest**
 
@@ -850,6 +892,45 @@ Relación: `Notificacion` → `Oportunidad` / `Conversacion`.
 
 **`GET /telemetria/registros/recuperacion/:id` → RegistroRecuperacionDto**
 
+```json
+{
+  "id": "uuid",
+  "mensajeId": "uuid",
+  "conversacionId": "uuid",
+  "queryOriginal": "¿Cuál es el horario de visitas del jardín?",
+  "queryRewrite": null,
+  "umbral": 0.85,
+  "handoffPorBajaConfianza": false,
+  "candidatos": [
+    {
+      "fragmentoId": "uuid-f1",
+      "scoreHybrid": 0.72,
+      "origenRama": "ambos",
+      "scoreRerank": 0.91,
+      "tipoMaterial": "pdf",
+      "origenDerivacion": "texto_nativo",
+      "noRecuperablePrecio": false
+    }
+  ],
+  "fragmentosFinales": [
+    {
+      "fragmentoId": "uuid-f1",
+      "scoreRerank": 0.91,
+      "tipoMaterial": "pdf",
+      "origenDerivacion": "texto_nativo",
+      "nombreArchivoCita": "faq-horarios-v3.pdf",
+      "noRecuperablePrecio": false
+    }
+  ],
+  "tipoMaterial": "pdf",
+  "origenDerivacion": "texto_nativo",
+  "fuentesCita": ["faq-horarios-v3.pdf"],
+  "timestamp": "2026-07-27T21:04:10.000Z"
+}
+```
+
+Campos extendidos multimodales: `tipoMaterial`, `origenDerivacion` (agregado del set final o del dominante), y por candidato/fragmento los mismos más `noRecuperablePrecio`. Si el set final mezcla orígenes, `origenDerivacion` puede ser el del top-1 y el detalle queda en arrays.
+
 **`GET /telemetria/registros/catalogo/:id` → RegistroConsultaCatalogoDto`**
 
 ```json
@@ -912,9 +993,74 @@ Contratos alineados a [../database/02-catalogo-paquetes.md](../database/02-catal
 
 Publicar: `POST /catalogo/paquetes/:id/publicar` — invalida versión anterior; briefs abiertos con ese SKU → `precioCatalogoDesactualizado: true`.
 
-### 4.8 Conocimiento (RAG)
+### 4.8 Conocimiento (RAG multimodal)
 
-**DocumentoFuenteDto**
+Modelo de datos: [../database/03-assets-y-fragmentos-multimodales.md](../database/03-assets-y-fragmentos-multimodales.md). Allowlist MIME: `pdf`, `docx`, `xlsx`, `csv`, `jpeg`/`jpg`, `png`, `webp`, `mp4`, `mov`, `webm`. Video ≤ **300 s**. Object storage obligatorio.
+
+RBAC panel: **admin** write (upload/publicar/archivar); **coordinador** lectura (+ borrador según pacto); **asesor** sin acceso a `/conocimiento`.
+
+#### AssetDto
+
+| Campo | Tipo | |
+|---|---|---|
+| `id` | UUID | + |
+| `proposito` | `PropositoAsset` | + |
+| `tipoMaterial` | `TipoMaterial` | + |
+| `mimeType` | string | + |
+| `nombreOriginal` | string | + |
+| `storageKey` | string | + (interno; omitir en responses públicas si política lo exige) |
+| `checksum` | string | + |
+| `bytes` | number | + |
+| `duracionSec?` | number \| null | Video |
+| `pipelineEstado` | `PipelineEstado` | + |
+| `pipelineErrorCode?` | string \| null | |
+| `pipelineErrorDetalle?` | string \| null | Solo admin |
+| `pipelineProgresoPct?` | number \| null | 0..100 |
+| `sedeId?` | UUID \| null | |
+| `creadoEn` | ISO | + |
+| `actualizadoEn` | ISO | + |
+
+#### DocumentoJobStatusDto
+
+Polling del job de ingesta (documento o asset).
+
+```json
+{
+  "documentoId": "uuid",
+  "assetId": "uuid",
+  "pipelineEstado": "procesando",
+  "progresoPct": 45,
+  "tipoMaterial": "video",
+  "errorCode": null,
+  "errorMessage": null,
+  "actualizadoEn": "2026-07-27T21:01:00.000Z",
+  "slaObjetivoSec": 300,
+  "fragmentosGenerados": 0
+}
+```
+
+#### FragmentoVectorialDto (extendido)
+
+| Campo | Tipo | |
+|---|---|---|
+| `id` | UUID | + |
+| `documentoFuenteId` | UUID | + |
+| `documentoVersion` | number | + |
+| `texto` | string | + |
+| `orden` | number | + |
+| `activo` | boolean | + |
+| `origenDerivacion` | `OrigenDerivacion` | + |
+| `noRecuperablePrecio` | boolean | + |
+| `tipoMaterial` | `TipoMaterial` | + |
+| `pageOrSlide?` | number \| null | |
+| `tStartMs?` | number \| null | |
+| `tEndMs?` | number \| null | |
+| `sedeId?` | UUID \| null | |
+| `tipoDocumento` | `TipoDocumento` | + |
+
+El embedding / `tsvector` **no** se exponen en API de panel (solo IDs y metadatos + texto para preview admin).
+
+#### DocumentoFuenteDto
 
 | Campo | Tipo | |
 |---|---|---|
@@ -926,13 +1072,108 @@ Publicar: `POST /catalogo/paquetes/:id/publicar` — invalida versión anterior;
 | `estado` | `EstadoPublicacion` | + |
 | `publicadoEn?` | ISO | |
 | `nombreArchivoCita` | string | + |
-| `jobIngesta?` | `{ estado: "en_cola"\|"indexando"\|"listo"\|"error", actualizadoEn }` | |
+| `assetId` | UUID | + |
+| `tipoMaterial` | `TipoMaterial` | + |
+| `asset?` | `AssetDto` | Resumen en detail |
+| `jobIngesta?` | `DocumentoJobStatusDto` | Alias legacy; preferir shape § job |
+| `pipelineEstado` | `PipelineEstado` | + |
 
-**`POST /conocimiento/documentos`** — crear borrador (+ archivo).  
-**`POST /conocimiento/documentos/:id/publicar`** — indexación &lt; 60 s; bot solo consume `publicado`.  
-**`POST /conocimiento/documentos/:id/archivar`**.
+`jobIngesta` permanece por compatibilidad con docs frontend previos; se alinea a `DocumentoJobStatusDto` (antes: `{ estado: "en_cola"|"indexando"|"listo"|"error", actualizadoEn }` — mapear `en_cola`→`pendiente`, `indexando`→`procesando`).
 
-El bot **no** expone CRUD; solo recupera fragmentos activos vía pipeline.
+#### UploadDocumentoRequest (multipart)
+
+`POST /conocimiento/documentos` — `multipart/form-data`:
+
+| Parte / campo | Tipo | |
+|---|---|---|
+| `file` | binary | + Allowlist MIME |
+| `titulo` | string | + |
+| `tipo` | `TipoDocumento` | + |
+| `sedeId?` | UUID \| null | |
+| `nombreArchivoCita?` | string | Default = nombre del file |
+| `publicarAlCompletar?` | boolean | Default `false` (queda borrador hasta publicar) |
+
+Validaciones previas a encolar: MIME, tamaño (`MAX_UPLOAD_MB`), si video → `duracionSec ≤ 300` (si se conoce al upload; si no, el worker rechaza con el mismo código).
+
+#### UploadDocumentoResponse
+
+```json
+{
+  "documento": { /* DocumentoFuenteDto borrador */ },
+  "asset": { /* AssetDto */ },
+  "job": { /* DocumentoJobStatusDto */ }
+}
+```
+
+HTTP `201`. El pipeline puede seguir `pendiente`/`procesando`; el cliente hace polling.
+
+#### Endpoints conocimiento (shapes)
+
+| Método | Ruta | Request | Response `data` |
+|---|---|---|---|
+| `GET` | `/conocimiento/documentos` | query: `estado?`, `tipoMaterial?`, `pipelineEstado?`, `sedeId?`, `page?` | `DocumentoFuenteDto[]` + `meta` |
+| `GET` | `/conocimiento/documentos/:id` | — | `DocumentoFuenteDto` (+ `asset`, `job`) |
+| `POST` | `/conocimiento/documentos` | multipart § UploadDocumentoRequest | UploadDocumentoResponse |
+| `GET` | `/conocimiento/documentos/:id/job` | — | `DocumentoJobStatusDto` |
+| `GET` | `/conocimiento/assets/:id/job` | — | `DocumentoJobStatusDto` (mismo shape; `documentoId` nullable si solo asset) |
+| `POST` | `/conocimiento/documentos/:id/publicar` | body vacío o `{ "forzarReingesta?": boolean }` | `DocumentoFuenteDto` (`estado=publicado`; encola/espera `listo`) |
+| `POST` | `/conocimiento/documentos/:id/archivar` | — | `DocumentoFuenteDto` |
+| `GET` | `/conocimiento/documentos/:id/fragmentos` | — | `FragmentoVectorialDto[]` (admin preview) |
+| `GET` | `/conocimiento/assets/:id/url-firmada` | query `ttlSec?` | `{ "url": string, "expiraEn": ISO }` |
+
+Publicar: indexación según SLA por `tipoMaterial` (texto &lt; 60 s, foto &lt; 90 s, video &lt; 5 min); bot solo consume `estado=publicado` **y** `pipelineEstado=listo`.
+
+Separación catálogo: `POST /catalogo/importaciones` (multipart XLS/CSV de precios) **no** crea fragmentos de montos; hojas narrativas opcionales siguen el contrato de [../database/02-catalogo-paquetes.md](../database/02-catalogo-paquetes.md) §3 / [../database/03-assets-y-fragmentos-multimodales.md](../database/03-assets-y-fragmentos-multimodales.md) §9.
+
+El bot **no** expone CRUD; solo recupera fragmentos activos vía pipeline RAG.
+
+#### AdjuntoMensajeDto (canal / expediente)
+
+| Campo | Tipo | |
+|---|---|---|
+| `id` | UUID | + |
+| `mensajeId` | UUID | + |
+| `assetId` | UUID | + |
+| `tipoMaterial` | `TipoMaterial` | + |
+| `nombreOriginal` | string | + |
+| `clasificacionIntent?` | `ClasificacionAdjunto` | |
+| `resumenInterno?` | string | Solo panel |
+| `urlFirmada?` | string | Preview asesor |
+
+`MensajeDto` puede incluir `adjuntos?: AdjuntoMensajeDto[]` (extensión no breaking).
+
+### 4.9 Códigos de error (conocimiento / media / catálogo)
+
+Envelope §1.3. Códigos cerrados adicionales (sin eliminar los ya citados en el doc):
+
+| `error.code` | HTTP | Cuándo |
+|---|---|---|
+| `VALIDATION_ERROR` | 400 | Campos / Zod / class-validator |
+| `MIME_NO_PERMITIDO` | 400 / 415 | MIME o extensión fuera de allowlist |
+| `ARCHIVO_DEMASIADO_GRANDE` | 413 | Supera `MAX_UPLOAD_MB` |
+| `VIDEO_DEMASIADO_LARGO` | 400 | `duracionSec` &gt; 300 (o política env) |
+| `STORAGE_NO_CONFIGURADO` | 503 | Object storage obligatorio ausente |
+| `STORAGE_PUT_FAILED` | 502 | Fallo al subir el original |
+| `PIPELINE_ERROR` | 422 / 500 | Job de ingesta en `error` (detalle en `details` / job DTO) |
+| `PIPELINE_PARCIAL` | 422 | Job `parcial`; publicar a bot bloqueado hasta remediar (política v1) |
+| `PIPELINE_NO_LISTO` | 409 | Intento de publicar/usar con `pipelineEstado ∉ { listo }` |
+| `DOCUMENTO_NO_ENCONTRADO` | 404 | FK documento |
+| `ASSET_NO_ENCONTRADO` | 404 | FK asset |
+| `FORBIDDEN` | 403 | RBAC (asesor en `/conocimiento`, etc.) |
+| `SIN_PRECIO_VIGENTE` | 404 / tool error | Tools catálogo — no estimar |
+| `CONFLICTO_VERSION` | 409 | Carrera al publicar dos versiones |
+
+Ejemplo:
+
+```json
+{
+  "error": {
+    "code": "MIME_NO_PERMITIDO",
+    "message": "Tipo de archivo no permitido",
+    "details": { "mimeType": "application/zip", "allowlist": ["pdf", "docx", "xlsx", "csv", "imagen", "video"] }
+  }
+}
+```
 
 ## 5. Estado conversacional del orquestador
 
@@ -985,7 +1226,7 @@ Todos los de calificación **más**: paquete SKU o `a_medida`, presupuesto rango
 ```
 LoginResponse.user          → Usuario
 BandejaItem                 → Conversacion + Oportunidad + Lead
-MensajeDto                  → Mensaje
+MensajeDto                  → Mensaje (+ AdjuntoMensaje opcional)
 OportunidadDetail           → Oportunidad + Lead
 BriefCotizacion             → BriefCotizacion
 AsignacionDto               → Asignacion
@@ -993,11 +1234,16 @@ CargaAsesor / GET carga     → proyección Asignacion + Oportunidad + Conversac
 NotificacionDto             → Notificacion
 EventoOperativo             → EventoOperativo
 RegistroConsultaCatalogoDto → RegistroConsultaCatalogo
-RegistroRecuperacionDto     → RegistroRecuperacion
+RegistroRecuperacionDto     → RegistroRecuperacion (tipoMaterial / origenDerivacion)
 PaqueteDto (+ precios…)     → Paquete / PaquetePrecio / Inclusion / Regla
-DocumentoFuenteDto          → DocumentoFuente (→ FragmentoVectorial en worker)
+AssetDto                    → Asset (object storage)
+DocumentoFuenteDto          → DocumentoFuente (+ Asset)
+DocumentoJobStatusDto       → job / Asset.pipelineEstado
+FragmentoVectorialDto       → FragmentoVectorial (flags multimodales)
+UploadDocumentoResponse     → DocumentoFuente + Asset + job
+AdjuntoMensajeDto           → AdjuntoMensaje → Asset
 ```
 
 ## 8. Criterio de cierre
 
-Quedan fijados: convenciones camelCase API + enums snake_case de dominio, validación class-validator/Zod, enums cerrados, DTOs por dominio crítico, shapes JSON de Brief, EventoOperativo (bot/humano), carga por asesor e item de bandeja, reglas de obligatoriedad y anti-alucinación de precios, y el mapa a entidades del modelo conceptual. Al existir código, sincronizar este documento con los DTOs/Prisma enums reales.
+Quedan fijados: convenciones camelCase API + enums snake_case de dominio (incl. `TipoMaterial`, `PipelineEstado`, `OrigenDerivacion`), validación class-validator/Zod, enums cerrados, DTOs por dominio crítico, shapes JSON de Brief, EventoOperativo (bot/humano), carga por asesor e item de bandeja, contratos multimodales de conocimiento (upload multipart, job polling, fragmentos extendidos, `RegistroRecuperacion` con material/origen), códigos de error de media/pipeline, reglas de obligatoriedad y anti-alucinación de precios, y el mapa a entidades del modelo conceptual (+ [../database/03-assets-y-fragmentos-multimodales.md](../database/03-assets-y-fragmentos-multimodales.md)). Al existir código, sincronizar este documento con los DTOs/Prisma enums reales.
