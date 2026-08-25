@@ -1,0 +1,16 @@
+{
+  "name": "tres-cielos-sys",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter @tres-cielos/web --filter @tres-cielos/api dev",
+    "build": "pnpm --filter @tres-cielos/shared build && pnpm --filter @tres-cielos/api build && pnpm --filter @tres-cielos/web build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down"
+  }
+}

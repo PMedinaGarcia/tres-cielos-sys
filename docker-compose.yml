@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: trescielos-postgres
+    environment:
+      POSTGRES_USER: trescielos
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: trescielos_dev
+    ports:
+      - "5440:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trescielos -d trescielos_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: trescielos-redis
+    ports:
+      - "6390:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Fase E1 — object storage S3-compatible (binarios NUNCA en Postgres)
+  minio:
+    image: minio/minio:latest
+    container_name: trescielos-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: trescielos
+      MINIO_ROOT_PASSWORD: localdevminio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # Crea bucket `trescielos-media` al arrancar (idempotente)
+  minio-init:
+    image: minio/mc:latest
+    container_name: trescielos-minio-init
+    depends_on:
+      minio:
+        condition: service_started
+    entrypoint: >
+      /bin/sh -c "
+      sleep 3;
+      mc alias set local http://minio:9000 trescielos localdevminio;
+      mc mb -p local/trescielos-media || true;
+      mc anonymous set download local/trescielos-media || true;
+      exit 0;
+      "
+
+volumes:
+  pgdata:
+  miniodata:

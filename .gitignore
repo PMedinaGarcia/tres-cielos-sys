@@ -3,10 +3,15 @@ node_modules/
 .pnp
 .pnp.js
 
-# Environment and secrets
+# Environment and secrets — never commit API keys or credentials
 .env
+**/.env
 .env.*
+**/.env.*
+.env.local
+.env.*.local
 !.env.example
+!**/.env.example
 *.pem
 credentials.json
 *.local
@@ -35,9 +40,18 @@ build/
 .next/
 out/
 coverage/
+*.tsbuildinfo
+
+# Prisma
+apps/api/prisma/*.db
+apps/api/prisma/*.db-journal
 
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+
+# Turbo / Railway local
+.turbo/
+.railway/
