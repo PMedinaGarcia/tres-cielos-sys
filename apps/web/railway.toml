@@ -1,0 +1,14 @@
+# Railway service: Web (Next.js)
+# Build: pnpm install && pnpm --filter @tres-cielos/shared build && pnpm --filter @tres-cielos/web build
+# Start: pnpm --filter @tres-cielos/web start
+# Set NEXT_PUBLIC_API_URL to the public API URL before build.
+
+[build]
+builder = "NIXPACKS"
+buildCommand = "pnpm install && pnpm --filter @tres-cielos/shared build && pnpm --filter @tres-cielos/web build"
+
+[deploy]
+startCommand = "pnpm --filter @tres-cielos/web start"
+healthcheckPath = "/"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
