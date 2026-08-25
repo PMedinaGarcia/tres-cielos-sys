@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": ["node_modules", "dist", "src/**/*.spec.ts", "src/catalog-sandbox/seed.ts", "src/catalog-sandbox/eval.ts", "src/catalog-sandbox/generate-xlsx.ts"]
+}

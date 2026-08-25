@@ -1,0 +1,30 @@
+{
+  "inventario": ["K01", "K02", "K08", "K09"],
+  "notas": "Fixtures narrativos mínimos Fase D. Sin montos cotizables. Fuente canónica TS: apps/api/src/rag/fixtures/knowledge-fixtures.ts",
+  "documentos": [
+    {
+      "id": "K01",
+      "archivo": "K01-faq-general.pdf",
+      "alcance": "global",
+      "temas": ["horarios comerciales", "cómo llegar", "tipo de venue"]
+    },
+    {
+      "id": "K02",
+      "archivo": "K02-ficha-jardin-1.docx",
+      "alcance": "sede-jardin-1",
+      "temas": ["ficha sede", "capacidad orientativa", "horario visitas", "restricciones"]
+    },
+    {
+      "id": "K08",
+      "archivo": "K08-limites-bot.pdf",
+      "alcance": "global",
+      "temas": ["límites del bot", "escalación a humano"]
+    },
+    {
+      "id": "K09",
+      "archivo": "K09-plantillas-safe.pdf",
+      "alcance": "global",
+      "temas": ["copy safe", "sin dato en base"]
+    }
+  ]
+}

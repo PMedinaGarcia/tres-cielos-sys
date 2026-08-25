@@ -1,0 +1,454 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Catálogo sandbox (existente — no romper) ───────────────────────────────
+
+enum TipoEvento {
+  boda
+  xv
+  corporativo
+  social
+  otro
+  multi
+}
+
+enum EstadoPublicacion {
+  borrador
+  publicado
+  archivado
+}
+
+enum CategoriaInclusion {
+  catering
+  mobiliario
+  audio
+  decoracion
+  personal
+  otro
+}
+
+enum UnidadPrecio {
+  evento
+  persona
+  otro
+}
+
+enum TipoRegla {
+  solo_fin_semana
+  no_feriados
+  anticipo_minimo
+  horario
+  otro
+}
+
+enum ResultadoImportacion {
+  exito
+  parcial
+  fallo
+}
+
+// ─── Cerebro conversacional (Fase A) ────────────────────────────────────────
+
+enum Canal {
+  facebook
+  instagram
+  whatsapp
+  sandbox
+}
+
+enum EstadoBot {
+  activo
+  escalado
+  humano
+}
+
+enum RutaOrquestador {
+  guion
+  catalogo
+  rag
+  handoff
+  safe
+}
+
+enum AutorMensaje {
+  prospecto
+  bot
+  asesor
+}
+
+enum DireccionMensaje {
+  entrante
+  saliente
+}
+
+enum ActorOperativo {
+  bot
+  asesor
+  coordinador
+  admin
+  sistema
+}
+
+enum PasoGuion {
+  saludo
+  nombre
+  ocasion
+  fecha
+  aforo
+  sede
+  presupuesto
+  intencion
+  faq_libre
+}
+
+enum CalificacionOportunidad {
+  en_exploracion
+  calificado
+}
+
+enum EtapaPipeline {
+  nuevo_bot
+  calificado
+  contactado
+  propuesta
+  negociacion
+  ganado
+  perdido
+}
+
+/// MotivoHandoff — A5: motivos 05/02 + media/IA
+enum MotivoHandoff {
+  solicitud_usuario
+  rerank_bajo
+  sin_catalogo
+  sin_cita_rag
+  conflicto
+  queja
+  descuento_fuera_catalogo
+  sede_no_cubierta
+  ambiguedad
+  adjunto_no_soportado
+  material_ocr_tarifas
+  proveedor_ia
+  cupo_ia
+  otro
+}
+
+enum TipoMaterial {
+  pdf
+  docx
+  xlsx
+  csv
+  imagen
+  video
+}
+
+enum PipelineEstado {
+  pendiente
+  procesando
+  listo
+  parcial
+  error
+}
+
+enum OrigenDerivacion {
+  texto_nativo
+  vision
+  whisper
+  xls_narrativo
+}
+
+enum PropositoAsset {
+  conocimiento
+  import_catalogo
+  adjunto_canal
+}
+
+enum TipoDocumentoFuente {
+  faq
+  ficha_sede
+  politica
+  tipos_evento
+  safe_reply
+  otro
+}
+
+model Paquete {
+  id                String             @id @default(cuid())
+  codigoSku         String             @unique @map("codigo_sku")
+  nombre            String
+  tipoEvento        TipoEvento         @map("tipo_evento")
+  sede              String?
+  aforoMin          Int                @map("aforo_min")
+  aforoMax          Int                @map("aforo_max")
+  descripcionCorta  String?            @map("descripcion_corta")
+  estado            EstadoPublicacion  @default(publicado)
+  version           Int                @default(1)
+  creadoEn          DateTime           @default(now()) @map("creado_en")
+  actualizadoEn     DateTime           @updatedAt @map("actualizado_en")
+  precios           PaquetePrecio[]
+  inclusiones       PaqueteInclusion[]
+  reglas            PaqueteRegla[]
+  oportunidades    Oportunidad[]      @relation("PaqueteTentativo")
+
+  @@map("paquetes")
+}
+
+model PaquetePrecio {
+  id            String            @id @default(cuid())
+  paqueteId     String            @map("paquete_id")
+  paquete       Paquete           @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  moneda        String            @default("MXN")
+  monto         Float?
+  rangoMin      Float?            @map("rango_min")
+  rangoMax      Float?            @map("rango_max")
+  unidad        UnidadPrecio      @default(evento)
+  vigenteDesde  DateTime          @map("vigente_desde")
+  vigenteHasta  DateTime?         @map("vigente_hasta")
+  condiciones   String?
+  estado        EstadoPublicacion @default(publicado)
+
+  @@index([paqueteId])
+  @@map("paquete_precios")
+}
+
+model PaqueteInclusion {
+  id          String             @id @default(cuid())
+  paqueteId   String             @map("paquete_id")
+  paquete     Paquete            @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  categoria   CategoriaInclusion
+  nombre      String
+  cantidad    Float?
+  unidad      String?
+  obligatoria Boolean            @default(true)
+  orden       Int                @default(0)
+
+  @@index([paqueteId])
+  @@map("paquete_inclusiones")
+}
+
+model PaqueteRegla {
+  id                String    @id @default(cuid())
+  paqueteId         String    @map("paquete_id")
+  paquete           Paquete   @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  tipo              TipoRegla
+  parametros        Json?     @map("parametros")
+  mensajeProspecto  String?   @map("mensaje_prospecto")
+
+  @@index([paqueteId])
+  @@map("paquete_reglas")
+}
+
+model ImportacionCatalogo {
+  id             String               @id @default(cuid())
+  actor          String               @default("sandbox")
+  archivo        String
+  iniciadoEn     DateTime             @default(now()) @map("iniciado_en")
+  terminadoEn    DateTime?            @map("terminado_en")
+  filasOk        Int                  @default(0) @map("filas_ok")
+  filasError     Int                  @default(0) @map("filas_error")
+  detalleErrores Json?                @map("detalle_errores")
+  resultado      ResultadoImportacion @default(exito)
+
+  @@map("importaciones_catalogo")
+}
+
+// ─── CRM mínimo (requerido por Conversacion) ────────────────────────────────
+
+model Lead {
+  id               String         @id @default(cuid())
+  nombre           String?
+  telefono         String?
+  correo           String?
+  metaPsid         String?        @map("meta_psid")
+  waId             String?        @map("wa_id")
+  sedeInteres      String?        @map("sede_interes")
+  primerContactoEn DateTime       @default(now()) @map("primer_contacto_en")
+  ultimoContactoEn DateTime       @default(now()) @map("ultimo_contacto_en")
+  creadoEn         DateTime       @default(now()) @map("creado_en")
+  actualizadoEn    DateTime       @updatedAt @map("actualizado_en")
+  oportunidades    Oportunidad[]
+
+  @@index([telefono])
+  @@index([waId])
+  @@index([metaPsid])
+  @@map("leads")
+}
+
+model Oportunidad {
+  id                 String                  @id @default(cuid())
+  leadId             String                  @map("lead_id")
+  lead               Lead                    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  tipoEvento         TipoEvento?             @map("tipo_evento")
+  fechaTentativa     DateTime?               @map("fecha_tentativa")
+  fechaFlexible      Boolean                 @default(false) @map("fecha_flexible")
+  aforo              Int?
+  presupuestoNota    String?                 @map("presupuesto_nota")
+  paqueteTentativoId String?                 @map("paquete_tentativo_id")
+  paqueteTentativo   Paquete?                @relation("PaqueteTentativo", fields: [paqueteTentativoId], references: [id])
+  aMedida            Boolean                 @default(false) @map("a_medida")
+  calificacion       CalificacionOportunidad @default(en_exploracion)
+  listoParaCotizar   Boolean                 @default(false) @map("listo_para_cotizar")
+  etapa              EtapaPipeline           @default(nuevo_bot)
+  canalOrigen        Canal?                  @map("canal_origen")
+  sede               String?
+  briefJson          Json?                   @map("brief_json")
+  creadoEn           DateTime                @default(now()) @map("creado_en")
+  actualizadoEn      DateTime                @updatedAt @map("actualizado_en")
+  conversaciones     Conversacion[]
+  eventosOperativos  EventoOperativo[]
+
+  @@index([leadId])
+  @@index([etapa])
+  @@map("oportunidades")
+}
+
+model Conversacion {
+  id                   String           @id @default(cuid())
+  oportunidadId        String           @map("oportunidad_id")
+  oportunidad          Oportunidad      @relation(fields: [oportunidadId], references: [id], onDelete: Cascade)
+  canal                Canal
+  externalThreadId     String?          @map("external_thread_id")
+  estadoBot            EstadoBot        @default(activo) @map("estado_bot")
+  pasoGuion            PasoGuion        @default(saludo) @map("paso_guion")
+  camposCapturados     Json?            @map("campos_capturados")
+  paqueteTentativoId   String?          @map("paquete_tentativo_id")
+  ultimaRuta           RutaOrquestador? @map("ultima_ruta")
+  motivoHandoff        MotivoHandoff?   @map("motivo_handoff")
+  escaladoEn           DateTime?        @map("escalado_en")
+  sede                 String?
+  creadoEn             DateTime         @default(now()) @map("creado_en")
+  actualizadoEn        DateTime         @updatedAt @map("actualizado_en")
+  mensajes             Mensaje[]
+  eventosOperativos    EventoOperativo[]
+
+  @@unique([canal, externalThreadId])
+  @@index([oportunidadId])
+  @@index([estadoBot])
+  @@map("conversaciones")
+}
+
+model Mensaje {
+  id                 String            @id @default(cuid())
+  conversacionId     String            @map("conversacion_id")
+  conversacion       Conversacion      @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
+  direccion          DireccionMensaje
+  autor              AutorMensaje
+  canal              Canal
+  contenido          String
+  externalMessageId  String?           @map("external_message_id")
+  ruta               RutaOrquestador?
+  consumeCupo        Boolean           @default(false) @map("consume_cupo")
+  creadoEn           DateTime          @default(now()) @map("creado_en")
+  eventosOperativos  EventoOperativo[]
+
+  @@unique([canal, externalMessageId])
+  @@index([conversacionId, creadoEn])
+  @@map("mensajes")
+}
+
+model EventoOperativo {
+  id              String          @id @default(cuid())
+  tipo            String
+  actor           ActorOperativo
+  payload         Json
+  oportunidadId   String?         @map("oportunidad_id")
+  oportunidad     Oportunidad?    @relation(fields: [oportunidadId], references: [id], onDelete: SetNull)
+  conversacionId  String?         @map("conversacion_id")
+  conversacion    Conversacion?   @relation(fields: [conversacionId], references: [id], onDelete: SetNull)
+  mensajeId       String?         @map("mensaje_id")
+  mensaje         Mensaje?        @relation(fields: [mensajeId], references: [id], onDelete: SetNull)
+  sede            String?
+  creadoEn        DateTime        @default(now()) @map("creado_en")
+
+  @@index([oportunidadId, creadoEn])
+  @@index([conversacionId, creadoEn])
+  @@index([actor, creadoEn])
+  @@map("eventos_operativos")
+}
+
+// ─── Conocimiento + assets multimodales ─────────────────────────────────────
+
+model Asset {
+  id                   String         @id @default(cuid())
+  proposito            PropositoAsset
+  tipoMaterial         TipoMaterial   @map("tipo_material")
+  mimeType             String         @map("mime_type")
+  nombreOriginal       String         @map("nombre_original")
+  storageKey           String         @map("storage_key")
+  storageBucket        String         @map("storage_bucket")
+  checksum             String?
+  bytes                Int
+  duracionSec          Int?           @map("duracion_sec")
+  anchoPx              Int?           @map("ancho_px")
+  altoPx               Int?           @map("alto_px")
+  pipelineEstado       PipelineEstado @default(pendiente) @map("pipeline_estado")
+  pipelineErrorCode    String?        @map("pipeline_error_code")
+  pipelineErrorDetalle String?        @map("pipeline_error_detalle")
+  pipelineProgresoPct  Int?           @map("pipeline_progreso_pct")
+  sedeId               String?        @map("sede_id")
+  creadoEn             DateTime       @default(now()) @map("creado_en")
+  actualizadoEn        DateTime       @updatedAt @map("actualizado_en")
+  documentoFuente      DocumentoFuente?
+
+  @@unique([storageBucket, storageKey])
+  @@index([proposito, pipelineEstado])
+  @@map("assets")
+}
+
+model DocumentoFuente {
+  id                String              @id @default(cuid())
+  titulo            String
+  tipo              TipoDocumentoFuente
+  sede              String?
+  version           Int                 @default(1)
+  estado            EstadoPublicacion   @default(borrador)
+  publicadoEn       DateTime?           @map("publicado_en")
+  nombreArchivoCita String              @map("nombre_archivo_cita")
+  assetId           String              @unique @map("asset_id")
+  asset             Asset               @relation(fields: [assetId], references: [id])
+  tipoMaterial      TipoMaterial        @map("tipo_material")
+  pipelineEstado    PipelineEstado      @default(pendiente) @map("pipeline_estado")
+  creadoEn          DateTime            @default(now()) @map("creado_en")
+  actualizadoEn     DateTime            @updatedAt @map("actualizado_en")
+  fragmentos        FragmentoVectorial[]
+
+  @@index([estado, pipelineEstado])
+  @@index([sede])
+  @@map("documentos_fuente")
+}
+
+/// Fragmento indexable. `embedding` (pgvector) y `tsv` (FTS) vía Unsupported + migración SQL.
+model FragmentoVectorial {
+  id                 String           @id @default(cuid())
+  documentoFuenteId  String           @map("documento_fuente_id")
+  documentoFuente    DocumentoFuente  @relation(fields: [documentoFuenteId], references: [id], onDelete: Cascade)
+  documentoVersion   Int              @map("documento_version")
+  texto              String
+  orden              Int              @default(0)
+  /// pgvector — dimensión alineada a OPENAI_EMBEDDING_DIMENSIONS (1536)
+  embedding          Unsupported("vector")?
+  /// Full-text search español
+  tsv                Unsupported("tsvector")?
+  activo             Boolean          @default(true)
+  origenDerivacion   OrigenDerivacion @map("origen_derivacion")
+  noRecuperablePrecio Boolean         @default(false) @map("no_recuperable_precio")
+  tipoMaterial       TipoMaterial?    @map("tipo_material")
+  pageOrSlide        Int?             @map("page_or_slide")
+  tStartMs           Int?             @map("t_start_ms")
+  tEndMs             Int?             @map("t_end_ms")
+  sedeId             String?          @map("sede_id")
+  tipoDocumento      TipoDocumentoFuente? @map("tipo_documento")
+  creadoEn           DateTime         @default(now()) @map("creado_en")
+
+  @@index([documentoFuenteId, documentoVersion, orden])
+  @@index([activo, sedeId])
+  @@index([origenDerivacion])
+  @@map("fragmentos_vectoriales")
+}
