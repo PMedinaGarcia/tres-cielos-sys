@@ -1,0 +1,453 @@
+# Inclusiones tipadas — edición 2026-07
+# Una fila = una inclusión. Duplicadas por SKU (contrato CatalogSnapshot).
+# cantidad/unidad null cuando la plantilla no cuantifica.
+
+inclusiones:
+  # ── Locación y hospitalidad ──────────────────────────────────────────────
+  - sku: EVT-J1-PREMIUM
+    categoria: otro
+    nombre: Renta del jardín por 11 horas (estacionamiento, baños, áreas comunes)
+    cantidad: 11
+    unidad: horas
+    obligatoria: true
+    modulo: locacion-jardin
+  - sku: EVT-J1-TC
+    categoria: otro
+    nombre: Renta del jardín por 11 horas (estacionamiento, baños, áreas comunes)
+    cantidad: 11
+    unidad: horas
+    obligatoria: true
+    modulo: locacion-jardin
+  - sku: EVT-J1-PREMIUM
+    categoria: otro
+    nombre: Carpa fija (aproximadamente 600 m2)
+    cantidad: 600
+    unidad: m2
+    obligatoria: true
+    modulo: locacion-jardin
+  - sku: EVT-J1-TC
+    categoria: otro
+    nombre: Carpa fija (aproximadamente 600 m2)
+    cantidad: 600
+    unidad: m2
+    obligatoria: true
+    modulo: locacion-jardin
+  - sku: RENTA-J1
+    categoria: otro
+    nombre: Renta del jardín por 11 horas (estacionamiento, baños, áreas comunes, carpa de cocina)
+    cantidad: 11
+    unidad: horas
+    obligatoria: true
+    modulo: locacion-jardin
+
+  - sku: EVT-J1-PREMIUM
+    categoria: otro
+    nombre: Suite nupcial queen size, dos noches
+    cantidad: 2
+    unidad: noches
+    obligatoria: true
+    modulo: suite-nupcial
+  - sku: EVT-J1-TC
+    categoria: otro
+    nombre: Suite nupcial queen size, dos noches
+    cantidad: 2
+    unidad: noches
+    obligatoria: true
+    modulo: suite-nupcial
+  - sku: RENTA-J1
+    categoria: otro
+    nombre: Suite nupcial queen size, dos noches
+    cantidad: 2
+    unidad: noches
+    obligatoria: true
+    modulo: suite-nupcial
+
+  - sku: EVT-J1-PREMIUM
+    categoria: personal
+    nombre: Valet para el 100% de los invitados (sin costo de línea)
+    cantidad: 100
+    unidad: porciento_invitados
+    obligatoria: true
+    modulo: valet
+  - sku: EVT-J1-TC
+    categoria: personal
+    nombre: Valet para el 100% de los invitados (sin costo de línea)
+    cantidad: 100
+    unidad: porciento_invitados
+    obligatoria: true
+    modulo: valet
+  - sku: RENTA-J1
+    categoria: personal
+    nombre: Valet para el 100% de los invitados (sin costo de línea)
+    cantidad: 100
+    unidad: porciento_invitados
+    obligatoria: true
+    modulo: valet
+
+  - sku: EVT-J1-PREMIUM
+    categoria: otro
+    nombre: Planta de luz 30 kW por 10 horas de servicio
+    cantidad: 10
+    unidad: horas
+    obligatoria: true
+    modulo: planta-luz
+  - sku: EVT-J1-TC
+    categoria: otro
+    nombre: Planta de luz 30 kW por 10 horas de servicio
+    cantidad: 10
+    unidad: horas
+    obligatoria: true
+    modulo: planta-luz
+
+  - sku: RENTA-J1
+    categoria: personal
+    nombre: Personal de limpieza en baños y evento
+    cantidad: null
+    unidad: null
+    obligatoria: true
+    modulo: personal-limpieza
+
+  # ── Ceremonia y cóctel (solo paquetes) ───────────────────────────────────
+  - sku: EVT-J1-PREMIUM
+    categoria: otro
+    nombre: Capilla techada y consagrada (50 sillas blancas, mesa para el padre, reclinatorios, virgen de piedra y cruz)
+    cantidad: 50
+    unidad: sillas
+    obligatoria: true
+    modulo: ceremonia-capilla
+  - sku: EVT-J1-TC
+    categoria: otro
+    nombre: Capilla techada y consagrada (50 sillas blancas, mesa para el padre, reclinatorios, virgen de piedra y cruz)
+    cantidad: 50
+    unidad: sillas
+    obligatoria: true
+    modulo: ceremonia-capilla
+
+  - sku: EVT-J1-PREMIUM
+    categoria: catering
+    nombre: Cóctel lounge 30% invitados (salas, periqueras, sombrillas, coctelería, aguas frescas, canapés mixtos, una cerveza por invitado; sin alcohol extra)
+    cantidad: 30
+    unidad: porciento_invitados
+    obligatoria: true
+    modulo: coctel
+  - sku: EVT-J1-TC
+    categoria: catering
+    nombre: Cóctel lounge 30% invitados (salas, periqueras, sombrillas, coctelería, aguas frescas, canapés mixtos, una cerveza por invitado; sin alcohol extra)
+    cantidad: 30
+    unidad: porciento_invitados
+    obligatoria: true
+    modulo: coctel
+
+  # ── Mobiliario ───────────────────────────────────────────────────────────
+  - sku: EVT-J1-PREMIUM
+    categoria: mobiliario
+    nombre: Mesa de novios y sillones (dos personas)
+    cantidad: 1
+    unidad: mesa
+    obligatoria: true
+    modulo: mesa-novios
+  - sku: EVT-J1-TC
+    categoria: mobiliario
+    nombre: Mesa de novios y sillones (dos personas)
+    cantidad: 1
+    unidad: mesa
+    obligatoria: true
+    modulo: mesa-novios
+
+  - sku: EVT-J1-PREMIUM
+    categoria: mobiliario
+    nombre: Montaje 1 mesa por cada 10 personas y sillas premium (sujeto a stock)
+    cantidad: 10
+    unidad: personas_por_mesa
+    obligatoria: true
+    modulo: montaje-mesas
+  - sku: EVT-J1-TC
+    categoria: mobiliario
+    nombre: Montaje 1 mesa por cada 10 personas y sillas (sujeto a stock)
+    cantidad: 10
+    unidad: personas_por_mesa
+    obligatoria: true
+    modulo: montaje-mesas
+
+  - sku: EVT-J1-PREMIUM
+    categoria: mobiliario
+    nombre: Vajilla premium (plato base varios estilos; loza y cristalería transparente y de color; cubertería plata, oro y rose gold; servilletas de tela; sujeto a stock)
+    cantidad: null
+    unidad: null
+    obligatoria: true
+    modulo: vajilla
+  - sku: EVT-J1-TC
+    categoria: mobiliario
+    nombre: Vajilla de línea (plato base varios estilos; cristalería transparente; cubertería plata; servilletas blanca, verde o beige; sujeto a stock)
+    cantidad: null
+    unidad: null
+    obligatoria: true
+    modulo: vajilla
+
+  - sku: EVT-J1-PREMIUM
+    categoria: decoracion
+    nombre: Decoración floral con presupuesto incluido (capilla, centros de mesa, lounge, mesa principal) según catálogo de precios auxiliares
+    cantidad: null
+    unidad: null
+    obligatoria: true
+    modulo: decoracion-floral
+  - sku: EVT-J1-TC
+    categoria: decoracion
+    nombre: Decoración floral con presupuesto incluido (capilla, centros de mesa, lounge, mesa principal) según catálogo de precios auxiliares
+    cantidad: null
+    unidad: null
+    obligatoria: true
+    modulo: decoracion-floral
+
+  - sku: EVT-J1-PREMIUM
+    categoria: otro
+    nombre: Impresión de menú en blanco y negro (2 por mesa) y números de mesa
+    cantidad: 2
+    unidad: menus_por_mesa
+    obligatoria: true
+    modulo: impresos
+  - sku: EVT-J1-TC
+    categoria: otro
+    nombre: Impresión de menú en blanco y negro (2 por mesa) y números de mesa
+    cantidad: 2
+    unidad: menus_por_mesa
+    obligatoria: true
+    modulo: impresos
+
+  # ── Banquete ─────────────────────────────────────────────────────────────
+  - sku: EVT-J1-PREMIUM
+    categoria: catering
+    nombre: Prueba de menú para 6 personas en Cuernavaca (entrada, fuerte y postre; 3 opciones por tiempo)
+    cantidad: 6
+    unidad: personas
+    obligatoria: true
+    modulo: prueba-menu
+  - sku: EVT-J1-TC
+    categoria: catering
+    nombre: Prueba de menú para 6 personas en Cuernavaca (entrada, fuerte y postre; 3 opciones por tiempo)
+    cantidad: 6
+    unidad: personas
+    obligatoria: true
+    modulo: prueba-menu
+
+  - sku: EVT-J1-PREMIUM
+    categoria: catering
+    nombre: Banquete 3 tiempos base 100% res (entrada o crema, plato fuerte y postre)
+    cantidad: 3
+    unidad: tiempos
+    obligatoria: true
+    modulo: banquete
+  - sku: EVT-J1-TC
+    categoria: catering
+    nombre: Banquete 3 tiempos base 50% res y 50% pollo o cerdo (entrada o crema, plato fuerte y postre)
+    cantidad: 3
+    unidad: tiempos
+    obligatoria: true
+    modulo: banquete
+
+  - sku: EVT-J1-PREMIUM
+    categoria: catering
+    nombre: Café americano durante el postre
+    cantidad: null
+    unidad: null
+    obligatoria: true
+    modulo: cafe
+  - sku: EVT-J1-TC
+    categoria: catering
+    nombre: Café americano durante el postre
+    cantidad: null
+    unidad: null
+    obligatoria: true
+    modulo: cafe
+
+  - sku: EVT-J1-PREMIUM
+    categoria: catering
+    nombre: Pre-tornaboda (esquites)
+    cantidad: 1
+    unidad: estacion
+    obligatoria: true
+    modulo: pre-torna
+  - sku: EVT-J1-TC
+    categoria: catering
+    nombre: Pre-tornaboda (esquites)
+    cantidad: 1
+    unidad: estacion
+    obligatoria: true
+    modulo: pre-torna
+
+  - sku: EVT-J1-PREMIUM
+    categoria: catering
+    nombre: Tornaboda (chilaquiles con complementos, sin proteína)
+    cantidad: 1
+    unidad: estacion
+    obligatoria: true
+    modulo: tornaboda
+  - sku: EVT-J1-TC
+    categoria: catering
+    nombre: Tornaboda (chilaquiles con complementos, sin proteína)
+    cantidad: 1
+    unidad: estacion
+    obligatoria: true
+    modulo: tornaboda
+
+  - sku: EVT-J1-PREMIUM
+    categoria: personal
+    nombre: Staff 10 h desde cóctel (1 mesero cada 10 personas, bar, capitán, cocina, 2 hostess)
+    cantidad: 10
+    unidad: horas
+    obligatoria: true
+    modulo: servicio-staff
+  - sku: EVT-J1-TC
+    categoria: personal
+    nombre: Staff 10 h desde cóctel (1 mesero cada 10 personas, bar, capitán, cocina, 2 hostess)
+    cantidad: 10
+    unidad: horas
+    obligatoria: true
+    modulo: servicio-staff
+
+  - sku: EVT-J1-PREMIUM
+    categoria: catering
+    nombre: Mezcladores línea Coca-Cola, aguas, tónica y jugos solo si hay vodka, hielo, limones, sal, servilletas de papel
+    cantidad: null
+    unidad: null
+    obligatoria: true
+    modulo: mezcladores
+  - sku: EVT-J1-TC
+    categoria: catering
+    nombre: Mezcladores línea Coca-Cola, aguas, tónica y jugos solo si hay vodka, hielo, limones, sal, servilletas de papel
+    cantidad: null
+    unidad: null
+    obligatoria: true
+    modulo: mezcladores
+
+  # ── Audio, luz, pista ────────────────────────────────────────────────────
+  - sku: EVT-J1-PREMIUM
+    categoria: audio
+    nombre: Sistema de audio proporcional al número de invitados
+    cantidad: null
+    unidad: null
+    obligatoria: true
+    modulo: audio-dj
+  - sku: EVT-J1-TC
+    categoria: audio
+    nombre: Sistema de audio proporcional al número de invitados
+    cantidad: null
+    unidad: null
+    obligatoria: true
+    modulo: audio-dj
+
+  - sku: EVT-J1-PREMIUM
+    categoria: audio
+    nombre: Audio y microfonía de ceremonia
+    cantidad: null
+    unidad: null
+    obligatoria: true
+    modulo: audio-dj
+  - sku: EVT-J1-TC
+    categoria: audio
+    nombre: Audio y microfonía de ceremonia
+    cantidad: null
+    unidad: null
+    obligatoria: true
+    modulo: audio-dj
+
+  - sku: EVT-J1-PREMIUM
+    categoria: audio
+    nombre: DJ por todo el evento
+    cantidad: null
+    unidad: null
+    obligatoria: true
+    modulo: audio-dj
+  - sku: EVT-J1-TC
+    categoria: audio
+    nombre: DJ por todo el evento
+    cantidad: null
+    unidad: null
+    obligatoria: true
+    modulo: audio-dj
+
+  - sku: EVT-J1-PREMIUM
+    categoria: otro
+    nombre: Iluminación ambiental 10 PAR LED interior de carpa
+    cantidad: 10
+    unidad: piezas
+    obligatoria: true
+    modulo: iluminacion
+  - sku: EVT-J1-TC
+    categoria: otro
+    nombre: Iluminación ambiental 10 PAR LED interior de carpa
+    cantidad: 10
+    unidad: piezas
+    obligatoria: true
+    modulo: iluminacion
+
+  - sku: EVT-J1-PREMIUM
+    categoria: otro
+    nombre: Iluminación robótica 6 cabezas móviles para pista
+    cantidad: 6
+    unidad: piezas
+    obligatoria: true
+    modulo: iluminacion
+  - sku: EVT-J1-TC
+    categoria: otro
+    nombre: Iluminación robótica 6 cabezas móviles para pista
+    cantidad: 6
+    unidad: piezas
+    obligatoria: true
+    modulo: iluminacion
+
+  - sku: EVT-J1-PREMIUM
+    categoria: mobiliario
+    nombre: Pista 6x6 m, templete de novios y barra de servicio o DJ booth diseño exclusivo Tres Cielos
+    cantidad: 6
+    unidad: metros_lado
+    obligatoria: true
+    modulo: pista-templetes
+  - sku: EVT-J1-TC
+    categoria: mobiliario
+    nombre: Pista 6x6 m, templete de novios y templete DJ acabado en madera color de línea
+    cantidad: 6
+    unidad: metros_lado
+    obligatoria: true
+    modulo: pista-templetes
+
+  # ── Solo Premium ─────────────────────────────────────────────────────────
+  - sku: EVT-J1-PREMIUM
+    categoria: catering
+    nombre: Barra libre nacional (tequila tradicional plata, ron Matusalem, vodka Stolichnaya, whisky etiqueta roja)
+    cantidad: null
+    unidad: null
+    obligatoria: true
+    modulo: barra-libre
+
+  - sku: EVT-J1-PREMIUM
+    categoria: mobiliario
+    nombre: Table styling (copas, plato base y plaqué de color)
+    cantidad: null
+    unidad: null
+    obligatoria: true
+    modulo: table-styling
+
+  - sku: EVT-J1-PREMIUM
+    categoria: decoracion
+    nombre: Plafón de diseño de olas para la explanada
+    cantidad: 1
+    unidad: pieza
+    obligatoria: true
+    modulo: plafon-olas
+
+  # ── Coordinación ─────────────────────────────────────────────────────────
+  - sku: EVT-J1-PREMIUM
+    categoria: personal
+    nombre: Coordinación y seguimiento antes y durante el evento
+    cantidad: null
+    unidad: null
+    obligatoria: true
+    modulo: coordinacion
+  - sku: EVT-J1-TC
+    categoria: personal
+    nombre: In House Planner (coordinación y seguimiento antes y durante el evento)
+    cantidad: null
+    unidad: null
+    obligatoria: true
+    modulo: coordinacion

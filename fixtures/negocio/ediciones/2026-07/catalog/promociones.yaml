@@ -1,0 +1,98 @@
+# Promociones y cortesías — edición 2026-07
+#
+# Entidad futura Prisma Promocion. No parchear el SKU base.
+# Upgrades de temporada: añadir fila con ventana; no editar inclusiones.yaml.
+#
+# Anclas numéricas de hospedaje: "tarifa 2027" en plantilla. Confirmar vigencia
+# real para eventos 2026 (docs/negocio/05-pendientes-validacion.md).
+
+promociones:
+  - id: CORTESIA-COCTEL-VIERNES-HOSPEDAJE
+    tipo: cortesia
+    estado: publicado
+    sku_aplica: [EVT-J1-PREMIUM, EVT-J1-TC, RENTA-J1]
+    vigente_desde: 2026-07-01
+    vigente_hasta: null
+    ancla_tarifa: "2027"
+    condiciones:
+      ocupacion: 100_porciento_hospedaje
+      noches: [viernes, sabado]
+      ocupacion_minima_adultos:
+        habitacion: 2
+        villas: 8
+        villa_sol: 10
+      tarifa_vigente_al_momento_del_evento: true
+    umbral_monto:
+      moneda: MXN
+      monto: 209800
+      unidad: otro
+      condiciones: "Tarifa 2027 al 100% de ocupación viernes y sábado, según plantilla. No cotizar hospedaje; solo umbral de cortesía."
+    beneficio:
+      nombre: Cóctel del viernes en cortesía
+      para: total_de_hospedados
+      incluye:
+        - mobiliario
+        - refrescos y hielo
+        - cazuelas mexicanas
+      duracion:
+        alimentos_horas: 1.5
+        servicio_horas: 3
+    k_ref: K12-HOSPEDAJE-VIE-SAB
+
+  - id: CORTESIA-CARNE-ASADA-TERCERA-NOCHE
+    tipo: cortesia
+    estado: publicado
+    sku_aplica: [EVT-J1-PREMIUM, EVT-J1-TC, RENTA-J1]
+    vigente_desde: 2026-07-01
+    vigente_hasta: null
+    ancla_tarifa: "2027"
+    condiciones:
+      min_personas_hospedadas: 20
+      noche: tercera
+      tarifa_vigente_al_momento_del_evento: true
+    umbral_monto:
+      moneda: MXN
+      monto: 30000
+      unidad: persona
+      condiciones: "Tarifa 2027 por persona tercera noche, según plantilla. Beneficio solo para hospedados esa noche."
+    beneficio:
+      nombre: Carne asada del domingo en cortesía
+      para: personas_hospedadas_tercera_noche
+      incluye:
+        - mobiliario
+        - refrescos y hielo
+        - carne asada cortes de la región
+        - nopales
+        - arroz
+        - cebollitas
+        - salsas
+        - tortillas
+      duracion:
+        alimentos_horas: 1.5
+        servicio_horas: 3
+    k_ref: K12-HOSPEDAJE-TERCERA
+
+  - id: TEMPORADA-BAJA-JUN-SEP
+    tipo: descuento_catalogado
+    estado: publicado
+    sku_aplica: [EVT-J1-PREMIUM, EVT-J1-TC]
+    vigente_desde: 2027-06-01
+    vigente_hasta: 2027-09-30
+    meses: [junio, julio, agosto, septiembre]
+    ancla_tarifa: "2027"
+    condiciones:
+      descripcion: Beneficios especiales en temporada baja. Descuento desde un piso publicado; el monto exacto lo cierra el ejecutivo.
+    umbral_monto:
+      moneda: MXN
+      monto: 30000
+      unidad: otro
+      condiciones: "Descuentos desde $30,000.00 MXN. No cotizar un descuento mayor o exacto sin fila adicional o asesor."
+    beneficio:
+      nombre: Descuento temporada baja
+      para: evento
+    k_ref: K13-UPGRADES
+    handoff_si_piden_monto_exacto: true
+
+upgrades_estacionales: []
+# Procedimiento: nueva entrada tipo upgrade, sku_aplica, vigente_desde/hasta,
+# beneficio sin mezclar con inclusiones base. Prosa en modulos/upgrades.md.

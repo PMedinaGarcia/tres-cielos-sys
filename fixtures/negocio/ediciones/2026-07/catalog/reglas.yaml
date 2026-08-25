@@ -1,0 +1,100 @@
+# Reglas consultables — edición 2026-07
+# tipo ∈ solo_fin_semana | no_feriados | anticipo_minimo | horario | otro
+
+reglas:
+  - sku: EVT-J1-PREMIUM
+    tipo: anticipo_minimo
+    parametros_json: '{"anticipo_pct": 20, "momento": "firma_contrato"}'
+    mensaje_prospecto: A la firma del contrato se requiere el anticipo indicado en catálogo (20% en esta edición).
+  - sku: EVT-J1-TC
+    tipo: anticipo_minimo
+    parametros_json: '{"anticipo_pct": 20, "momento": "firma_contrato"}'
+    mensaje_prospecto: A la firma del contrato se requiere el anticipo indicado en catálogo (20% en esta edición).
+  - sku: RENTA-J1
+    tipo: anticipo_minimo
+    parametros_json: '{"anticipo_pct": 20, "momento": "firma_contrato"}'
+    mensaje_prospecto: A la firma del contrato se requiere el anticipo indicado en catálogo (20% en esta edición).
+
+  - sku: EVT-J1-PREMIUM
+    tipo: horario
+    parametros_json: '{"horas_locacion_jardin": 11, "horas_servicio_meseros_mezcladores": 10, "cierre_limite": "02:00"}'
+    mensaje_prospecto: El jardín se renta 11 horas el sábado. Meseros y mezcladores cubren 10 horas de servicio continuo. El cierre límite de evento en plantilla es a las 2:00 a.m.
+  - sku: EVT-J1-TC
+    tipo: horario
+    parametros_json: '{"horas_locacion_jardin": 11, "horas_servicio_meseros_mezcladores": 10, "cierre_limite": "02:00"}'
+    mensaje_prospecto: El jardín se renta 11 horas el sábado. Meseros y mezcladores cubren 10 horas de servicio continuo. El cierre límite de evento en plantilla es a las 2:00 a.m.
+  - sku: RENTA-J1
+    tipo: horario
+    parametros_json: '{"horas_desde_coctel": 10, "cierre_limite": "02:00", "horas_locacion": 11, "conflicto": "plantilla_renta_11h_vs_condiciones_10h"}'
+    mensaje_prospecto: La locación se cotiza por 11 horas. Las condiciones impresas hablan de 10 horas desde cóctel y cierre a las 2:00 a.m. Un ejecutivo unifica.
+
+  - sku: EVT-J1-PREMIUM
+    tipo: otro
+    parametros_json: '{"iva_incluido": false, "iva_pct": 16, "tramitologia_incluida": false}'
+    mensaje_prospecto: Los precios no incluyen el 16% de IVA ni tramitología.
+  - sku: EVT-J1-TC
+    tipo: otro
+    parametros_json: '{"iva_incluido": false, "iva_pct": 16, "tramitologia_incluida": false}'
+    mensaje_prospecto: Los precios no incluyen el 16% de IVA ni tramitología.
+  - sku: RENTA-J1
+    tipo: otro
+    parametros_json: '{"iva_incluido": false, "iva_pct": 16}'
+    mensaje_prospecto: Los precios no incluyen el 16% de IVA.
+
+  - sku: EVT-J1-PREMIUM
+    tipo: otro
+    parametros_json: '{"apartado_fecha": false, "vigencia_cotizacion_dias": 30}'
+    mensaje_prospecto: La cotización no representa apartado de fecha y tiene vigencia de 30 días naturales.
+  - sku: EVT-J1-TC
+    tipo: otro
+    parametros_json: '{"apartado_fecha": false, "vigencia_cotizacion_dias": 30}'
+    mensaje_prospecto: La cotización no representa apartado de fecha y tiene vigencia de 30 días naturales.
+  - sku: RENTA-J1
+    tipo: otro
+    parametros_json: '{"apartado_fecha": false, "vigencia_cotizacion_dias": 30}'
+    mensaje_prospecto: La cotización no representa apartado de fecha y tiene vigencia de 30 días naturales.
+
+  - sku: EVT-J1-PREMIUM
+    tipo: otro
+    parametros_json: '{"material_no_especificado": false, "negociacion_solo_por_escrito": true}'
+    mensaje_prospecto: No se incluye material no especificado. Toda negociación con proveedor o ejecutivo debe quedar en el documento.
+  - sku: EVT-J1-TC
+    tipo: otro
+    parametros_json: '{"material_no_especificado": false, "negociacion_solo_por_escrito": true}'
+    mensaje_prospecto: No se incluye material no especificado. Toda negociación con proveedor o ejecutivo debe quedar en el documento.
+  - sku: RENTA-J1
+    tipo: otro
+    parametros_json: '{"material_no_especificado": false, "negociacion_solo_por_escrito": true}'
+    mensaje_prospecto: No se incluye material no especificado. Toda negociación con proveedor o ejecutivo debe quedar en el documento.
+
+  - sku: RENTA-J1
+    tipo: otro
+    parametros_json: '{"incluye_planta_luz": false}'
+    mensaje_prospecto: Solo renta no incluye planta de luz.
+
+  - sku: EVT-J1-PREMIUM
+    tipo: otro
+    parametros_json: '{"stock": "sillas_vajilla_cuberteria_sujeto_a_disponibilidad"}'
+    mensaje_prospecto: Sillas, vajilla y cubertería sujetas a stock y disponibilidad.
+  - sku: EVT-J1-TC
+    tipo: otro
+    parametros_json: '{"stock": "sillas_vajilla_cuberteria_sujeto_a_disponibilidad"}'
+    mensaje_prospecto: Sillas, vajilla y cubertería sujetas a stock y disponibilidad.
+
+  - sku: EVT-J1-PREMIUM
+    tipo: otro
+    parametros_json: '{"liquidar_dias_antes_evento": 30}'
+    mensaje_prospecto: El saldo se liquida 30 días antes del evento.
+  - sku: EVT-J1-TC
+    tipo: otro
+    parametros_json: '{"liquidar_dias_antes_evento": 30}'
+    mensaje_prospecto: El saldo se liquida 30 días antes del evento.
+
+  - sku: EVT-J1-PREMIUM
+    tipo: otro
+    parametros_json: '{"aforo_tramos_publicados": [100, 150, 200, 250, 300], "interpolar": false}'
+    mensaje_prospecto: Las tarifas publicadas son por tramos de 100, 150, 200, 250 y 300 invitados. Otros tamaños los confirma un asesor.
+  - sku: EVT-J1-TC
+    tipo: otro
+    parametros_json: '{"aforo_tramos_publicados": [100, 150, 200, 250, 300], "interpolar": false}'
+    mensaje_prospecto: Las tarifas publicadas son por tramos de 100, 150, 200, 250 y 300 invitados. Otros tamaños los confirma un asesor.

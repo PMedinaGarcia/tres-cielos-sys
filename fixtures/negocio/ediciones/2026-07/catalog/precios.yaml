@@ -1,0 +1,279 @@
+# Precios — paquetes bodas 2027 + auxiliares
+#
+# Tramos oficiales: ficha "Tres Cielos | Paquete Bodas 2027".
+# Placeholder 2280 de plantilla Julio 2026: archivado (no servir al bot).
+# Renta: sigue sin tarifa oficial en esta ficha.
+#
+# aforo_tramo = invitados del renglón publicado. No interpolar.
+
+precios:
+  # ── Archivados: placeholder Anexo B Julio 2026 ───────────────────────────
+  - sku: EVT-J1-PREMIUM
+    moneda: MXN
+    monto: 2280
+    rango_min: null
+    rango_max: null
+    unidad: persona
+    vigente_desde: 2026-07-01
+    vigente_hasta: 2026-12-31
+    condiciones: "Placeholder plantilla Anexo B. Superado por tarifas Bodas 2027."
+    estado: archivado
+    confianza: plantilla
+    concepto_id: paquete-pp-placeholder-2026
+
+  - sku: EVT-J1-TC
+    moneda: MXN
+    monto: 2280
+    rango_min: null
+    rango_max: null
+    unidad: persona
+    vigente_desde: 2026-07-01
+    vigente_hasta: 2026-12-31
+    condiciones: "Placeholder plantilla Anexo B. Superado por tarifas Bodas 2027."
+    estado: archivado
+    confianza: plantilla
+    concepto_id: paquete-pp-placeholder-2026
+
+  - sku: RENTA-J1
+    moneda: MXN
+    monto: 0
+    rango_min: null
+    rango_max: null
+    unidad: persona
+    vigente_desde: 2026-07-01
+    vigente_hasta: null
+    condiciones: "Hueco de ejecutivo en plantilla. Ficha Bodas 2027 no cubre renta. No publicar."
+    estado: borrador
+    confianza: plantilla
+    concepto_id: renta-pp-hueco
+
+  # ── Paquete estándar EVT-J1-TC — tarifas 2027 ────────────────────────────
+  - sku: EVT-J1-TC
+    moneda: MXN
+    monto: 2980
+    total_evento: 298000
+    aforo_tramo: 100
+    unidad: persona
+    vigente_desde: 2027-01-01
+    vigente_hasta: 2027-12-31
+    condiciones: "Paquete estándar / Paquete Bodas 2027. 100 invitados. No incluye IVA ni tramitología."
+    estado: publicado
+    confianza: ficha-bodas-2027
+    concepto_id: paquete-pp
+    fuente: tres-cielos-paquete-bodas-2027
+
+  - sku: EVT-J1-TC
+    moneda: MXN
+    monto: 2550
+    total_evento: 382500
+    aforo_tramo: 150
+    unidad: persona
+    vigente_desde: 2027-01-01
+    vigente_hasta: 2027-12-31
+    condiciones: "Paquete estándar / Paquete Bodas 2027. 150 invitados. No incluye IVA ni tramitología."
+    estado: publicado
+    confianza: ficha-bodas-2027
+    concepto_id: paquete-pp
+    fuente: tres-cielos-paquete-bodas-2027
+
+  - sku: EVT-J1-TC
+    moneda: MXN
+    monto: 2200
+    total_evento: 440000
+    aforo_tramo: 200
+    unidad: persona
+    vigente_desde: 2027-01-01
+    vigente_hasta: 2027-12-31
+    condiciones: "Paquete estándar / Paquete Bodas 2027. 200 invitados. No incluye IVA ni tramitología."
+    estado: publicado
+    confianza: ficha-bodas-2027
+    concepto_id: paquete-pp
+    fuente: tres-cielos-paquete-bodas-2027
+
+  - sku: EVT-J1-TC
+    moneda: MXN
+    monto: 2000
+    total_evento: 500000
+    aforo_tramo: 250
+    unidad: persona
+    vigente_desde: 2027-01-01
+    vigente_hasta: 2027-12-31
+    condiciones: "Paquete estándar / Paquete Bodas 2027. 250 invitados. No incluye IVA ni tramitología."
+    estado: publicado
+    confianza: ficha-bodas-2027
+    concepto_id: paquete-pp
+    fuente: tres-cielos-paquete-bodas-2027
+
+  - sku: EVT-J1-TC
+    moneda: MXN
+    monto: 1800
+    total_evento: 540000
+    aforo_tramo: 300
+    unidad: persona
+    vigente_desde: 2027-01-01
+    vigente_hasta: 2027-12-31
+    condiciones: "Paquete estándar / Paquete Bodas 2027. 300 invitados. No incluye IVA ni tramitología."
+    estado: publicado
+    confianza: ficha-bodas-2027
+    concepto_id: paquete-pp
+    fuente: tres-cielos-paquete-bodas-2027
+
+  # ── Upgrade Premium EVT-J1-PREMIUM — tarifas 2027 ────────────────────────
+  - sku: EVT-J1-PREMIUM
+    moneda: MXN
+    monto: 3590
+    total_evento: 359000
+    aforo_tramo: 100
+    unidad: persona
+    vigente_desde: 2027-01-01
+    vigente_hasta: 2027-12-31
+    condiciones: "Upgrade Premium sobre paquete estándar. 100 invitados. No incluye IVA ni tramitología."
+    estado: publicado
+    confianza: ficha-bodas-2027
+    concepto_id: paquete-pp
+    fuente: tres-cielos-paquete-bodas-2027
+
+  - sku: EVT-J1-PREMIUM
+    moneda: MXN
+    monto: 3100
+    total_evento: 465000
+    aforo_tramo: 150
+    unidad: persona
+    vigente_desde: 2027-01-01
+    vigente_hasta: 2027-12-31
+    condiciones: "Upgrade Premium sobre paquete estándar. 150 invitados. No incluye IVA ni tramitología."
+    estado: publicado
+    confianza: ficha-bodas-2027
+    concepto_id: paquete-pp
+    fuente: tres-cielos-paquete-bodas-2027
+
+  - sku: EVT-J1-PREMIUM
+    moneda: MXN
+    monto: 2710
+    total_evento: 542000
+    aforo_tramo: 200
+    unidad: persona
+    vigente_desde: 2027-01-01
+    vigente_hasta: 2027-12-31
+    condiciones: "Upgrade Premium sobre paquete estándar. 200 invitados. No incluye IVA ni tramitología."
+    estado: publicado
+    confianza: ficha-bodas-2027
+    concepto_id: paquete-pp
+    fuente: tres-cielos-paquete-bodas-2027
+
+  - sku: EVT-J1-PREMIUM
+    moneda: MXN
+    monto: 2450
+    total_evento: 612500
+    aforo_tramo: 250
+    unidad: persona
+    vigente_desde: 2027-01-01
+    vigente_hasta: 2027-12-31
+    condiciones: "Upgrade Premium sobre paquete estándar. 250 invitados. No incluye IVA ni tramitología."
+    estado: publicado
+    confianza: ficha-bodas-2027
+    concepto_id: paquete-pp
+    fuente: tres-cielos-paquete-bodas-2027
+
+  - sku: EVT-J1-PREMIUM
+    moneda: MXN
+    monto: 2250
+    total_evento: 675000
+    aforo_tramo: 300
+    unidad: persona
+    vigente_desde: 2027-01-01
+    vigente_hasta: 2027-12-31
+    condiciones: "Upgrade Premium sobre paquete estándar. 300 invitados. No incluye IVA ni tramitología."
+    estado: publicado
+    confianza: ficha-bodas-2027
+    concepto_id: paquete-pp
+    fuente: tres-cielos-paquete-bodas-2027
+
+  # ── Presupuestos florales (capilla confirmada $3,000 en ficha 2027) ──────
+  - sku: EVT-J1-PREMIUM
+    moneda: MXN
+    monto: 3000
+    unidad: otro
+    vigente_desde: 2027-01-01
+    vigente_hasta: 2027-12-31
+    condiciones: Presupuesto incluido de flores de capilla
+    estado: publicado
+    confianza: ficha-bodas-2027
+    concepto_id: floral-capilla
+
+  - sku: EVT-J1-TC
+    moneda: MXN
+    monto: 3000
+    unidad: otro
+    vigente_desde: 2027-01-01
+    vigente_hasta: 2027-12-31
+    condiciones: Presupuesto incluido de flores de capilla
+    estado: publicado
+    confianza: ficha-bodas-2027
+    concepto_id: floral-capilla
+
+  - sku: EVT-J1-PREMIUM
+    moneda: MXN
+    monto: 650
+    unidad: otro
+    vigente_desde: 2026-07-01
+    vigente_hasta: 2027-12-31
+    condiciones: Presupuesto incluido centro de mesa, por cada uno (plantilla Anexo B; no reiterado en ficha 2027)
+    estado: publicado
+    confianza: plantilla-edicion
+    concepto_id: floral-centro-mesa
+
+  - sku: EVT-J1-TC
+    moneda: MXN
+    monto: 650
+    unidad: otro
+    vigente_desde: 2026-07-01
+    vigente_hasta: 2027-12-31
+    condiciones: Presupuesto incluido centro de mesa, por cada uno (plantilla Anexo B; no reiterado en ficha 2027)
+    estado: publicado
+    confianza: plantilla-edicion
+    concepto_id: floral-centro-mesa
+
+  - sku: EVT-J1-PREMIUM
+    moneda: MXN
+    monto: 1000
+    unidad: otro
+    vigente_desde: 2026-07-01
+    vigente_hasta: 2027-12-31
+    condiciones: Presupuesto incluido detalles en área lounge (plantilla Anexo B; no reiterado en ficha 2027)
+    estado: publicado
+    confianza: plantilla-edicion
+    concepto_id: floral-lounge
+
+  - sku: EVT-J1-TC
+    moneda: MXN
+    monto: 1000
+    unidad: otro
+    vigente_desde: 2026-07-01
+    vigente_hasta: 2027-12-31
+    condiciones: Presupuesto incluido detalles en área lounge (plantilla Anexo B; no reiterado en ficha 2027)
+    estado: publicado
+    confianza: plantilla-edicion
+    concepto_id: floral-lounge
+
+  - sku: EVT-J1-PREMIUM
+    moneda: MXN
+    monto: 1300
+    unidad: otro
+    vigente_desde: 2026-07-01
+    vigente_hasta: 2027-12-31
+    condiciones: Presupuesto incluido mesa de novios (plantilla Anexo B; no reiterado en ficha 2027)
+    estado: publicado
+    confianza: plantilla-edicion
+    concepto_id: floral-mesa-novios
+
+  - sku: EVT-J1-TC
+    moneda: MXN
+    monto: 1300
+    unidad: otro
+    vigente_desde: 2026-07-01
+    vigente_hasta: 2027-12-31
+    condiciones: Presupuesto incluido mesa de novios (plantilla Anexo B; no reiterado en ficha 2027)
+    estado: publicado
+    confianza: plantilla-edicion
+    concepto_id: floral-mesa-novios

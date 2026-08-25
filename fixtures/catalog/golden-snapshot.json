@@ -1,0 +1,125 @@
+{
+  "paquetes": [
+    {
+      "sku": "BODA-J1-ESENCIAL",
+      "nombre": "Boda Esencial Jardín 1",
+      "tipo_evento": "boda",
+      "sede": "jardin-1",
+      "aforo_min": 80,
+      "aforo_max": 150,
+      "descripcion_corta": "Paquete base para bodas en Jardín 1",
+      "estado": "publicado"
+    },
+    {
+      "sku": "BODA-J1-PREMIUM",
+      "nombre": "Boda Premium Jardín 1",
+      "tipo_evento": "boda",
+      "sede": "jardin-1",
+      "aforo_min": 100,
+      "aforo_max": 200,
+      "descripcion_corta": "Paquete premium con catering ampliado",
+      "estado": "publicado"
+    },
+    {
+      "sku": "XV-J1-CLASICO",
+      "nombre": "XV Clásico Jardín 1",
+      "tipo_evento": "xv",
+      "sede": "jardin-1",
+      "aforo_min": 60,
+      "aforo_max": 120,
+      "descripcion_corta": "Celebración de XV años",
+      "estado": "publicado"
+    }
+  ],
+  "precios": [
+    {
+      "sku": "BODA-J1-ESENCIAL",
+      "moneda": "MXN",
+      "monto": 85000,
+      "rango_min": null,
+      "rango_max": null,
+      "unidad": "evento",
+      "vigente_desde": "2026-01-01",
+      "vigente_hasta": "2026-12-31",
+      "condiciones": "Anticipo 30%"
+    },
+    {
+      "sku": "BODA-J1-PREMIUM",
+      "moneda": "MXN",
+      "monto": 145000,
+      "rango_min": null,
+      "rango_max": null,
+      "unidad": "evento",
+      "vigente_desde": "2026-01-01",
+      "vigente_hasta": "2026-12-31",
+      "condiciones": "Anticipo 40%"
+    },
+    {
+      "sku": "XV-J1-CLASICO",
+      "moneda": "MXN",
+      "monto": 62000,
+      "rango_min": null,
+      "rango_max": null,
+      "unidad": "evento",
+      "vigente_desde": "2026-01-01",
+      "vigente_hasta": "2026-12-31",
+      "condiciones": null
+    }
+  ],
+  "inclusiones": [
+    {
+      "sku": "BODA-J1-ESENCIAL",
+      "categoria": "catering",
+      "nombre": "Menú tres tiempos",
+      "cantidad": 1,
+      "unidad": "servicio",
+      "obligatoria": true
+    },
+    {
+      "sku": "BODA-J1-ESENCIAL",
+      "categoria": "mobiliario",
+      "nombre": "Mobiliario básico",
+      "cantidad": 1,
+      "unidad": "paquete",
+      "obligatoria": true
+    },
+    {
+      "sku": "BODA-J1-PREMIUM",
+      "categoria": "catering",
+      "nombre": "Menú premium + barra libre 4h",
+      "cantidad": 1,
+      "unidad": "servicio",
+      "obligatoria": true
+    },
+    {
+      "sku": "BODA-J1-PREMIUM",
+      "categoria": "audio",
+      "nombre": "Audio profesional",
+      "cantidad": 1,
+      "unidad": "set",
+      "obligatoria": true
+    },
+    {
+      "sku": "XV-J1-CLASICO",
+      "categoria": "decoracion",
+      "nombre": "Decoración temática",
+      "cantidad": 1,
+      "unidad": "set",
+      "obligatoria": false
+    }
+  ],
+  "reglas": [
+    {
+      "sku": "BODA-J1-ESENCIAL",
+      "tipo": "anticipo_minimo",
+      "parametros_json": "{\"anticipo_pct\":30}",
+      "mensaje_prospecto": "Se requiere anticipo del 30% para apartar la fecha."
+    },
+    {
+      "sku": "BODA-J1-PREMIUM",
+      "tipo": "solo_fin_semana",
+      "parametros_json": "{}",
+      "mensaje_prospecto": "El paquete Premium aplica solo fines de semana."
+    }
+  ]
+}

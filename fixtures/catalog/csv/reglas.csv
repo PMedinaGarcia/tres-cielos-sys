@@ -1,0 +1,3 @@
+sku,tipo,parametros_json,mensaje_prospecto
+BODA-J1-ESENCIAL,anticipo_minimo,"{""anticipo_pct"":30}",Se requiere anticipo del 30% para apartar la fecha.
+BODA-J1-PREMIUM,solo_fin_semana,{},El paquete Premium aplica solo fines de semana.

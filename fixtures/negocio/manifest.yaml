@@ -1,0 +1,133 @@
+# Índice publicable del corpus de negocio
+#
+# Un job de publicación recorre solo esta lista.
+# Filtro: estado=publicado y vigente_desde <= fecha_consulta <= vigente_hasta
+# (vigente_hasta null = abierta). fecha_consulta = fecha_evento del brief o now.
+#
+# Tarifas de paquete bodas: catalog precios 2027-01-01 .. 2027-12-31.
+# Capa catalogo (YAML): ediciones/2026-07/catalog/
+
+edicion_activa: "2026-07"
+tarifa_paquetes_bodas: "2027"
+sede_go_live: jardin-1
+
+evergreen:
+  - id: K01
+    path: evergreen/K01-faq-general.md
+    tipo: faq
+    estado: publicado
+  - id: K04
+    path: evergreen/K04-tipos-evento.md
+    tipo: tipos_evento
+    estado: publicado
+  - id: K06
+    path: evergreen/K06-politicas-reserva.md
+    tipo: politica
+    estado: publicado
+  - id: K08
+    path: evergreen/K08-limites-bot.md
+    tipo: faq
+    estado: publicado
+  - id: K09
+    path: evergreen/K09-safe-replies.md
+    tipo: safe_reply
+    estado: publicado
+  - id: K14
+    path: evergreen/K14-condiciones-comerciales.md
+    tipo: politica
+    estado: publicado
+
+ediciones:
+  "2026-07":
+    meta: ediciones/2026-07/_edicion.yaml
+    catalog_dir: ediciones/2026-07/catalog
+    documentos:
+      # K05 líneas
+      - id: K05-PREMIUM
+        path: ediciones/2026-07/lineas/premium.md
+        tipo: narrativa_paquete
+        estado: publicado
+      - id: K05-TC
+        path: ediciones/2026-07/lineas/tc.md
+        tipo: narrativa_paquete
+        estado: publicado
+      - id: K05-RENTA
+        path: ediciones/2026-07/lineas/renta.md
+        tipo: narrativa_paquete
+        estado: publicado
+      # K02 evidencia (no sustituye fixture de test)
+      - id: K02-EVIDENCIA-2026-07
+        path: ediciones/2026-07/sede/K02-evidencia-locacion.md
+        tipo: ficha_sede
+        estado: borrador
+      # K12
+      - id: K12-HOSPEDAJE-VIE-SAB
+        path: ediciones/2026-07/cortesias/hospedaje-viernes-sabado.md
+        tipo: promocion
+        estado: publicado
+      - id: K12-HOSPEDAJE-TERCERA
+        path: ediciones/2026-07/cortesias/hospedaje-tercera-noche.md
+        tipo: promocion
+        estado: publicado
+      # K11 módulos
+      - id: K11-PROGRAMA-3-DIAS
+        path: ediciones/2026-07/modulos/programa-3-dias.md
+      - id: K11-LOCACION-JARDIN
+        path: ediciones/2026-07/modulos/locacion-jardin.md
+      - id: K11-SUITE-NUPCIAL
+        path: ediciones/2026-07/modulos/suite-nupcial.md
+      - id: K11-VALET
+        path: ediciones/2026-07/modulos/valet.md
+      - id: K11-PLANTA-LUZ
+        path: ediciones/2026-07/modulos/planta-luz.md
+      - id: K11-PERSONAL-LIMPIEZA
+        path: ediciones/2026-07/modulos/personal-limpieza.md
+      - id: K11-CEREMONIA-CAPILLA
+        path: ediciones/2026-07/modulos/ceremonia-capilla.md
+      - id: K11-COCTEL
+        path: ediciones/2026-07/modulos/coctel.md
+      - id: K11-MESA-NOVIOS
+        path: ediciones/2026-07/modulos/mesa-novios.md
+      - id: K11-MONTAJE-MESAS
+        path: ediciones/2026-07/modulos/montaje-mesas.md
+      - id: K11-VAJILLA
+        path: ediciones/2026-07/modulos/vajilla.md
+      - id: K11-TABLE-STYLING
+        path: ediciones/2026-07/modulos/table-styling.md
+      - id: K11-DECORACION-FLORAL
+        path: ediciones/2026-07/modulos/decoracion-floral.md
+      - id: K11-IMPRESOS
+        path: ediciones/2026-07/modulos/impresos.md
+      - id: K11-PRUEBA-MENU
+        path: ediciones/2026-07/modulos/prueba-menu.md
+      - id: K11-BANQUETE
+        path: ediciones/2026-07/modulos/banquete.md
+      - id: K11-CAFE
+        path: ediciones/2026-07/modulos/cafe.md
+      - id: K11-PRE-TORNA
+        path: ediciones/2026-07/modulos/pre-torna.md
+      - id: K11-TORNABODA
+        path: ediciones/2026-07/modulos/tornaboda.md
+      - id: K11-SERVICIO-STAFF
+        path: ediciones/2026-07/modulos/servicio-staff.md
+      - id: K11-MEZCLADORES
+        path: ediciones/2026-07/modulos/mezcladores.md
+      - id: K11-AUDIO-DJ
+        path: ediciones/2026-07/modulos/audio-dj.md
+      - id: K11-ILUMINACION
+        path: ediciones/2026-07/modulos/iluminacion.md
+      - id: K11-PISTA-TEMPLETES
+        path: ediciones/2026-07/modulos/pista-templetes.md
+      - id: K11-BARRA-LIBRE
+        path: ediciones/2026-07/modulos/barra-libre.md
+      - id: K11-PLAFON-OLAS
+        path: ediciones/2026-07/modulos/plafon-olas.md
+      - id: K11-COORDINACION
+        path: ediciones/2026-07/modulos/coordinacion.md
+      - id: K13-UPGRADES
+        path: ediciones/2026-07/modulos/upgrades.md
+
+excluido_del_indice:
+  - golden-snapshot.json de fixtures/catalog (sandbox de tests)
+  - knowledge-fixtures.ts (K01/K02/K08/K09 sintéticos de Fase D)
+  - Excel originales de cotización

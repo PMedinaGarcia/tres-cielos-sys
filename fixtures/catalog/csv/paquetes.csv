@@ -1,0 +1,4 @@
+sku,nombre,tipo_evento,sede,aforo_min,aforo_max,descripcion_corta,estado
+BODA-J1-ESENCIAL,Boda Esencial Jardín 1,boda,jardin-1,80,150,Paquete base para bodas en Jardín 1,publicado
+BODA-J1-PREMIUM,Boda Premium Jardín 1,boda,jardin-1,100,200,Paquete premium con catering ampliado,publicado
+XV-J1-CLASICO,XV Clásico Jardín 1,xv,jardin-1,60,120,Celebración de XV años,publicado

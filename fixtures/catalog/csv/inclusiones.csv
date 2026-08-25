@@ -1,0 +1,6 @@
+sku,categoria,nombre,cantidad,unidad,obligatoria
+BODA-J1-ESENCIAL,catering,Menú tres tiempos,1,servicio,true
+BODA-J1-ESENCIAL,mobiliario,Mobiliario básico,1,paquete,true
+BODA-J1-PREMIUM,catering,Menú premium + barra libre 4h,1,servicio,true
+BODA-J1-PREMIUM,audio,Audio profesional,1,set,true
+XV-J1-CLASICO,decoracion,Decoración temática,1,set,false

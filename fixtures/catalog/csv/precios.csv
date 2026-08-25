@@ -1,0 +1,4 @@
+sku,moneda,monto,rango_min,rango_max,unidad,vigente_desde,vigente_hasta,condiciones
+BODA-J1-ESENCIAL,MXN,85000,,,evento,2026-01-01,2026-12-31,Anticipo 30%
+BODA-J1-PREMIUM,MXN,145000,,,evento,2026-01-01,2026-12-31,Anticipo 40%
+XV-J1-CLASICO,MXN,62000,,,evento,2026-01-01,2026-12-31,

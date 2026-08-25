@@ -1,0 +1,51 @@
+[
+  {
+    "id": "Q1",
+    "intent": "Precio paquete esencial boda",
+    "tool": "obtener_precio_paquete",
+    "input": { "sku": "BODA-J1-ESENCIAL" },
+    "expect": { "sku": "BODA-J1-ESENCIAL", "monto": 85000, "moneda": "MXN" }
+  },
+  {
+    "id": "Q2",
+    "intent": "Inclusiones SKU premium",
+    "tool": "listar_inclusiones",
+    "input": { "sku": "BODA-J1-PREMIUM" },
+    "expect": { "sku": "BODA-J1-PREMIUM", "minCount": 2 }
+  },
+  {
+    "id": "Q3",
+    "intent": "Aforo fuera de rango",
+    "tool": "buscar_paquetes",
+    "input": { "tipoEvento": "boda", "aforo": 20 },
+    "expect": { "empty": true }
+  },
+  {
+    "id": "Q4",
+    "intent": "SKU inexistente",
+    "tool": "obtener_precio_paquete",
+    "input": { "sku": "NO-EXISTE" },
+    "expect": { "error": "sin_paquete" }
+  },
+  {
+    "id": "Q5",
+    "intent": "Comparar 2 SKUs",
+    "tool": "comparar_paquetes",
+    "input": { "skus": ["BODA-J1-ESENCIAL", "BODA-J1-PREMIUM"] },
+    "expect": { "count": 2, "montos": [85000, 145000] }
+  },
+  {
+    "id": "Q6",
+    "intent": "Buscar bodas para 120 personas",
+    "tool": "buscar_paquetes",
+    "input": { "tipoEvento": "boda", "aforo": 120 },
+    "expect": { "minCount": 1, "includesSku": "BODA-J1-ESENCIAL" }
+  },
+  {
+    "id": "Q7",
+    "intent": "Reglas paquete esencial",
+    "tool": "evaluar_reglas_paquete",
+    "input": { "sku": "BODA-J1-ESENCIAL" },
+    "expect": { "minCount": 1, "tipo": "anticipo_minimo" }
+  }
+]
