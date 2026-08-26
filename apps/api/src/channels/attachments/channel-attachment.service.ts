@@ -1,4 +1,5 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, Optional } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { ChannelAttachmentJobService } from "../../knowledge-ingestion/jobs/channel-attachment-job.service";
 import type { InboundAdjuntoRef } from "../types/inbound-message";
 
@@ -10,7 +11,10 @@ import type { InboundAdjuntoRef } from "../types/inbound-message";
 export class ChannelAttachmentService {
   private readonly logger = new Logger(ChannelAttachmentService.name);
 
-  constructor(private readonly jobs: ChannelAttachmentJobService) {}
+  constructor(
+    private readonly jobs: ChannelAttachmentJobService,
+    @Optional() private readonly config?: ConfigService,
+  ) {}
 
   async ingestInboundAttachments(input: {
     mensajeId: string;
@@ -36,16 +40,20 @@ export class ChannelAttachmentService {
     }
   }
 
+  private shouldFetchRemote(): boolean {
+    if (this.config?.get<boolean>("storage.fetchChannelMedia")) return true;
+    return process.env.FETCH_CHANNEL_MEDIA === "1";
+  }
+
   private async resolveBuffer(a: InboundAdjuntoRef): Promise<Buffer> {
     if (a.urlExterna?.startsWith("fixture:")) {
       return Buffer.from(a.urlExterna.slice("fixture:".length), "utf8");
     }
-    if (a.urlExterna && process.env.FETCH_CHANNEL_MEDIA === "1") {
+    if (a.urlExterna && this.shouldFetchRemote()) {
       const res = await fetch(a.urlExterna);
       if (!res.ok) throw new Error(`FETCH_MEDIA_${res.status}`);
       return Buffer.from(await res.arrayBuffer());
     }
-    // CI / sin fetch: placeholder text bytes (no binario en Postgres)
     return Buffer.from(
       a.nombreOriginal ?? a.mime ?? "adjunto-canal",
       "utf8",

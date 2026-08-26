@@ -89,11 +89,27 @@ export class MessageNormalizerService {
         });
       }
     }
+    const buttonPayload = (
+      body.ButtonPayload ??
+      body.buttonPayload ??
+      body.ListId ??
+      body.listId ??
+      ""
+    ).trim();
+    const buttonText = (
+      body.ButtonText ??
+      body.buttonText ??
+      body.ListTitle ??
+      body.listTitle ??
+      ""
+    ).trim();
+    const bodyText = (body.Body ?? body.body ?? "").trim();
+
     return {
       canal: "whatsapp",
       externalThreadId: `wa:${waId}`,
       externalMessageId: body.MessageSid ?? body.SmsMessageSid ?? body.SmsSid ?? "",
-      texto: body.Body ?? body.body ?? "",
+      texto: bodyText || buttonText,
       recibidoEn: new Date().toISOString(),
       perfilCanal: {
         nombre: body.ProfileName ?? null,
@@ -101,7 +117,11 @@ export class MessageNormalizerService {
         waId,
       },
       adjuntos,
-      meta: { twilioAccountSid: body.AccountSid },
+      buttonPayload: buttonPayload || undefined,
+      meta: {
+        twilioAccountSid: body.AccountSid,
+        ...(buttonPayload ? { interactiveType: body.ListId ? "list" : "button" } : {}),
+      },
     };
   }
 }

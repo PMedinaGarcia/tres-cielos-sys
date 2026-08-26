@@ -5,27 +5,33 @@ import {
   NotFoundException,
   Param,
   Post,
+  UseGuards,
 } from "@nestjs/common";
 import { ConversationStateStore } from "./conversation-state.store";
 import { AuditService } from "../audit/audit.service";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import type { PanelUser } from "../auth/auth.types";
+import { ExpedientePersistService } from "../crm/expediente-persist.service";
 
 /**
- * F6 — Tomar control panel stub: estado_bot=humano; bot silencio (D-BOT-6).
- * JWT Ownership real vive en auth/ (Fase aparte); aquí stub sin AuthGuard
- * para smoke interno. Proteger en prod con AuthGuard + OwnershipGuard.
+ * F6 — Tomar control panel: estado_bot=humano; bot silencio (D-BOT-6).
  */
 @Controller("conversaciones")
+@UseGuards(JwtAuthGuard)
 export class ConversationPanelController {
   constructor(
     private readonly conversations: ConversationStateStore,
     private readonly audit: AuditService,
+    private readonly expediente: ExpedientePersistService,
   ) {}
 
   @Post(":id/tomar-control")
   @HttpCode(200)
   async tomarControl(
     @Param("id") id: string,
-    @Body() body: { motivo?: string; usuarioId?: string },
+    @Body() body: { motivo?: string },
+    @CurrentUser() user: PanelUser,
   ) {
     const conv = this.conversations.getById(id);
     if (!conv) throw new NotFoundException("CONVERSACION_NOT_FOUND");
@@ -38,9 +44,14 @@ export class ConversationPanelController {
       payload: {
         estadoBotAnterior: anterior,
         estadoBotNuevo: "humano",
-        usuarioId: body.usuarioId ?? "stub-asesor",
+        usuarioId: user.userId,
         motivo: body.motivo ?? null,
       },
+    });
+    await this.expediente.persistTomaControl({
+      conversacionId: id,
+      usuarioId: user.userId,
+      motivo: body.motivo ?? null,
     });
     return {
       id,
@@ -52,7 +63,6 @@ export class ConversationPanelController {
   @Post(":id/devolver-a-bot")
   @HttpCode(409)
   devolverABot() {
-    // D-BOT-7 default v1 deshabilitado
     return {
       error: {
         code: "DEVOLUCION_BOT_DESHABILITADA",

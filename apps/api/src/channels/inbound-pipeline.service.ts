@@ -10,6 +10,8 @@ import { CrmCalificacionService } from "../crm/calificacion.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { AssignmentService } from "../assignment/assignment.service";
 import type { InboundMessage, TurnResult } from "./types/inbound-message";
+import { attachWaContent } from "./wa-content.composer";
+import { resolveInteractiveInbound } from "./wa-templates.catalog";
 
 /**
  * Pipeline post-ACK: idempotencia → cupo → estado_bot → adjuntos async → turn → outbound.
@@ -33,6 +35,16 @@ export class InboundPipelineService {
   ) {}
 
   async process(message: InboundMessage): Promise<TurnResult | { duplicate: true }> {
+    const interactive = resolveInteractiveInbound({
+      texto: message.texto,
+      buttonPayload: message.buttonPayload,
+    });
+    message = {
+      ...message,
+      texto: interactive.texto,
+      buttonPayload: interactive.buttonPayload,
+    };
+
     if (!this.idempotency.tryClaim(message.canal, message.externalMessageId)) {
       this.logger.debug(`duplicate ${message.externalMessageId}`);
       return { duplicate: true };
@@ -46,14 +58,14 @@ export class InboundPipelineService {
     // F3 soft/hard cupo
     const cupo = this.quota.consumeMessaging(conv.sedeId ?? "default");
     if (cupo.hardBlocked) {
-      const safe: TurnResult = {
+      const safe = attachWaContent({
         conversacionId: conv.id,
         textoRespuesta:
           "En este momento no podemos continuar por límite de uso. Un asesor te contactará.",
-        ruta: "handoff",
-        estadoBot: "escalado",
+        ruta: "handoff" as const,
+        estadoBot: "escalado" as const,
         motivoHandoff: "cupo_ia",
-      };
+      });
       conv.estadoBot = "escalado";
       await this.notifications.notifyEscalacion({
         conversacionId: conv.id,
@@ -66,7 +78,7 @@ export class InboundPipelineService {
         conversacionId: conv.id,
         payload: { motivoHandoff: "cupo_ia", cupo },
       });
-      await this.sendOutbound(message, safe.textoRespuesta);
+      await this.sendOutbound(message, safe);
       return safe;
     }
 
@@ -101,14 +113,14 @@ export class InboundPipelineService {
     // Soft cupo IA pre-turn
     const ia = this.quota.checkAi(conv.sedeId ?? "default");
     if (ia.hardBlocked) {
-      const safe: TurnResult = {
+      const safe = attachWaContent({
         conversacionId: conv.id,
         textoRespuesta:
           "Estamos con alta demanda de asistencia automática. Un asesor te atenderá pronto.",
-        ruta: "handoff",
-        estadoBot: "escalado",
+        ruta: "handoff" as const,
+        estadoBot: "escalado" as const,
         motivoHandoff: "cupo_ia",
-      };
+      });
       conv.estadoBot = "escalado";
       await this.finishHandoff(message, conv.id, safe, "cupo_ia");
       return safe;
@@ -116,17 +128,17 @@ export class InboundPipelineService {
 
     let result: TurnResult;
     try {
-      result = await this.turnHandler.handleTurn(message);
+      result = attachWaContent(await this.turnHandler.handleTurn(message));
     } catch (err) {
       this.logger.error(`turn failed: ${String(err)}`);
-      result = {
+      result = attachWaContent({
         conversacionId: conv.id,
         textoRespuesta:
           "Tuvimos un problema técnico. Un asesor te contactará.",
-        ruta: "handoff",
-        estadoBot: "escalado",
+        ruta: "handoff" as const,
+        estadoBot: "escalado" as const,
         motivoHandoff: "proveedor_ia",
-      };
+      });
     }
 
     result.conversacionId = result.conversacionId ?? conv.id;
@@ -164,7 +176,7 @@ export class InboundPipelineService {
     }
 
     if (!result.silencio && result.textoRespuesta) {
-      await this.sendOutbound(message, result.textoRespuesta);
+      await this.sendOutbound(message, result);
       await this.audit.record({
         tipo: "bot_mensaje_saliente",
         actor: "bot",
@@ -206,19 +218,21 @@ export class InboundPipelineService {
       payload: { motivoHandoff: motivo, asesorId: assigned.asesorId },
     });
     if (result.textoRespuesta) {
-      await this.sendOutbound(message, result.textoRespuesta);
+      await this.sendOutbound(message, result);
     }
   }
 
   private async sendOutbound(
     message: InboundMessage,
-    texto: string,
+    result: TurnResult,
   ): Promise<void> {
     if (message.meta?.sandbox === true) return;
     await this.outbound.send({
       canal: message.canal,
       externalThreadId: message.externalThreadId,
-      texto,
+      texto: result.textoRespuesta,
+      waContent: result.waContent ?? undefined,
+      plantillaUtilityId: result.waContent?.templateId,
       inReplyToExternalMessageId: message.externalMessageId,
     });
   }

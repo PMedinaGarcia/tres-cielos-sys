@@ -11,6 +11,10 @@ export class SandboxInboundDto {
 
   @IsOptional()
   @IsString()
+  buttonPayload?: string;
+
+  @IsOptional()
+  @IsString()
   canal?: string;
 
   @IsOptional()

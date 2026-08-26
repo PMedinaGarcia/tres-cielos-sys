@@ -34,6 +34,8 @@ export interface InboundMessage {
   recibidoEn: string;
   perfilCanal?: PerfilCanal;
   adjuntos?: InboundAdjuntoRef[];
+  /** ButtonPayload / ListId de Twilio Content (sandbox o webhook). */
+  buttonPayload?: string;
   /** Metadatos crudos para outbound */
   meta?: Record<string, unknown>;
 }
@@ -44,6 +46,7 @@ export interface OutboundMessage {
   texto: string;
   plantillaUtilityId?: string;
   inReplyToExternalMessageId?: string;
+  waContent?: import("@tres-cielos/shared").WaContent;
 }
 
 export interface TurnResult {
@@ -59,4 +62,5 @@ export interface TurnResult {
   registroRecuperacionId?: string | null;
   registroConsultaCatalogoId?: string | null;
   pasoGuion?: string;
+  waContent?: import("@tres-cielos/shared").WaContent | null;
 }

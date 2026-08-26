@@ -12,17 +12,20 @@ import { MetaWebhookController } from "./meta.webhook.controller";
 import { TwilioWebhookController } from "./twilio.webhook.controller";
 import { ConversationPanelController } from "./conversation-panel.controller";
 import { ChannelSandboxController } from "./channel-sandbox.controller";
+import { GuionAssetsController } from "./guion-assets.controller";
 import { MessageNormalizerService } from "./message-normalizer.service";
 import { OutboundService } from "./outbound.service";
 import { IdempotencyService } from "./idempotency.service";
 import { ConversationStateStore } from "./conversation-state.store";
 import { ChannelAttachmentService } from "./attachments/channel-attachment.service";
 import { InboundPipelineService } from "./inbound-pipeline.service";
+import { GuionAssetsService } from "./guion-assets.service";
 import { MetaSignatureGuard } from "./guards/meta-signature.guard";
 import { TwilioSignatureGuard } from "./guards/twilio-signature.guard";
 import { TURN_HANDLER } from "./turn-handler";
 import { OrchestratorTurnAdapter } from "./orchestrator-turn.adapter";
 import { TurnSandboxGuard } from "../conversation/orchestrator/turn.controller";
+import { AuthModule } from "../auth/auth.module";
 
 /**
  * ChannelsModule — Fase F.
@@ -40,12 +43,14 @@ import { TurnSandboxGuard } from "../conversation/orchestrator/turn.controller";
     NotificationsModule,
     ConversationOrchestratorModule,
     ReasoningModule,
+    AuthModule,
   ],
   controllers: [
     MetaWebhookController,
     TwilioWebhookController,
     ConversationPanelController,
     ChannelSandboxController,
+    GuionAssetsController,
   ],
   providers: [
     MessageNormalizerService,
@@ -54,6 +59,7 @@ import { TurnSandboxGuard } from "../conversation/orchestrator/turn.controller";
     ConversationStateStore,
     ChannelAttachmentService,
     InboundPipelineService,
+    GuionAssetsService,
     MetaSignatureGuard,
     TwilioSignatureGuard,
     TurnSandboxGuard,

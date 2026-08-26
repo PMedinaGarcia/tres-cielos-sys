@@ -29,6 +29,7 @@ export interface OrchestratorLike {
     texto: string;
     recibidoEn: string;
     perfilCanal?: InboundMessage["perfilCanal"];
+    buttonPayload?: string;
     adjuntos?: Array<{
       mimeType: string;
       sizeBytes?: number;
@@ -46,6 +47,7 @@ export interface OrchestratorLike {
     registroRecuperacionId?: string | null;
     registroConsultaCatalogoId?: string | null;
     pasoGuion?: string;
+    waContent?: TurnResult["waContent"];
   }>;
 }
 
@@ -62,6 +64,7 @@ export class OrchestratorTurnAdapter implements TurnHandler {
       texto: message.texto,
       recibidoEn: message.recibidoEn,
       perfilCanal: message.perfilCanal,
+      buttonPayload: message.buttonPayload,
       adjuntos: message.adjuntos?.map((a) => ({
         mimeType: a.mime,
         sizeBytes: a.bytes,
@@ -81,6 +84,7 @@ export class OrchestratorTurnAdapter implements TurnHandler {
       registroRecuperacionId: res.registroRecuperacionId ?? null,
       registroConsultaCatalogoId: res.registroConsultaCatalogoId ?? null,
       pasoGuion: res.pasoGuion,
+      waContent: res.waContent ?? null,
     };
   }
 }

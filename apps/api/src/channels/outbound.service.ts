@@ -33,7 +33,21 @@ export class OutboundService {
       return { ok: true, skipped: true, reason: "TWILIO_ENV_MISSING" };
     }
     // Prod: POST https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json
-    this.logger.log(`Twilio WA → ${message.externalThreadId}`);
+    // ContentSid + ContentVariables cuando waContent.contentSid esté mapeado.
+    const wa = message.waContent;
+    const mediaUrl = wa?.document?.url;
+    this.logger.log(
+      `Twilio WA → ${message.externalThreadId}` +
+        (wa
+          ? ` template=${wa.templateId} kind=${wa.kind}` +
+            (wa.buttons?.length ? ` buttons=${wa.buttons.map((b) => b.id).join(",")}` : "") +
+            (wa.list ? ` list=${wa.list.items.length}` : "") +
+            (wa.contentSid ? ` sid=${wa.contentSid}` : "") +
+            (mediaUrl
+              ? ` MediaUrl=${mediaUrl} filename=${wa.document?.filename ?? ""}`
+              : "")
+          : ""),
+    );
     return { ok: true, providerMessageId: `stub-twilio-${Date.now()}` };
   }
 

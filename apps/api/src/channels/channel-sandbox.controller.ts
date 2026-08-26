@@ -15,6 +15,7 @@ import { ReasoningTraceService } from "../conversation/reasoning/reasoning-trace
 import { InboundPipelineService } from "./inbound-pipeline.service";
 import { SandboxInboundDto } from "./dto/sandbox-inbound.dto";
 import type { Canal, InboundMessage } from "./types/inbound-message";
+import { resolveInteractiveInbound } from "./wa-templates.catalog";
 
 /**
  * Chat sandbox HTTP — mismo InboundPipelineService que Twilio/Meta.
@@ -32,14 +33,19 @@ export class ChannelSandboxController {
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   async inbound(@Body() body: SandboxInboundDto) {
     const canal = normalizeCanal(body.canal);
+    const interactive = resolveInteractiveInbound({
+      texto: body.texto,
+      buttonPayload: body.buttonPayload,
+    });
     const message: InboundMessage = {
       canal,
       externalThreadId:
         body.externalThreadId ?? body.threadId ?? "sandbox-web",
       externalMessageId: body.externalMessageId ?? randomUUID(),
-      texto: body.texto,
+      texto: interactive.texto,
       recibidoEn: body.recibidoEn ?? new Date().toISOString(),
       perfilCanal: body.perfilCanal,
+      buttonPayload: interactive.buttonPayload,
       meta: { sandbox: true, ...(body.meta ?? {}) },
     };
 
