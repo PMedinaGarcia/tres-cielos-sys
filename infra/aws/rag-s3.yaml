@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Bucket S3 privado para el pipeline RAG de Tres Cielos
+  (conocimiento, adjuntos de canal, PDF del guion, importaciones de catálogo).
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+  BucketName:
+    Type: String
+    Description: Nombre global único del bucket (p. ej. tres-cielos-dev).
+
+Resources:
+  RagBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: app
+          Value: tres-cielos
+        - Key: env
+          Value: !Ref EnvironmentName
+
+  RagUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Sub tres-cielos-rag-${EnvironmentName}
+      Tags:
+        - Key: app
+          Value: tres-cielos
+
+  RagUserPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub tres-cielos-rag-${EnvironmentName}
+      Users:
+        - !Ref RagUser
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: ListBucketPrefixes
+            Effect: Allow
+            Action:
+              - s3:ListBucket
+              - s3:GetBucketLocation
+              - s3:HeadBucket
+            Resource: !GetAtt RagBucket.Arn
+            Condition:
+              StringLike:
+                s3:prefix:
+                  - conocimiento/*
+                  - adjunto_canal/*
+                  - guion/*
+                  - catalogo/*
+          - Sid: Objects
+            Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:GetObject
+              - s3:DeleteObject
+              - s3:AbortMultipartUpload
+            Resource:
+              - !Sub ${RagBucket.Arn}/conocimiento/*
+              - !Sub ${RagBucket.Arn}/adjunto_canal/*
+              - !Sub ${RagBucket.Arn}/guion/*
+              - !Sub ${RagBucket.Arn}/catalogo/*
+
+  RagAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref RagUser
+
+Outputs:
+  BucketName:
+    Value: !Ref RagBucket
+  BucketArn:
+    Value: !GetAtt RagBucket.Arn
+  AccessKeyId:
+    Value: !Ref RagAccessKey
+  SecretAccessKey:
+    Value: !GetAtt RagAccessKey.SecretAccessKey

@@ -1,0 +1,213 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Entorno compute exclusivo de Tres Cielos (staging), aislado de produccion
+  y de otros proyectos de la cuenta. VPC propia + 1 instancia EC2.
+
+Parameters:
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Key pair existente para SSH.
+  AmiId:
+    Type: AWS::EC2::Image::Id
+    Description: Amazon Linux 2023 x86_64.
+  InstanceType:
+    Type: String
+    Default: t3.medium
+    AllowedValues: [t3.small, t3.medium, t3.large]
+  SshCidr:
+    Type: String
+    Description: CIDR permitido para SSH (tu IP /32).
+    Default: 0.0.0.0/0
+    AllowedPattern: '^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
+
+Resources:
+  StagingVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.42.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: tres-cielos-staging
+        - Key: app
+          Value: tres-cielos
+        - Key: env
+          Value: staging
+        - Key: Project
+          Value: tres-cielos
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: tres-cielos-staging-igw
+        - Key: app
+          Value: tres-cielos
+        - Key: env
+          Value: staging
+
+  VpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref StagingVpc
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref StagingVpc
+      CidrBlock: 10.42.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: tres-cielos-staging-public-a
+        - Key: app
+          Value: tres-cielos
+        - Key: env
+          Value: staging
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref StagingVpc
+      Tags:
+        - Key: Name
+          Value: tres-cielos-staging-public-rt
+        - Key: app
+          Value: tres-cielos
+        - Key: env
+          Value: staging
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: tres-cielos-staging-sg
+      GroupDescription: Tres Cielos staging - SSH restricted, HTTP/HTTPS for panel and webhooks
+      VpcId: !Ref StagingVpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref SshCidr
+          Description: SSH desde IP del operador
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: HTTP
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS / webhooks
+        - IpProtocol: tcp
+          FromPort: 3010
+          ToPort: 3011
+          CidrIp: !Ref SshCidr
+          Description: Panel Next.js 3010 y API Nest 3011
+      Tags:
+        - Key: Name
+          Value: tres-cielos-staging-sg
+        - Key: app
+          Value: tres-cielos
+        - Key: env
+          Value: staging
+
+  StagingInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref AmiId
+      KeyName: !Ref KeyName
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 30
+            VolumeType: gp3
+            Encrypted: true
+            DeleteOnTermination: true
+      MetadataOptions:
+        HttpTokens: required
+        HttpPutResponseHopLimit: 2
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -euxo pipefail
+          hostnamectl set-hostname tres-cielos-staging
+          dnf update -y
+          dnf install -y docker git
+          systemctl enable --now docker
+          usermod -aG docker ec2-user
+          mkdir -p /usr/local/lib/docker/cli-plugins
+          curl -fsSL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" \
+            -o /usr/local/lib/docker/cli-plugins/docker-compose
+          chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+          cat >/etc/motd <<'EOF'
+          Tres Cielos SYS - staging (NOT production)
+          Isolated project VPC 10.42.0.0/16
+          EOF
+      Tags:
+        - Key: Name
+          Value: tres-cielos-staging
+        - Key: app
+          Value: tres-cielos
+        - Key: env
+          Value: staging
+        - Key: Project
+          Value: tres-cielos
+        - Key: ManagedBy
+          Value: cloudformation
+
+  ElasticIp:
+    Type: AWS::EC2::EIP
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: tres-cielos-staging
+        - Key: app
+          Value: tres-cielos
+        - Key: env
+          Value: staging
+
+  ElasticIpAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt ElasticIp.AllocationId
+      InstanceId: !Ref StagingInstance
+
+Outputs:
+  InstanceId:
+    Description: ID de la instancia staging
+    Value: !Ref StagingInstance
+  PublicIp:
+    Description: IP elastica estable (unica de este proyecto)
+    Value: !Ref ElasticIp
+  VpcId:
+    Description: VPC exclusiva Tres Cielos staging
+    Value: !Ref StagingVpc
+  SecurityGroupId:
+    Value: !Ref InstanceSecurityGroup
+  SshCommand:
+    Value: !Sub "ssh -i ~/.ssh/tres-cielos-staging.pem ec2-user@${ElasticIp}"
