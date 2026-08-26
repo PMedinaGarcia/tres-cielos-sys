@@ -1,4 +1,5 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
 
 export interface AsesorStub {
   id: string;
@@ -13,8 +14,15 @@ export interface AssignmentResult {
   sedeId: string;
 }
 
+export interface PersistibleAssignment {
+  asesorId: string;
+  regla: "sede_disponibilidad_round_robin";
+}
+
 /**
  * F5 — sede → disponibilidad → round-robin (mínimo viable).
+ * `assign()` alimenta el pipeline in-memory (stubs).
+ * `pickAsesorPersistible()` usa Usuario real para FKs de Cliente/Oportunidad.
  */
 @Injectable()
 export class AssignmentService {
@@ -41,6 +49,8 @@ export class AssignmentService {
 
   private readonly rrIndex = new Map<string, number>();
 
+  constructor(@Optional() private readonly prisma?: PrismaService) {}
+
   assign(input: {
     sedeId: string;
     oportunidadId?: string;
@@ -50,13 +60,18 @@ export class AssignmentService {
       (a) => a.sedeId === input.sedeId && a.disponible,
     );
     const candidates =
-      pool.length > 0
-        ? pool
-        : this.asesores.filter((a) => a.disponible);
+      pool.length > 0 ? pool : this.asesores.filter((a) => a.disponible);
     const fallback =
       candidates.length > 0
         ? candidates
-        : [{ id: "asesor-fallback", sedeId: input.sedeId, disponible: true, nombre: "Cola" }];
+        : [
+            {
+              id: "asesor-fallback",
+              sedeId: input.sedeId,
+              disponible: true,
+              nombre: "Cola",
+            },
+          ];
 
     const idx = this.rrIndex.get(input.sedeId) ?? 0;
     const pick = fallback[idx % fallback.length]!;
@@ -66,6 +81,39 @@ export class AssignmentService {
       asesorId: pick.id,
       regla: "sede_disponibilidad_round_robin",
       sedeId: input.sedeId,
+    };
+  }
+
+  async pickAsesorPersistible(input: {
+    sedeId?: string | null;
+  }): Promise<PersistibleAssignment | null> {
+    if (!this.prisma || !process.env.DATABASE_URL) return null;
+    const sedeId = input.sedeId ?? undefined;
+    let asesores = await this.prisma.usuario.findMany({
+      where: {
+        rol: "asesor",
+        activo: true,
+        disponible: true,
+        ...(sedeId ? { sedes: { some: { sedeId } } } : {}),
+      },
+      orderBy: { id: "asc" },
+      select: { id: true },
+    });
+    if (asesores.length === 0 && sedeId) {
+      asesores = await this.prisma.usuario.findMany({
+        where: { rol: "asesor", activo: true, disponible: true },
+        orderBy: { id: "asc" },
+        select: { id: true },
+      });
+    }
+    if (asesores.length === 0) return null;
+    const key = `db:${sedeId ?? "all"}`;
+    const idx = this.rrIndex.get(key) ?? 0;
+    const pick = asesores[idx % asesores.length]!;
+    this.rrIndex.set(key, idx + 1);
+    return {
+      asesorId: pick.id,
+      regla: "sede_disponibilidad_round_robin",
     };
   }
 

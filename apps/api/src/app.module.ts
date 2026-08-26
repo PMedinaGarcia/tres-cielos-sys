@@ -11,6 +11,10 @@ import { ScriptModule } from "./conversation/script/script.module";
 import { HandoffModule } from "./conversation/handoff/handoff.module";
 import { ConversationOrchestratorModule } from "./conversation/orchestrator/conversation-orchestrator.module";
 import { ChannelsModule } from "./channels/channels.module";
+import { AuthModule } from "./auth/auth.module";
+import { UsersModule } from "./users/users.module";
+import { CrmModule } from "./crm/crm.module";
+import { KnowledgeIngestionModule } from "./knowledge-ingestion/knowledge-ingestion.module";
 
 @Module({
   imports: [
@@ -30,6 +34,10 @@ import { ChannelsModule } from "./channels/channels.module";
     ConversationOrchestratorModule,
     RagPipelineModule,
     ChannelsModule,
+    AuthModule,
+    UsersModule,
+    CrmModule,
+    KnowledgeIngestionModule,
   ],
 })
 export class AppModule {}

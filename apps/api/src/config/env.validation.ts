@@ -15,6 +15,17 @@ export const envSchema = z
     CORS_ORIGINS: z.string().optional(),
     QUEUE_DRIVER: z.enum(["inline", "bullmq"]).default("inline"),
 
+    JWT_SECRET: z
+      .string()
+      .min(32)
+      .default("dev-only-change-me-not-for-production"),
+    JWT_EXPIRES_IN: z.string().default("15m"),
+    JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
+    AUTH_COOKIE_SECURE: z.enum(["true", "false"]).optional(),
+    AUTH_COOKIE_DOMAIN: z.string().optional(),
+    AUTH_BOOTSTRAP_ADMIN_EMAIL: z.string().email().optional(),
+    AUTH_BOOTSTRAP_ADMIN_PASSWORD: z.string().optional(),
+
     /** `fake` = fakes CI/smoke; `live` = adapters OpenAI/Cohere/S3 reales. */
     AI_PROVIDERS_MODE: z.enum(["fake", "live"]).default("fake"),
 
@@ -52,8 +63,41 @@ export const envSchema = z
     S3_ACCESS_KEY_ID: z.string().optional(),
     S3_SECRET_ACCESS_KEY: z.string().optional(),
     STORAGE_PUBLIC_BASE_URL: z.string().optional(),
+    PUBLIC_API_URL: z.string().url().optional().or(z.literal("")),
+    /** memory = índice in-process; prisma = pgvector + FTS. Default: memory si fake, prisma si live. */
+    RAG_STORE: z.enum(["memory", "prisma"]).optional(),
+    FETCH_CHANNEL_MEDIA: z.enum(["0", "1"]).optional(),
   })
   .superRefine((data, ctx) => {
+    if (
+      data.APP_ENV === "prod" &&
+      data.JWT_SECRET === "dev-only-change-me-not-for-production"
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["JWT_SECRET"],
+        message: "JWT_SECRET no puede ser el valor de desarrollo en APP_ENV=prod",
+      });
+    }
+    if (
+      (data.APP_ENV === "staging" || data.APP_ENV === "prod") &&
+      data.STORAGE_PROVIDER !== "s3" &&
+      data.STORAGE_PROVIDER !== "r2"
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["STORAGE_PROVIDER"],
+        message:
+          "STORAGE_PROVIDER debe ser s3 o r2 en APP_ENV=staging|prod",
+      });
+    }
+    if (data.STORAGE_PROVIDER !== "memory" && !data.S3_BUCKET?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["S3_BUCKET"],
+        message: "S3_BUCKET es obligatorio cuando STORAGE_PROVIDER ≠ memory",
+      });
+    }
     if (data.AI_PROVIDERS_MODE !== "live") {
       return;
     }
@@ -63,23 +107,6 @@ export const envSchema = z
         path: ["OPENAI_API_KEY"],
         message: "OPENAI_API_KEY es obligatoria con AI_PROVIDERS_MODE=live",
       });
-    }
-    if (data.STORAGE_PROVIDER !== "memory") {
-      if (!data.S3_BUCKET?.trim()) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["S3_BUCKET"],
-          message: "S3_BUCKET es obligatorio cuando STORAGE_PROVIDER ≠ memory",
-        });
-      }
-      if (!data.S3_ACCESS_KEY_ID?.trim() || !data.S3_SECRET_ACCESS_KEY?.trim()) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["S3_ACCESS_KEY_ID"],
-          message:
-            "S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY obligatorias cuando STORAGE_PROVIDER ≠ memory",
-        });
-      }
     }
   });
 

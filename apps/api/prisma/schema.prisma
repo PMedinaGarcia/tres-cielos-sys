@@ -7,6 +7,93 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── Identidad de panel ─────────────────────────────────────────────────────
+
+enum RolUsuario {
+  asesor
+  coordinador
+  admin
+}
+
+model Organizacion {
+  id             String   @id @default(cuid())
+  nombre         String
+  activa         Boolean  @default(true)
+  creadoEn       DateTime @default(now()) @map("creado_en")
+  actualizadoEn  DateTime @updatedAt @map("actualizado_en")
+  sedes          Sede[]
+  usuarios       Usuario[]
+
+  @@map("organizaciones")
+}
+
+model Sede {
+  id              String        @id @default(cuid())
+  organizacionId  String        @map("organizacion_id")
+  organizacion    Organizacion  @relation(fields: [organizacionId], references: [id], onDelete: Restrict)
+  nombre          String
+  activa          Boolean       @default(true)
+  zonaHoraria     String        @default("America/Mexico_City") @map("zona_horaria")
+  creadoEn        DateTime      @default(now()) @map("creado_en")
+  actualizadoEn   DateTime      @updatedAt @map("actualizado_en")
+  usuarios         UsuarioSede[]
+  clientesInteres  Cliente[]
+
+  @@index([organizacionId])
+  @@map("sedes")
+}
+
+model Usuario {
+  id                 String         @id @default(cuid())
+  organizacionId     String         @map("organizacion_id")
+  organizacion       Organizacion   @relation(fields: [organizacionId], references: [id], onDelete: Restrict)
+  email              String         @unique
+  passwordHash       String         @map("password_hash")
+  nombre             String
+  rol                RolUsuario
+  activo             Boolean        @default(true)
+  disponible         Boolean        @default(true)
+  passwordChangedAt  DateTime?      @map("password_changed_at")
+  creadoEn           DateTime       @default(now()) @map("creado_en")
+  actualizadoEn      DateTime       @updatedAt @map("actualizado_en")
+  sedes                    UsuarioSede[]
+  refreshTokens            RefreshToken[]
+  clientesAsignados        Cliente[]      @relation("ClienteAsesor")
+  oportunidadesAsignadas   Oportunidad[]  @relation("OportunidadAsesor")
+  asignacionesDestino      Asignacion[]   @relation("AsignacionDestino")
+  asignacionesActor        Asignacion[]   @relation("AsignacionActor")
+  notasCliente             NotaCliente[]
+
+  @@index([organizacionId])
+  @@index([rol, activo])
+  @@map("usuarios")
+}
+
+model UsuarioSede {
+  usuarioId  String  @map("usuario_id")
+  usuario    Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  sedeId     String  @map("sede_id")
+  sede       Sede    @relation(fields: [sedeId], references: [id], onDelete: Cascade)
+
+  @@id([usuarioId, sedeId])
+  @@index([sedeId])
+  @@map("usuario_sedes")
+}
+
+model RefreshToken {
+  id         String    @id @default(cuid())
+  usuarioId  String    @map("usuario_id")
+  usuario    Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+  creadoEn   DateTime  @default(now()) @map("creado_en")
+
+  @@index([usuarioId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
 // ─── Catálogo sandbox (existente — no romper) ───────────────────────────────
 
 enum TipoEvento {
@@ -122,6 +209,26 @@ enum EtapaPipeline {
   perdido
 }
 
+enum VisitaEstado {
+  no_solicitada
+  solicitada
+  agendada
+  realizada
+  cancelada
+  no_asistio
+}
+
+enum EtapaCotizacion {
+  perfilando
+  explorando
+  listo_para_cotizar
+  sin_tarifa
+  propuesta_enviada
+  negociacion
+  ganado
+  perdido
+}
+
 /// MotivoHandoff — A5: motivos 05/02 + media/IA
 enum MotivoHandoff {
   solicitud_usuario
@@ -138,6 +245,69 @@ enum MotivoHandoff {
   proveedor_ia
   cupo_ia
   otro
+}
+
+enum EstadoAtencion {
+  nuevo
+  bot_activo
+  escalado
+  en_atencion
+  cerrado
+}
+
+enum FuenteAlta {
+  bot
+  asesor
+  importacion
+}
+
+enum TipoIdentificadorCliente {
+  telefono
+  wa_id
+  meta_psid
+  ig_scoped_id
+  email
+  sandbox_thread
+}
+
+enum TipoInteraccion {
+  mensaje
+  nota
+  cambio_estado_atencion
+  cambio_etapa
+  handoff
+  toma_control
+  asignacion
+  plantilla
+  adjunto
+  accion_bot
+  edicion_ficha
+  posible_duplicado
+  recontacto
+  intencion_cotizar
+  brief_actualizado
+  cambio_visita
+  propuesta_enviada
+}
+
+enum MotivoPerdido {
+  precio
+  fecha
+  competencia
+  sin_respuesta
+  otro
+}
+
+enum ReglaAsignacion {
+  sede_disponibilidad_round_robin
+  cola_coordinador
+  manual
+}
+
+enum ActorAsignacion {
+  sistema
+  coordinador
+  admin
 }
 
 enum TipoMaterial {
@@ -259,32 +429,147 @@ model ImportacionCatalogo {
   @@map("importaciones_catalogo")
 }
 
-// ─── CRM mínimo (requerido por Conversacion) ────────────────────────────────
+// ─── CRM: Cliente canónico + expediente ─────────────────────────────────────
 
-model Lead {
-  id               String         @id @default(cuid())
-  nombre           String?
-  telefono         String?
-  correo           String?
-  metaPsid         String?        @map("meta_psid")
-  waId             String?        @map("wa_id")
-  sedeInteres      String?        @map("sede_interes")
-  primerContactoEn DateTime       @default(now()) @map("primer_contacto_en")
-  ultimoContactoEn DateTime       @default(now()) @map("ultimo_contacto_en")
-  creadoEn         DateTime       @default(now()) @map("creado_en")
-  actualizadoEn    DateTime       @updatedAt @map("actualizado_en")
-  oportunidades    Oportunidad[]
+model Cliente {
+  id                   String          @id @default(cuid())
+  nombre               String?
+  telefono             String?
+  correo               String?
+  nombrePerfilCanal    String?         @map("nombre_perfil_canal")
+  estadoAtencion       EstadoAtencion  @default(nuevo) @map("estado_atencion")
+  asesorAsignadoId     String?         @map("asesor_asignado_id")
+  asesorAsignado       Usuario?        @relation("ClienteAsesor", fields: [asesorAsignadoId], references: [id], onDelete: SetNull)
+  canalOrigen          Canal?          @map("canal_origen")
+  fuenteAlta           FuenteAlta      @default(bot) @map("fuente_alta")
+  origenJson           Json?           @map("origen_json")
+  sedeInteresId        String?         @map("sede_interes_id")
+  sedeInteres          Sede?           @relation(fields: [sedeInteresId], references: [id], onDelete: SetNull)
+  idioma               String?         @default("es")
+  zonaHoraria          String?         @map("zona_horaria")
+  optOutMensajeria     Boolean         @default(false) @map("opt_out_mensajeria")
+  fusionadoEnClienteId String?         @map("fusionado_en_cliente_id")
+  fusionadoEn          Cliente?        @relation("ClienteFusion", fields: [fusionadoEnClienteId], references: [id], onDelete: SetNull)
+  fusionados           Cliente[]       @relation("ClienteFusion")
+  primerContactoEn     DateTime        @default(now()) @map("primer_contacto_en")
+  ultimoContactoEn     DateTime        @default(now()) @map("ultimo_contacto_en")
+  creadoEn             DateTime        @default(now()) @map("creado_en")
+  actualizadoEn        DateTime        @updatedAt @map("actualizado_en")
+
+  identificadores      IdentificadorCliente[]
+  tags                 ClienteTag[]
+  notas                NotaCliente[]
+  interacciones        Interaccion[]
+  oportunidades        Oportunidad[]
+  conversaciones       Conversacion[]
+  eventosOperativos    EventoOperativo[]
+  asignaciones         Asignacion[]
 
   @@index([telefono])
-  @@index([waId])
-  @@index([metaPsid])
-  @@map("leads")
+  @@index([correo])
+  @@index([estadoAtencion])
+  @@index([asesorAsignadoId])
+  @@index([sedeInteresId])
+  @@map("clientes")
+}
+
+model IdentificadorCliente {
+  id               String                    @id @default(cuid())
+  clienteId        String                    @map("cliente_id")
+  cliente          Cliente                   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  tipo             TipoIdentificadorCliente
+  valor            String
+  valorNormalizado String                    @map("valor_normalizado")
+  creadoEn         DateTime                  @default(now()) @map("creado_en")
+
+  @@unique([tipo, valorNormalizado])
+  @@index([clienteId])
+  @@map("identificadores_cliente")
+}
+
+model Tag {
+  id        String       @id @default(cuid())
+  nombre    String       @unique
+  creadoEn  DateTime     @default(now()) @map("creado_en")
+  clientes  ClienteTag[]
+
+  @@map("tags")
+}
+
+model ClienteTag {
+  clienteId String  @map("cliente_id")
+  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  tagId     String  @map("tag_id")
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([clienteId, tagId])
+  @@index([tagId])
+  @@map("cliente_tags")
+}
+
+model NotaCliente {
+  id        String   @id @default(cuid())
+  clienteId String   @map("cliente_id")
+  cliente   Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  autorId   String   @map("autor_id")
+  autor     Usuario  @relation(fields: [autorId], references: [id], onDelete: Restrict)
+  cuerpo    String
+  creadoEn  DateTime @default(now()) @map("creado_en")
+
+  @@index([clienteId, creadoEn])
+  @@map("notas_cliente")
+}
+
+model Interaccion {
+  id                String          @id @default(cuid())
+  clienteId         String          @map("cliente_id")
+  cliente           Cliente         @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  oportunidadId     String?         @map("oportunidad_id")
+  oportunidad       Oportunidad?    @relation(fields: [oportunidadId], references: [id], onDelete: SetNull)
+  conversacionId    String?         @map("conversacion_id")
+  conversacion      Conversacion?   @relation(fields: [conversacionId], references: [id], onDelete: SetNull)
+  mensajeId         String?         @map("mensaje_id")
+  mensaje           Mensaje?        @relation(fields: [mensajeId], references: [id], onDelete: SetNull)
+  eventoOperativoId String?         @unique @map("evento_operativo_id")
+  eventoOperativo   EventoOperativo? @relation(fields: [eventoOperativoId], references: [id], onDelete: SetNull)
+  tipo              TipoInteraccion
+  actor             ActorOperativo
+  canal             Canal?
+  resumen           String
+  payload           Json            @default("{}")
+  creadoEn          DateTime        @default(now()) @map("creado_en")
+
+  @@index([clienteId, creadoEn])
+  @@index([oportunidadId, creadoEn])
+  @@map("interacciones")
+}
+
+model Asignacion {
+  id               String          @id @default(cuid())
+  clienteId        String          @map("cliente_id")
+  cliente          Cliente         @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  oportunidadId    String          @map("oportunidad_id")
+  oportunidad      Oportunidad     @relation(fields: [oportunidadId], references: [id], onDelete: Cascade)
+  usuarioDestinoId String          @map("usuario_destino_id")
+  usuarioDestino   Usuario         @relation("AsignacionDestino", fields: [usuarioDestinoId], references: [id], onDelete: Restrict)
+  actor            ActorAsignacion @default(sistema)
+  actorUsuarioId   String?         @map("actor_usuario_id")
+  actorUsuario     Usuario?        @relation("AsignacionActor", fields: [actorUsuarioId], references: [id], onDelete: SetNull)
+  regla            ReglaAsignacion
+  vigente          Boolean         @default(true)
+  motivo           String?
+  creadoEn         DateTime        @default(now()) @map("creado_en")
+
+  @@index([oportunidadId, vigente])
+  @@index([clienteId])
+  @@index([usuarioDestinoId])
+  @@map("asignaciones")
 }
 
 model Oportunidad {
   id                 String                  @id @default(cuid())
-  leadId             String                  @map("lead_id")
-  lead               Lead                    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  clienteId          String                  @map("cliente_id")
+  cliente            Cliente                 @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   tipoEvento         TipoEvento?             @map("tipo_evento")
   fechaTentativa     DateTime?               @map("fecha_tentativa")
   fechaFlexible      Boolean                 @default(false) @map("fecha_flexible")
@@ -296,21 +581,37 @@ model Oportunidad {
   calificacion       CalificacionOportunidad @default(en_exploracion)
   listoParaCotizar   Boolean                 @default(false) @map("listo_para_cotizar")
   etapa              EtapaPipeline           @default(nuevo_bot)
+  motivoPerdido      MotivoPerdido?          @map("motivo_perdido")
+  intencionVisita    Boolean                 @default(false) @map("intencion_visita")
+  visitaEstado       VisitaEstado            @default(no_solicitada) @map("visita_estado")
+  visitaAgendadaEn   DateTime?               @map("visita_agendada_en")
+  visitaNotas        String?                 @map("visita_notas")
+  propuestaEnviadaEn DateTime?               @map("propuesta_enviada_en")
+  etapaCotizacion    EtapaCotizacion         @default(perfilando) @map("etapa_cotizacion")
   canalOrigen        Canal?                  @map("canal_origen")
   sede               String?
   briefJson          Json?                   @map("brief_json")
+  asesorAsignadoId   String?                 @map("asesor_asignado_id")
+  asesorAsignado     Usuario?                @relation("OportunidadAsesor", fields: [asesorAsignadoId], references: [id], onDelete: SetNull)
   creadoEn           DateTime                @default(now()) @map("creado_en")
   actualizadoEn      DateTime                @updatedAt @map("actualizado_en")
   conversaciones     Conversacion[]
   eventosOperativos  EventoOperativo[]
+  interacciones      Interaccion[]
+  asignaciones       Asignacion[]
 
-  @@index([leadId])
+  @@index([clienteId])
   @@index([etapa])
+  @@index([asesorAsignadoId])
+  @@index([visitaEstado])
+  @@index([etapaCotizacion])
   @@map("oportunidades")
 }
 
 model Conversacion {
   id                   String           @id @default(cuid())
+  clienteId            String           @map("cliente_id")
+  cliente              Cliente          @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   oportunidadId        String           @map("oportunidad_id")
   oportunidad          Oportunidad      @relation(fields: [oportunidadId], references: [id], onDelete: Cascade)
   canal                Canal
@@ -327,9 +628,11 @@ model Conversacion {
   actualizadoEn        DateTime         @updatedAt @map("actualizado_en")
   mensajes             Mensaje[]
   eventosOperativos    EventoOperativo[]
+  interacciones        Interaccion[]
 
   @@unique([canal, externalThreadId])
   @@index([oportunidadId])
+  @@index([clienteId])
   @@index([estadoBot])
   @@map("conversaciones")
 }
@@ -345,12 +648,32 @@ model Mensaje {
   externalMessageId  String?           @map("external_message_id")
   ruta               RutaOrquestador?
   consumeCupo        Boolean           @default(false) @map("consume_cupo")
+  plantillaUtilityId String?           @map("plantilla_utility_id")
   creadoEn           DateTime          @default(now()) @map("creado_en")
   eventosOperativos  EventoOperativo[]
+  interacciones      Interaccion[]
+  adjuntos           AdjuntoMensaje[]
 
   @@unique([canal, externalMessageId])
   @@index([conversacionId, creadoEn])
   @@map("mensajes")
+}
+
+model AdjuntoMensaje {
+  id              String   @id @default(cuid())
+  mensajeId       String   @map("mensaje_id")
+  mensaje         Mensaje  @relation(fields: [mensajeId], references: [id], onDelete: Cascade)
+  assetId         String?  @map("asset_id")
+  asset           Asset?   @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  mimeType        String   @map("mime_type")
+  nombreOriginal  String?  @map("nombre_original")
+  storageKey      String?  @map("storage_key")
+  bytes           Int?
+  creadoEn        DateTime @default(now()) @map("creado_en")
+
+  @@index([mensajeId])
+  @@index([assetId])
+  @@map("adjuntos_mensaje")
 }
 
 model EventoOperativo {
@@ -358,6 +681,8 @@ model EventoOperativo {
   tipo            String
   actor           ActorOperativo
   payload         Json
+  clienteId       String?         @map("cliente_id")
+  cliente         Cliente?        @relation(fields: [clienteId], references: [id], onDelete: SetNull)
   oportunidadId   String?         @map("oportunidad_id")
   oportunidad     Oportunidad?    @relation(fields: [oportunidadId], references: [id], onDelete: SetNull)
   conversacionId  String?         @map("conversacion_id")
@@ -366,9 +691,11 @@ model EventoOperativo {
   mensaje         Mensaje?        @relation(fields: [mensajeId], references: [id], onDelete: SetNull)
   sede            String?
   creadoEn        DateTime        @default(now()) @map("creado_en")
+  interaccion     Interaccion?
 
   @@index([oportunidadId, creadoEn])
   @@index([conversacionId, creadoEn])
+  @@index([clienteId, creadoEn])
   @@index([actor, creadoEn])
   @@map("eventos_operativos")
 }
@@ -396,6 +723,7 @@ model Asset {
   creadoEn             DateTime       @default(now()) @map("creado_en")
   actualizadoEn        DateTime       @updatedAt @map("actualizado_en")
   documentoFuente      DocumentoFuente?
+  adjuntosMensaje      AdjuntoMensaje[]
 
   @@unique([storageBucket, storageKey])
   @@index([proposito, pipelineEstado])
@@ -411,6 +739,7 @@ model DocumentoFuente {
   estado            EstadoPublicacion   @default(borrador)
   publicadoEn       DateTime?           @map("publicado_en")
   nombreArchivoCita String              @map("nombre_archivo_cita")
+  inventarioId      String?             @map("inventario_id")
   assetId           String              @unique @map("asset_id")
   asset             Asset               @relation(fields: [assetId], references: [id])
   tipoMaterial      TipoMaterial        @map("tipo_material")
@@ -421,6 +750,7 @@ model DocumentoFuente {
 
   @@index([estado, pipelineEstado])
   @@index([sede])
+  @@index([inventarioId])
   @@map("documentos_fuente")
 }
 

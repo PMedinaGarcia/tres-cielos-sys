@@ -40,4 +40,39 @@ describe("validateEnv (A4)", () => {
     });
     expect(env.COHERE_API_KEY).toBe("cohere-test");
   });
+
+  it("rechaza JWT_SECRET de desarrollo en prod", () => {
+    expect(() =>
+      validateEnv({
+        APP_ENV: "prod",
+        JWT_SECRET: "dev-only-change-me-not-for-production",
+        STORAGE_PROVIDER: "s3",
+        S3_BUCKET: "tres-cielos-prod",
+      }),
+    ).toThrow(/JWT_SECRET/);
+  });
+
+  it("exige S3 o R2 en staging/prod", () => {
+    expect(() =>
+      validateEnv({
+        APP_ENV: "staging",
+        STORAGE_PROVIDER: "memory",
+      }),
+    ).toThrow(/STORAGE_PROVIDER/);
+  });
+
+  it("acepta staging con S3 sin access keys (cadena default)", () => {
+    const env = validateEnv({
+      APP_ENV: "staging",
+      STORAGE_PROVIDER: "s3",
+      S3_BUCKET: "tres-cielos-staging",
+    });
+    expect(env.S3_BUCKET).toBe("tres-cielos-staging");
+    expect(env.S3_ACCESS_KEY_ID).toBeUndefined();
+  });
+
+  it("acepta RAG_STORE prisma", () => {
+    const env = validateEnv({ RAG_STORE: "prisma" });
+    expect(env.RAG_STORE).toBe("prisma");
+  });
 });

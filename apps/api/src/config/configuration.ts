@@ -48,6 +48,16 @@ export default () => {
       accessKeyId: env.S3_ACCESS_KEY_ID,
       secretAccessKey: env.S3_SECRET_ACCESS_KEY,
       publicBaseUrl: env.STORAGE_PUBLIC_BASE_URL,
+      fetchChannelMedia:
+        env.FETCH_CHANNEL_MEDIA === "1" ||
+        (env.FETCH_CHANNEL_MEDIA !== "0" &&
+          (env.STORAGE_PROVIDER === "s3" || env.STORAGE_PROVIDER === "r2")),
+    },
+    rag: {
+      store: (env.RAG_STORE ??
+        (env.AI_PROVIDERS_MODE === "live" ? "prisma" : "memory")) as
+        | "memory"
+        | "prisma",
     },
     cupo: {
       mensualMensajes: Number(env.CUPO_MENSUAL_MENSAJES ?? 1000),
@@ -58,6 +68,15 @@ export default () => {
         ? Number(env.CUPO_AI_TOKENS_HARD_LIMIT)
         : undefined,
     },
+    auth: {
+      jwtSecret: env.JWT_SECRET ?? "dev-only-change-me-not-for-production",
+      jwtExpiresIn: env.JWT_EXPIRES_IN ?? "15m",
+      jwtRefreshExpiresIn: env.JWT_REFRESH_EXPIRES_IN ?? "7d",
+      cookieSecure:
+        env.AUTH_COOKIE_SECURE === "true" || env.APP_ENV === "prod",
+      cookieDomain: env.AUTH_COOKIE_DOMAIN || undefined,
+    },
+    publicApiUrl: env.PUBLIC_API_URL || undefined,
   };
 };
 

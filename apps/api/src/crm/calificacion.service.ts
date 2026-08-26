@@ -15,7 +15,7 @@ export interface BriefCotizacionStub {
 
 export interface OportunidadStub {
   id: string;
-  leadId: string;
+  clienteId: string;
   calificacion: "calificado" | "en_exploracion";
   listoParaCotizar: boolean;
   brief: BriefCotizacionStub;
@@ -24,10 +24,10 @@ export interface OportunidadStub {
 }
 
 /**
- * F4 — Lead/Opp brief, calificado, listo_para_cotizar.
- * Persistencia stub; campos Prisma esperados Fase A:
- * Lead(id, nombre, telefono, correo, identificadores_externos)
- * Oportunidad(id, lead_id, calificacion, listo_para_cotizar, etapa, sede_id, brief json)
+ * F4 — Cliente/Opp brief, calificado, listo_para_cotizar.
+ * Persistencia stub; campos Prisma esperados:
+ * Cliente(id, nombre, telefono, correo, identificadores)
+ * Oportunidad(id, cliente_id, calificacion, listo_para_cotizar, etapa, sede_id, brief json)
  */
 @Injectable()
 export class CrmCalificacionService {
@@ -66,7 +66,7 @@ export class CrmCalificacionService {
 
     const opp: OportunidadStub = {
       id: oppId,
-      leadId: `lead-${input.conversacionId}`,
+      clienteId: `cliente-${input.conversacionId}`,
       calificacion: calificado ? "calificado" : "en_exploracion",
       listoParaCotizar: listo,
       brief,
