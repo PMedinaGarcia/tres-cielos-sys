@@ -30,6 +30,7 @@ Comportamientos:
 - Distinguir mensajes de usuario, bot y asesor.
 - Contabilizar unidades de mensajería según reglas de cupo (Anexo comercial).
 - Soportar plantillas utility de WhatsApp fuera de ventana de servicio (metadatos + envío cuando el flujo lo requiera).
+- El outbound puede incluir `waContent.document` (PDF de ficha comercial) además de texto/quick-reply. Contrato Twilio: `MediaUrl` + filename. Endpoint público: `GET /public/guion/paquete-bodas-2027.pdf`.
 - No incorporar widget web, Google Ads, SMS masivo ni email marketing en v1.
 
 ### Unificación
@@ -42,7 +43,7 @@ Un prospecto que escribe por IG y luego por WA puede generar hilos distintos; el
 
 Comportamientos:
 
-- Saludar y conducir el flujo de precalificación (ocasión, fecha, aforo, presupuesto, sede).
+- Saludar y conducir el flujo de precalificación (ocasión, fecha, aforo, sede autosignada + ficha PDF, intención).
 - Enrutar cada mensaje: guion | catálogo (Prisma) | RAG documental | handoff | safe reply.
 - Responder preguntas de precio/paquete **solo** con filas vigentes del catálogo.
 - Responder FAQ/políticas solo con fragmentos publicados que pasen rerank ≥ 0.85, con cita de fuente.

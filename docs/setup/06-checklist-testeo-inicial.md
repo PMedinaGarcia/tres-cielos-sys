@@ -62,7 +62,7 @@ docker compose exec redis redis-cli ping   # PONG
 ```bash
 curl -sS http://localhost:3011/health
 curl -sS http://localhost:3011/health/ready
-curl -sS "http://localhost:3011/catalog/sandbox/tools/obtener_precio_paquete?sku=BODA-J1-ESENCIAL"
+curl -sS "http://localhost:3011/catalog/sandbox/tools/obtener_precio_paquete?sku=EVT-J1-TC"
 ```
 
 ---

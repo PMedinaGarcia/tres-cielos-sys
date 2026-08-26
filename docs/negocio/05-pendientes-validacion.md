@@ -16,7 +16,8 @@ Hechos **no** inferidos. Relacionado con [../producto/01-diseno-estrategico.md](
 
 - Paquete bodas: min 100 / max 300, solo tramos publicados.
 - `tipo_evento: boda` en `EVT-J1-TC` y `EVT-J1-PREMIUM`. Otras ocasiones no heredan esas tarifas.
-- Capacidad física del recinto (más allá de 300) y nombre comercial de sede: pendientes.
+- Capacidad física del recinto (más allá de 300): pendiente.
+- Nombre comercial de sede: **Tres Cielos Tequesquitengo** (cerrado).
 
 ## 3. Horarios (parcialmente resuelto)
 
@@ -24,7 +25,8 @@ Ficha 2027: jardín **11 h** el sábado + **10 h** de meseros y mezcladores. Pla
 
 ## 4. Sede y marca
 
-- Nombre comercial Jardín 1 / 2, dirección, cómo llegar, horarios de visita: no aparecen.
+- Nombre comercial de la sede activa: **Tres Cielos Tequesquitengo**. Identificadores: `sedeId=sede-tequesquitengo`, slug catálogo `tequesquitengo`. SKUs `EVT-J1-*` / `RENTA-J1` se conservan.
+- Dirección, cómo llegar, horarios de visita detallados: no aparecen en las plantillas Anexo B.
 - “Cuernavaca” = prueba de menú, no dirección del jardín.
 
 ## 5. Hospedaje

@@ -4,7 +4,7 @@ Verdades de negocio que debe persistir el sistema. Implementación prevista: Pos
 
 ## 1. Principios
 
-- **Una sola verdad del lead:** chat y CRM apuntan al mismo expediente.
+- **Una sola verdad del cliente:** chat y CRM apuntan al mismo expediente.
 - **Pertenencia a sede:** entidades operativas llevan jardín; go-live filtra a uno activo.
 - **Historial inmutable de hechos:** mensajes, asignaciones, recuperaciones, consultas de catálogo y eventos operativos (bot + humano) se registran; no se reescriben en silencio.
 - **Separación estricta:** datos duros de paquetes/precios (relacional) vs memoria semántica narrativa (fragmentos vectoriales + FTS).
@@ -17,13 +17,17 @@ Verdades de negocio que debe persistir el sistema. Implementación prevista: Pos
 Organizacion
   └── Sede (Jardín)
         ├── Usuario (asesor / coordinador / admin)
-        ├── Lead
-        │     └── Oportunidad (expediente)
-        │           ├── Asignacion (historial)
+        ├── Cliente (persona canónica; antes Lead)
+        │     ├── IdentificadorCliente (tel, wa_id, meta_psid, ig, email, sandbox)
+        │     ├── Tag / NotaCliente
+        │     ├── Interaccion (timeline CRM)
+        │     └── Oportunidad (expediente comercial)
+        │           ├── Asignacion (historial; nace sin dueño)
         │           ├── BriefCotizacion (snapshot)
         │           ├── EventoOperativo (telemetría bot + humano)
         │           └── Conversacion
         │                 └── Mensaje
+        │                       ├── AdjuntoMensaje
         │                       ├── RegistroRecuperacion (0..1)
         │                       └── RegistroConsultaCatalogo (0..1)
         ├── Notificacion
@@ -56,13 +60,19 @@ Persona del equipo Tres Cielos o operación Medina con acceso al panel.
 
 Atributos: nombre, correo, rol (asesor / coordinador / admin), sedes a las que pertenece, flag de disponibilidad para asignación, activo/inactivo.
 
-### 3.4 Lead (contacto)
+### 3.4 Cliente (contacto)
 
-Persona prospecto identificada en uno o más canales.
+Persona prospecto canónica, identificada en uno o más canales. **No** concentra el detalle del evento (fecha, aforo, paquete): eso vive en `Oportunidad`.
 
-Atributos: nombre, teléfono, correo (opcionales según captura), identificadores externos (Meta PSID, WhatsApp), sede de interés, timestamps de primer y último contacto.
+Atributos de ficha: nombre, teléfono, correo (espejo de identificadores primarios), `nombrePerfilCanal`, tags, origen (`canalOrigen`, `fuenteAlta`, `origenJson` UTM/campaña/referido), notas, sede de interés, idioma, zona horaria, `optOutMensajeria`.
 
-Relaciones: una o más oportunidades a lo largo del tiempo; conversaciones vinculadas.
+Ciclo de **atención** (CRM): `nuevo` | `bot_activo` | `escalado` | `en_atencion` | `cerrado`. Independiente del pipeline comercial de la oportunidad.
+
+Dueño: `asesorAsignadoId` nace **null**; se asigna en handoff (o toma de control). Si no hay asesor disponible, permanece sin dueño y entra a la bandeja `sinAsignar`.
+
+Identidad: tabla `IdentificadorCliente` con unique `(tipo, valorNormalizado)` (`telefono` | `wa_id` | `meta_psid` | `ig_scoped_id` | `email` | `sandbox_thread`). v1 no fusiona IG↔WA salvo identificador compartido o confirmación de asesor (`fusionadoEnClienteId` reservado).
+
+Relaciones: una o más oportunidades; conversaciones; interacciones (timeline append-only).
 
 ### 3.5 Oportunidad (expediente)
 
@@ -83,7 +93,7 @@ Atributos de perfilado:
 - Canal de origen primario
 - Sede
 
-Relaciones: lead, asesor asignado actual, historial de asignaciones, conversación(es), brief de cotización.
+Relaciones: cliente, asesor asignado actual, historial de asignaciones, conversación(es), brief de cotización.
 
 ### 3.6 BriefCotizacion
 
@@ -188,7 +198,9 @@ Por sede (o cuenta) y mes calendario:
 |---|---|---|
 | Organizacion → Sede | 1 a muchos | Tres Cielos con hasta 2 jardines en alcance comercial |
 | Sede → Usuario | muchos a muchos | Un coordinador puede ver más de una sede |
-| Lead → Oportunidad | 1 a muchos | Recontactos / nuevos eventos |
+| Cliente → Oportunidad | 1 a muchos | Recontactos / nuevos eventos |
+| Cliente → IdentificadorCliente | 1 a muchos | Unique por `(tipo, valorNormalizado)` |
+| Cliente → Interaccion | 1 a muchos | Timeline CRM inmutable |
 | Oportunidad → Conversacion | 1 a 1 o 1 a pocos | Preferir un hilo principal por oportunidad |
 | Conversacion → Mensaje | 1 a muchos | Historial ordenado |
 | Oportunidad → Asignacion | 1 a muchos | Historial; una vigente |
@@ -214,6 +226,10 @@ Por sede (o cuenta) y mes calendario:
 ### Bot / conversación
 
 `activo` → `escalado` → `humano` (retorno a bot solo si se define política; en v1 no es requisito).
+
+### Atención del Cliente (CRM)
+
+`nuevo` → `bot_activo` → `escalado` → `en_atencion` → `cerrado`. Independiente de `EtapaPipeline` en la oportunidad.
 
 ### Pipeline
 

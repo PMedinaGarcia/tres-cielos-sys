@@ -35,7 +35,7 @@ Reglas:
 
 1. Validar SKU, tipos y fechas **antes** de escribir.
 2. Filas inválidas → reporte `parcial` / `filas_error` (no silenciar).
-3. Publicar es paso explícito (en sandbox seed se publican fixtures de prueba).
+3. Publicar es paso explícito (en sandbox seed se publican los paquetes de la ficha Bodas 2027).
 4. **No** crear `FragmentoVectorial` desde columnas de monto.
 5. Narrativa opcional (`descripcion_larga`) puede ir a conocimiento K; **nunca** como sustituto del precio.
 
@@ -111,6 +111,14 @@ pnpm --filter api sandbox:eval
 ```
 
 `sandbox:eval` comprueba que las tools, contra DB sembrada, devuelven montos/SKUs del golden (anti-regresión del pipeline XLS→contexto).
+
+Si el chat sandbox sigue mostrando «Boda Esencial» o «Jardín 1», re-siembra y reinicia el API:
+
+```bash
+pnpm --filter @tres-cielos/api sandbox:seed
+```
+
+El golden ya no es el fixture de prueba: siembra **Paquete Estándar** (`EVT-J1-TC`) y **Upgrade Premium** (`EVT-J1-PREMIUM`) en Tres Cielos Tequesquitengo. El seed **archiva** cualquier SKU que no esté en el snapshot.
 
 ## 8. Relación con RAG
 

@@ -747,6 +747,59 @@ Efectos: `estadoBot → humano` + `EventoOperativo.toma_control`.
 
 **`POST /conversaciones/:id/devolver-a-bot`** — solo si política v1 habilitada; default deshabilitado → `409`.
 
+### 4.2b Cliente / ficha CRM
+
+Persona canónica. El detalle de evento (fecha, aforo, paquete, etapa) **no** se edita aquí; va en `Oportunidad`.
+
+**`GET /clientes`** — lista/bandeja.
+
+Query: `estadoAtencion?`, `asesorId?`, `sinAsignar?`, `tag?`, `q?` (nombre/tel/correo), `page?`, `pageSize?`.
+
+Scope: asesor → asignados propios + sin asignar; coordinador/admin → sede de interés del caller (o sin sede).
+
+Envelope: `{ data: ClienteListItem[], meta: { page, pageSize, total } }`.
+
+**`GET /clientes/:id` — ClienteDetail**
+
+```json
+{
+  "id": "uuid",
+  "nombre": "María López",
+  "telefono": "+52155...",
+  "correo": null,
+  "nombrePerfilCanal": "Maria",
+  "estadoAtencion": "escalado",
+  "asesorAsignadoId": null,
+  "canalOrigen": "whatsapp",
+  "fuenteAlta": "bot",
+  "tags": ["boda-2027"],
+  "identificadores": [
+    { "id": "uuid", "tipo": "wa_id", "valor": "+52155...", "valorNormalizado": "+52155...", "creadoEn": "..." }
+  ],
+  "notas": [],
+  "oportunidades": [{ "id": "uuid", "etapa": "nuevo_bot", "tipoEvento": "boda", "calificacion": "en_exploracion", "listoParaCotizar": false, "asesorAsignadoId": null }],
+  "conversaciones": [{ "id": "uuid", "canal": "whatsapp", "externalThreadId": "wa:+52155...", "estadoBot": "escalado" }],
+  "optOutMensajeria": false,
+  "sedeInteresId": null,
+  "primerContactoEn": "...",
+  "ultimoContactoEn": "..."
+}
+```
+
+**`PATCH /clientes/:id`** — nombre, correo, sedeInteresId, optOut, idioma, zonaHoraria. Emite `Interaccion.edicion_ficha`. No cambia etapa/fecha.
+
+**`GET /clientes/:id/timeline`** — `InteraccionDto[]` paginada (`tipo`: mensaje, nota, cambio_estado_atencion, handoff, toma_control, asignacion, plantilla, adjunto, accion_bot, edicion_ficha, posible_duplicado, …).
+
+**`POST /clientes/:id/notas`** — `{ cuerpo }` + `Interaccion.nota`.
+
+**`PUT /clientes/:id/tags`** — `{ tags: string[] }` reemplazo de set.
+
+Relación: `Cliente` 1→N `Oportunidad`; `Cliente` 1→N `IdentificadorCliente`; `Cliente` 1→N `Interaccion`.
+
+### 4.3 Oportunidad / expediente / brief
+
+**`POST /conversaciones/:id/devolver-a-bot`** — solo si política v1 habilitada; default deshabilitado → `409`.
+
 ### 4.3 Oportunidad / expediente / brief
 
 **`GET /oportunidades/:id` — OportunidadDetail**
@@ -790,7 +843,7 @@ Efectos: recalcular `calificacion` / `listoParaCotizar`; emitir `edicion_expedie
 
 **Pipeline `GET /oportunidades?vista=pipeline`:** tarjetas mínimas `{ id, nombre, tipoEvento, fechaResumen, aforo, asesorId, canal, listoParaCotizar, etapa }`.
 
-Relación: `Lead` 1→N `Oportunidad`; `Oportunidad` 1→0..1 `BriefCotizacion` vigente.
+Relación: `Cliente` 1→N `Oportunidad`; `Oportunidad` 1→0..1 `BriefCotizacion` vigente.
 
 ### 4.4 Asignación / carga
 
@@ -1225,9 +1278,11 @@ Todos los de calificación **más**: paquete SKU o `a_medida`, presupuesto rango
 
 ```
 LoginResponse.user          → Usuario
-BandejaItem                 → Conversacion + Oportunidad + Lead
+BandejaItem                 → Conversacion + Oportunidad + Cliente
 MensajeDto                  → Mensaje (+ AdjuntoMensaje opcional)
-OportunidadDetail           → Oportunidad + Lead
+OportunidadDetail           → Oportunidad + Cliente
+ClienteDetail               → Cliente + IdentificadorCliente + Tag + NotaCliente
+InteraccionDto              → Interaccion
 BriefCotizacion             → BriefCotizacion
 AsignacionDto               → Asignacion
 CargaAsesor / GET carga     → proyección Asignacion + Oportunidad + Conversacion

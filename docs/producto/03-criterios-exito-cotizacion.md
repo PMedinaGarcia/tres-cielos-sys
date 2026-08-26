@@ -23,7 +23,7 @@ Una oportunidad pasa a **listo_para_cotizar** cuando el bot o el asesor tienen, 
 | Tipo de evento | Uno de: boda, XV, corporativo, social, otro | Guion |
 | Fecha tentativa | Fecha o rango; flag `fecha_flexible` si aplica | Guion |
 | Aforo | Número o rango; coherente con `aforo_min`/`aforo_max` de sede/paquete | Guion + catálogo |
-| Sede de interés | Jardín activo (o elección explícita documentada) | Guion |
+| Sede de interés | Tres Cielos Tequesquitengo (autosignada en guion) | Guion |
 | Paquete / nivel tentativo | Al menos un `Paquete` publicado sugerido **o** marca explícita `a_medida` | Tool Prisma |
 | Presupuesto orientativo | Rango capturado **o** valor `no_definido` explícito | Guion |
 | Datos de contacto | Nombre + canal de respuesta verificable | Guion / canal |
@@ -121,8 +121,10 @@ Saludo → tipo de evento
 ## 7. Fuera del éxito del bot
 
 - Cerrar precio final negociado, descuentos especiales no catalogados.
-- Emitir/enviar PDF de cotización, contrato, anticipo o factura.
+- Emitir/enviar PDF de **cotización**, contrato, anticipo o factura.
 - Comprometer fechas bloqueadas en un calendario de operaciones (salvo que exista integración futura explícita).
+
+**Excepción — ficha comercial estática:** al informar la sede única, el bot **sí** envía el PDF *Tres Cielos Paquete Bodas 2027* (`waContent.document`, `GET /public/guion/paquete-bodas-2027.pdf`). No es una cotización ni un contrato generado; es la ficha de paquetes del venue. Los montos vinculantes siguen saliendo solo del catálogo Prisma.
 
 ## 8. Criterio de cierre de este entregable
 

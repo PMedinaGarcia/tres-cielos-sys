@@ -15,7 +15,7 @@ Venue tipo **jardín** para eventos sociales. Las cotizaciones de paquete y de r
 - Hospedaje satélite: habitaciones, villas y Villa Sol, con ocupación mínima de adultos (ver cortesías, no tarifas aquí).
 - Prueba de menú **en Cuernavaca** (paquetes con banquete).
 
-El nombre comercial de “Jardín 1”, la dirección y el aforo de sede **no** vienen en estas plantillas. No se afirma capacidad 200 ni horarios de visita desde este corpus.
+El nombre comercial de la sede operativa es **Tres Cielos Tequesquitengo**. La dirección y el aforo físico del recinto **no** vienen en estas plantillas. No se afirma capacidad 200 ni horarios de visita desde este corpus.
 
 ## 2. Tres líneas comerciales
 
@@ -71,4 +71,4 @@ El bot no emite este Anexo B. Prepara brief; el ejecutivo cotiza. Ver [../produc
 
 ## 6. Relación con sedes del producto
 
-El modelo de producto contempla dos jardines y go-live de uno solo ([../producto/01-diseno-estrategico.md](../producto/01-diseno-estrategico.md) §6). Este corpus etiqueta `sede: jardin-1` de forma operativa. No hay evidencia en las Excel de un segundo jardín ni de su nombre comercial.
+El modelo de producto contempla más de una sede y go-live de una sola ([../producto/01-diseno-estrategico.md](../producto/01-diseno-estrategico.md) §6). Este corpus etiqueta `sede: tequesquitengo` de forma operativa. No hay evidencia en las Excel de un segundo jardín.

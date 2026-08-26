@@ -130,23 +130,23 @@ Etapas base acordables en kick-off (ajustables en Etapa 1 con Tres Cielos):
 6. **Ganado** — evento reservado / cerrado.
 7. **Perdido** — con motivo tipificado simple (precio, fecha, competencia, sin respuesta, otro).
 
-## 6. Modelo de sedes (dos jardines, un activo)
+## 6. Modelo de sedes (una activa, segunda por change order)
 
 ### Principio
 
-El modelo de datos y las reglas **contemplan dos jardines**. En go-live opera **solo el primer jardín**. El segundo se activa con change order (CRM sede 2, reglas, WA/cupo/membresía adicionales).
+El modelo de datos y las reglas **contemplan más de una sede**. En operación hay **una sola sede activa: Tres Cielos Tequesquitengo**. Una segunda sede se activa con change order (CRM, reglas, WA/cupo/membresía adicionales).
 
-### Reglas de go-live (primer jardín)
+### Reglas de go-live (sede única)
 
 | Tema | Decisión |
 |---|---|
-| Sede operativa | Jardín 1 = activa |
-| Jardín 2 | Existe en catálogo como inactiva / no asignable |
-| Asignación | Solo asesores del jardín activo |
-| Cupo mensajería | 1,000 unidades/mes de la membresía del jardín activo |
-| Pregunta «sede de interés» | Puede fijarse automáticamente al jardín activo o preguntarse con una sola opción real + «otra sede próximamente» según copy aprobado |
+| Sede operativa | Tres Cielos Tequesquitengo (`sede-tequesquitengo`, slug catálogo `tequesquitengo`) |
+| Segunda sede | Preparada en el modelo; no asignable hasta change order |
+| Asignación | Solo asesores de la sede activa |
+| Cupo mensajería | 1,000 unidades/mes de la membresía de la sede activa |
+| Pregunta «sede de interés» | **Autosasignación:** al capturar aforo el bot informa la sede, envía la ficha PDF Paquete Bodas 2027 y pasa a intención de cotizar. No se pide confirmar otra ubicación. |
 
-### Al activar segundo jardín (futuro)
+### Al activar segunda sede (futuro)
 
 - Misma lógica de embudo y calificación.
 - Pertenencia de leads, conversaciones, asignación y cupo por sede.
@@ -158,7 +158,7 @@ El modelo de datos y las reglas **contemplan dos jardines**. En go-live opera **
 2. Calificación binaria operativa: **calificado** vs **en exploración**, más flag de escalación y flag `listo_para_cotizar`.
 3. Obligatorios: nombre, canal, ocasión, fecha tentativa, aforo, sede de interés.
 4. Precios y paquetes: **catálogo Prisma** como fuente de verdad; documentos narrativos no sustituyen montos.
-5. Go-live con **un jardín activo**; segundo jardín preparado pero no operativo.
+5. Go-live con **una sede activa** (Tres Cielos Tequesquitengo); segunda sede preparada pero no operativa.
 6. Ventana humana post-escalación: **15–30 minutos** (responsabilidad de adopción del cliente).
 7. Conocimiento dinámico: publicación invalida e reindexa de inmediato (SLA &lt; 60 s).
 8. Panel por rol: asesor solo su bandeja; coordinador/admin ven carga multi-asesor; telemetría operativa bot+humano obligatoria ([04-escenarios-rol-carga-telemetria.md](04-escenarios-rol-carga-telemetria.md)).
@@ -168,5 +168,5 @@ El modelo de datos y las reglas **contemplan dos jardines**. En go-live opera **
 - Catálogo exacto de ocasiones / tipos de evento.
 - SKUs, inclusiones y precios vigentes del catálogo de paquetes.
 - Textos de guion, tono y plantillas WhatsApp utility.
-- Nombres comerciales de las dos sedes y cuál es Jardín 1.
+- Nombre comercial de la sede activa: **Tres Cielos Tequesquitengo** (cerrado).
 - Etapas finales del pipeline si requieren renombrar las propuestas en §5.
