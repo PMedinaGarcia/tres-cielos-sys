@@ -108,3 +108,64 @@ export const GoldenQaCaseSchema = z.object({
 });
 
 export type GoldenQaCase = z.infer<typeof GoldenQaCaseSchema>;
+
+/** Tramos oficiales de la ficha Paquete Bodas 2027. No interpolar. */
+export const AFORO_TRAMOS_BODA = [100, 150, 200, 250, 300] as const;
+export type AforoTramoBoda = (typeof AFORO_TRAMOS_BODA)[number];
+
+/** Fecha de evento por defecto al cotizar la ficha 2027 (no la fecha de consulta). */
+export const FECHA_EVENTO_DEFAULT_CATALOGO = "2027-06-15";
+
+export const SKU_PAQUETE_ESTANDAR = "EVT-J1-TC";
+export const SKU_PAQUETE_PREMIUM = "EVT-J1-PREMIUM";
+export const SKU_SOLO_RENTA = "RENTA-J1";
+export const SKUS_BODA_PUBLICADOS = [
+  SKU_PAQUETE_ESTANDAR,
+  SKU_PAQUETE_PREMIUM,
+] as const;
+
+const LEGACY_SKU: Record<string, string> = {
+  "BODA-J1-ESENCIAL": SKU_PAQUETE_ESTANDAR,
+  "BODA-J1-PREMIUM": SKU_PAQUETE_PREMIUM,
+  "XV-J1-CLASICO": SKU_PAQUETE_ESTANDAR,
+};
+
+export function isAforoTramoBoda(n: number): n is AforoTramoBoda {
+  return (AFORO_TRAMOS_BODA as readonly number[]).includes(n);
+}
+
+/** Normaliza SKU de catálogo, incluyendo alias del golden de prueba. */
+export function canonicalizeSku(
+  sku: string | null | undefined,
+): string | undefined {
+  if (sku == null) return undefined;
+  const trimmed = sku.trim();
+  if (!trimmed) return undefined;
+  const upper = trimmed.toUpperCase();
+  return LEGACY_SKU[upper] ?? upper;
+}
+
+/**
+ * Resuelve un nombre informal o SKU en el texto del lead al SKU publicado.
+ * Si hay varios candidatos (p. ej. comparar), no fuerza uno.
+ */
+export function resolvePaqueteSkuAlias(
+  text: string,
+): string | undefined {
+  const skuMatch = text
+    .toUpperCase()
+    .match(/\b(EVT-J1-PREMIUM|EVT-J1-TC|RENTA-J1|BODA-J1-PREMIUM|BODA-J1-ESENCIAL)\b/);
+  if (skuMatch?.[1]) return canonicalizeSku(skuMatch[1]);
+
+  const lower = text.toLowerCase();
+  const mentionsPremium = /premium|upgrade/.test(lower);
+  const mentionsEstandar =
+    /esencial|b[aá]sico|est[aá]ndar|standar|\btc\b|paquete bodas/.test(lower);
+  if (mentionsPremium && mentionsEstandar) return undefined;
+  if (mentionsPremium) return SKU_PAQUETE_PREMIUM;
+  if (mentionsEstandar) return SKU_PAQUETE_ESTANDAR;
+  if (/solo\s+renta|\brenta\b/.test(lower) && !/paquete/.test(lower)) {
+    return SKU_SOLO_RENTA;
+  }
+  return undefined;
+}
