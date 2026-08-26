@@ -2,10 +2,11 @@ import type {
   ReasoningTrace,
   RutaOrquestador,
   EstadoBot,
+  WaContent,
 } from "@tres-cielos/shared";
+import { apiFetch, readJson } from "./http";
 
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3011";
+export { API_URL } from "./http";
 
 export interface SandboxTurnData {
   duplicate?: boolean;
@@ -21,40 +22,35 @@ export interface SandboxTurnData {
   registroRecuperacionId?: string | null;
   registroConsultaCatalogoId?: string | null;
   pasoGuion?: string;
+  waContent?: WaContent | null;
 }
 
 export async function postSandboxInbound(input: {
   texto: string;
   threadId: string;
   externalMessageId: string;
+  buttonPayload?: string;
 }): Promise<SandboxTurnData> {
-  const res = await fetch(`${API_URL}/channels/sandbox/inbound`, {
+  const res = await apiFetch("/channels/sandbox/inbound", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       texto: input.texto,
       canal: "whatsapp",
       externalThreadId: input.threadId,
       externalMessageId: input.externalMessageId,
+      ...(input.buttonPayload ? { buttonPayload: input.buttonPayload } : {}),
     }),
   });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(err || `HTTP ${res.status}`);
-  }
-  const json = (await res.json()) as { data: SandboxTurnData };
+  const json = await readJson<{ data: SandboxTurnData }>(res);
   return json.data;
 }
 
 export async function getReasoningTrace(
   traceId: string,
 ): Promise<ReasoningTrace> {
-  const res = await fetch(`${API_URL}/channels/sandbox/turns/${traceId}`, {
+  const res = await apiFetch(`/channels/sandbox/turns/${traceId}`, {
     cache: "no-store",
   });
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status}`);
-  }
-  const json = (await res.json()) as { data: ReasoningTrace };
+  const json = await readJson<{ data: ReasoningTrace }>(res);
   return json.data;
 }
