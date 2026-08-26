@@ -3,7 +3,7 @@ id: K02-EVIDENCIA-2026-07
 inventario: K02
 tipo: ficha_sede
 linea: shared
-sede: jardin-1
+sede: tequesquitengo
 edicion: "2026-07"
 vigente_desde: 2026-07-01
 vigente_hasta: null
@@ -29,4 +29,4 @@ Borrador. **No** sustituye la ficha de sede de tests ni afirma dirección, aforo
 - Hospedaje asociado: habitaciones, villas y Villa Sol, con ocupación mínima de adultos.
 - Prueba de menú de paquetes: se realiza en **Cuernavaca**. Eso no prueba por sí solo la dirección del jardín.
 
-Nombre comercial “Jardín 1”, cómo llegar y restricciones tipo pirotecnia: pendientes de ficha de sede aprobada.
+Nombre comercial: **Tres Cielos Tequesquitengo** (sede única). Cómo llegar y restricciones tipo pirotecnia: pendientes de ficha de sede aprobada.

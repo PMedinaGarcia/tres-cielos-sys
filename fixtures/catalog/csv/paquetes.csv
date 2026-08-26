@@ -1,4 +1,4 @@
 sku,nombre,tipo_evento,sede,aforo_min,aforo_max,descripcion_corta,estado
-BODA-J1-ESENCIAL,Boda Esencial Jardín 1,boda,jardin-1,80,150,Paquete base para bodas en Jardín 1,publicado
-BODA-J1-PREMIUM,Boda Premium Jardín 1,boda,jardin-1,100,200,Paquete premium con catering ampliado,publicado
-XV-J1-CLASICO,XV Clásico Jardín 1,xv,jardin-1,60,120,Celebración de XV años,publicado
+EVT-J1-TC,Paquete Estándar,boda,tequesquitengo,100,300,"Paquete Bodas 2027 en Tres Cielos Tequesquitengo: evento de tres días (viernes cortesía, sábado gran evento, domingo parrillada). Tarifas por tramo de invitados; no incluye IVA ni tramitología.",publicado
+EVT-J1-PREMIUM,Upgrade Premium,boda,tequesquitengo,100,300,"Todo el Paquete Estándar más table styling, barra de servicio/DJ booth, barra libre nacional, sillas premium, plafón de diseño y menú 100% res.",publicado
+RENTA-J1,Solo renta,multi,tequesquitengo,1,999,"Locación 11 h con carpa de cocina, limpieza, suite y valet. No incluye planta de luz ni banquete. Sin tarifa publicada en la ficha Bodas 2027.",publicado

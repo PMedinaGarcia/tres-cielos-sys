@@ -1,17 +1,17 @@
 [
   {
     "id": "Q1",
-    "intent": "Precio paquete esencial boda",
+    "intent": "Precio paquete estándar 100 invitados (desde)",
     "tool": "obtener_precio_paquete",
-    "input": { "sku": "BODA-J1-ESENCIAL" },
-    "expect": { "sku": "BODA-J1-ESENCIAL", "monto": 85000, "moneda": "MXN" }
+    "input": { "sku": "EVT-J1-TC" },
+    "expect": { "sku": "EVT-J1-TC", "monto": 2980, "moneda": "MXN" }
   },
   {
     "id": "Q2",
-    "intent": "Inclusiones SKU premium",
+    "intent": "Inclusiones Upgrade Premium",
     "tool": "listar_inclusiones",
-    "input": { "sku": "BODA-J1-PREMIUM" },
-    "expect": { "sku": "BODA-J1-PREMIUM", "minCount": 2 }
+    "input": { "sku": "EVT-J1-PREMIUM" },
+    "expect": { "sku": "EVT-J1-PREMIUM", "minCount": 2 }
   },
   {
     "id": "Q3",
@@ -29,23 +29,30 @@
   },
   {
     "id": "Q5",
-    "intent": "Comparar 2 SKUs",
+    "intent": "Comparar Estándar vs Premium (desde 100 invitados)",
     "tool": "comparar_paquetes",
-    "input": { "skus": ["BODA-J1-ESENCIAL", "BODA-J1-PREMIUM"] },
-    "expect": { "count": 2, "montos": [85000, 145000] }
+    "input": { "skus": ["EVT-J1-TC", "EVT-J1-PREMIUM"] },
+    "expect": { "count": 2, "montos": [2980, 3590] }
   },
   {
     "id": "Q6",
-    "intent": "Buscar bodas para 120 personas",
+    "intent": "Buscar bodas para 150 personas (tramo exacto)",
     "tool": "buscar_paquetes",
-    "input": { "tipoEvento": "boda", "aforo": 120 },
-    "expect": { "minCount": 1, "includesSku": "BODA-J1-ESENCIAL" }
+    "input": { "tipoEvento": "boda", "aforo": 150 },
+    "expect": { "minCount": 1, "includesSku": "EVT-J1-TC" }
   },
   {
     "id": "Q7",
-    "intent": "Reglas paquete esencial",
+    "intent": "Reglas paquete estándar (anticipo 20%)",
     "tool": "evaluar_reglas_paquete",
-    "input": { "sku": "BODA-J1-ESENCIAL" },
+    "input": { "sku": "EVT-J1-TC" },
     "expect": { "minCount": 1, "tipo": "anticipo_minimo" }
+  },
+  {
+    "id": "Q8",
+    "intent": "Precio Upgrade Premium 150 invitados",
+    "tool": "obtener_precio_paquete",
+    "input": { "sku": "EVT-J1-PREMIUM", "aforo": 150 },
+    "expect": { "sku": "EVT-J1-PREMIUM", "monto": 3100, "moneda": "MXN" }
   }
 ]

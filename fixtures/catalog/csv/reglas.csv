@@ -1,3 +1,15 @@
 sku,tipo,parametros_json,mensaje_prospecto
-BODA-J1-ESENCIAL,anticipo_minimo,"{""anticipo_pct"":30}",Se requiere anticipo del 30% para apartar la fecha.
-BODA-J1-PREMIUM,solo_fin_semana,{},El paquete Premium aplica solo fines de semana.
+EVT-J1-TC,anticipo_minimo,"{""anticipo_pct"":20,""momento"":""firma_contrato""}",A la firma del contrato se requiere anticipo del 20%.
+EVT-J1-PREMIUM,anticipo_minimo,"{""anticipo_pct"":20,""momento"":""firma_contrato""}",A la firma del contrato se requiere anticipo del 20%.
+EVT-J1-TC,horario,"{""horas_locacion_jardin"":11}",El jardín se renta 11 horas el sábado. Meseros y mezcladores cubren 10 horas de servicio.
+EVT-J1-PREMIUM,horario,"{""horas_locacion_jardin"":11}",El jardín se renta 11 horas el sábado. Meseros y mezcladores cubren 10 horas de servicio.
+EVT-J1-TC,otro,"{""iva_incluido"":false,""tramitologia_incluida"":false}",Los precios no incluyen IVA ni tramitología.
+EVT-J1-PREMIUM,otro,"{""iva_incluido"":false,""tramitologia_incluida"":false}",Los precios no incluyen IVA ni tramitología.
+EVT-J1-TC,otro,"{""liquidar_dias_antes_evento"":30}",El saldo se liquida 30 días antes del evento.
+EVT-J1-PREMIUM,otro,"{""liquidar_dias_antes_evento"":30}",El saldo se liquida 30 días antes del evento.
+EVT-J1-TC,otro,"{""temporada_baja"":""jun-sep"",""descuento_desde"":30000}",De junio a septiembre hay temporada baja con descuentos desde MXN 30,000. El monto exacto lo confirma un asesor.
+EVT-J1-PREMIUM,otro,"{""temporada_baja"":""jun-sep"",""descuento_desde"":30000}",De junio a septiembre hay temporada baja con descuentos desde MXN 30,000. El monto exacto lo confirma un asesor.
+EVT-J1-TC,otro,"{""aforo_tramos_publicados"":[100,150,200,250,300],""interpolar"":false}","Las tarifas publicadas son por tramos de 100, 150, 200, 250 y 300 invitados. Otros tamaños los confirma un asesor."
+EVT-J1-PREMIUM,otro,"{""aforo_tramos_publicados"":[100,150,200,250,300],""interpolar"":false}","Las tarifas publicadas son por tramos de 100, 150, 200, 250 y 300 invitados. Otros tamaños los confirma un asesor."
+RENTA-J1,anticipo_minimo,"{""anticipo_pct"":20,""momento"":""firma_contrato""}",A la firma del contrato se requiere anticipo del 20%. Solo renta no tiene tarifa publicada en la ficha Bodas 2027; un asesor cotiza.
+RENTA-J1,otro,"{""incluye_planta_luz"":false}",Solo renta no incluye planta de luz ni banquete.

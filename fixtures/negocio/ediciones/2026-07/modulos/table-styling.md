@@ -3,7 +3,7 @@ id: K11-TABLE-STYLING
 inventario: K11
 tipo: modulo
 linea: premium
-sede: jardin-1
+sede: tequesquitengo
 edicion: "2027"
 vigente_desde: 2027-01-01
 vigente_hasta: 2027-12-31

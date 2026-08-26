@@ -3,7 +3,7 @@ id: K11-PERSONAL-LIMPIEZA
 inventario: K11
 tipo: modulo
 linea: renta
-sede: jardin-1
+sede: tequesquitengo
 edicion: "2026-07"
 vigente_desde: 2026-07-01
 vigente_hasta: null

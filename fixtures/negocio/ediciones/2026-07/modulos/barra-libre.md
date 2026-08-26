@@ -3,7 +3,7 @@ id: K11-BARRA-LIBRE
 inventario: K11
 tipo: modulo
 linea: premium
-sede: jardin-1
+sede: tequesquitengo
 edicion: "2026-07"
 vigente_desde: 2026-07-01
 vigente_hasta: null

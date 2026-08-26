@@ -1,125 +1,398 @@
 {
   "paquetes": [
     {
-      "sku": "BODA-J1-ESENCIAL",
-      "nombre": "Boda Esencial Jardín 1",
+      "sku": "EVT-J1-TC",
+      "nombre": "Paquete Estándar",
       "tipo_evento": "boda",
-      "sede": "jardin-1",
-      "aforo_min": 80,
-      "aforo_max": 150,
-      "descripcion_corta": "Paquete base para bodas en Jardín 1",
-      "estado": "publicado"
-    },
-    {
-      "sku": "BODA-J1-PREMIUM",
-      "nombre": "Boda Premium Jardín 1",
-      "tipo_evento": "boda",
-      "sede": "jardin-1",
+      "sede": "tequesquitengo",
       "aforo_min": 100,
-      "aforo_max": 200,
-      "descripcion_corta": "Paquete premium con catering ampliado",
+      "aforo_max": 300,
+      "descripcion_corta": "Paquete Bodas 2027 en Tres Cielos Tequesquitengo: evento de tres días (viernes cortesía, sábado gran evento, domingo parrillada). Tarifas por tramo de invitados; no incluye IVA ni tramitología.",
       "estado": "publicado"
     },
     {
-      "sku": "XV-J1-CLASICO",
-      "nombre": "XV Clásico Jardín 1",
-      "tipo_evento": "xv",
-      "sede": "jardin-1",
-      "aforo_min": 60,
-      "aforo_max": 120,
-      "descripcion_corta": "Celebración de XV años",
+      "sku": "EVT-J1-PREMIUM",
+      "nombre": "Upgrade Premium",
+      "tipo_evento": "boda",
+      "sede": "tequesquitengo",
+      "aforo_min": 100,
+      "aforo_max": 300,
+      "descripcion_corta": "Todo el Paquete Estándar más table styling, barra de servicio/DJ booth, barra libre nacional, sillas premium, plafón de diseño y menú 100% res.",
+      "estado": "publicado"
+    },
+    {
+      "sku": "RENTA-J1",
+      "nombre": "Solo renta",
+      "tipo_evento": "multi",
+      "sede": "tequesquitengo",
+      "aforo_min": 1,
+      "aforo_max": 999,
+      "descripcion_corta": "Locación 11 h con carpa de cocina, limpieza, suite y valet. No incluye planta de luz ni banquete. Sin tarifa publicada en la ficha Bodas 2027.",
       "estado": "publicado"
     }
   ],
   "precios": [
     {
-      "sku": "BODA-J1-ESENCIAL",
+      "sku": "EVT-J1-TC",
       "moneda": "MXN",
-      "monto": 85000,
-      "rango_min": null,
-      "rango_max": null,
-      "unidad": "evento",
-      "vigente_desde": "2026-01-01",
-      "vigente_hasta": "2026-12-31",
-      "condiciones": "Anticipo 30%"
+      "monto": 2980,
+      "rango_min": 100,
+      "rango_max": 100,
+      "unidad": "persona",
+      "vigente_desde": "2027-01-01",
+      "vigente_hasta": "2027-12-31",
+      "condiciones": "Paquete Estándar 2027. 100 invitados. No incluye IVA ni tramitología."
     },
     {
-      "sku": "BODA-J1-PREMIUM",
+      "sku": "EVT-J1-TC",
       "moneda": "MXN",
-      "monto": 145000,
-      "rango_min": null,
-      "rango_max": null,
-      "unidad": "evento",
-      "vigente_desde": "2026-01-01",
-      "vigente_hasta": "2026-12-31",
-      "condiciones": "Anticipo 40%"
+      "monto": 2550,
+      "rango_min": 150,
+      "rango_max": 150,
+      "unidad": "persona",
+      "vigente_desde": "2027-01-01",
+      "vigente_hasta": "2027-12-31",
+      "condiciones": "Paquete Estándar 2027. 150 invitados. No incluye IVA ni tramitología."
     },
     {
-      "sku": "XV-J1-CLASICO",
+      "sku": "EVT-J1-TC",
       "moneda": "MXN",
-      "monto": 62000,
-      "rango_min": null,
-      "rango_max": null,
-      "unidad": "evento",
-      "vigente_desde": "2026-01-01",
-      "vigente_hasta": "2026-12-31",
-      "condiciones": null
+      "monto": 2200,
+      "rango_min": 200,
+      "rango_max": 200,
+      "unidad": "persona",
+      "vigente_desde": "2027-01-01",
+      "vigente_hasta": "2027-12-31",
+      "condiciones": "Paquete Estándar 2027. 200 invitados. No incluye IVA ni tramitología."
+    },
+    {
+      "sku": "EVT-J1-TC",
+      "moneda": "MXN",
+      "monto": 2000,
+      "rango_min": 250,
+      "rango_max": 250,
+      "unidad": "persona",
+      "vigente_desde": "2027-01-01",
+      "vigente_hasta": "2027-12-31",
+      "condiciones": "Paquete Estándar 2027. 250 invitados. No incluye IVA ni tramitología."
+    },
+    {
+      "sku": "EVT-J1-TC",
+      "moneda": "MXN",
+      "monto": 1800,
+      "rango_min": 300,
+      "rango_max": 300,
+      "unidad": "persona",
+      "vigente_desde": "2027-01-01",
+      "vigente_hasta": "2027-12-31",
+      "condiciones": "Paquete Estándar 2027. 300 invitados. No incluye IVA ni tramitología."
+    },
+    {
+      "sku": "EVT-J1-PREMIUM",
+      "moneda": "MXN",
+      "monto": 3590,
+      "rango_min": 100,
+      "rango_max": 100,
+      "unidad": "persona",
+      "vigente_desde": "2027-01-01",
+      "vigente_hasta": "2027-12-31",
+      "condiciones": "Upgrade Premium 2027. 100 invitados. No incluye IVA ni tramitología."
+    },
+    {
+      "sku": "EVT-J1-PREMIUM",
+      "moneda": "MXN",
+      "monto": 3100,
+      "rango_min": 150,
+      "rango_max": 150,
+      "unidad": "persona",
+      "vigente_desde": "2027-01-01",
+      "vigente_hasta": "2027-12-31",
+      "condiciones": "Upgrade Premium 2027. 150 invitados. No incluye IVA ni tramitología."
+    },
+    {
+      "sku": "EVT-J1-PREMIUM",
+      "moneda": "MXN",
+      "monto": 2710,
+      "rango_min": 200,
+      "rango_max": 200,
+      "unidad": "persona",
+      "vigente_desde": "2027-01-01",
+      "vigente_hasta": "2027-12-31",
+      "condiciones": "Upgrade Premium 2027. 200 invitados. No incluye IVA ni tramitología."
+    },
+    {
+      "sku": "EVT-J1-PREMIUM",
+      "moneda": "MXN",
+      "monto": 2450,
+      "rango_min": 250,
+      "rango_max": 250,
+      "unidad": "persona",
+      "vigente_desde": "2027-01-01",
+      "vigente_hasta": "2027-12-31",
+      "condiciones": "Upgrade Premium 2027. 250 invitados. No incluye IVA ni tramitología."
+    },
+    {
+      "sku": "EVT-J1-PREMIUM",
+      "moneda": "MXN",
+      "monto": 2250,
+      "rango_min": 300,
+      "rango_max": 300,
+      "unidad": "persona",
+      "vigente_desde": "2027-01-01",
+      "vigente_hasta": "2027-12-31",
+      "condiciones": "Upgrade Premium 2027. 300 invitados. No incluye IVA ni tramitología."
     }
   ],
   "inclusiones": [
     {
-      "sku": "BODA-J1-ESENCIAL",
+      "sku": "EVT-J1-TC",
+      "categoria": "otro",
+      "nombre": "Evento de tres días: viernes cortesía, sábado gran evento y domingo parrillada",
+      "cantidad": 3,
+      "unidad": "dias",
+      "obligatoria": true
+    },
+    {
+      "sku": "EVT-J1-TC",
+      "categoria": "otro",
+      "nombre": "Renta del jardín por 11 horas (estacionamiento, baños, áreas comunes)",
+      "cantidad": 11,
+      "unidad": "horas",
+      "obligatoria": true
+    },
+    {
+      "sku": "EVT-J1-TC",
+      "categoria": "otro",
+      "nombre": "Suite nupcial queen size, dos noches",
+      "cantidad": 2,
+      "unidad": "noches",
+      "obligatoria": true
+    },
+    {
+      "sku": "EVT-J1-TC",
+      "categoria": "personal",
+      "nombre": "Valet para el 100% de los invitados",
+      "cantidad": 100,
+      "unidad": "porciento_invitados",
+      "obligatoria": true
+    },
+    {
+      "sku": "EVT-J1-TC",
+      "categoria": "otro",
+      "nombre": "Capilla techada y consagrada",
+      "cantidad": 50,
+      "unidad": "sillas",
+      "obligatoria": true
+    },
+    {
+      "sku": "EVT-J1-TC",
       "categoria": "catering",
-      "nombre": "Menú tres tiempos",
-      "cantidad": 1,
-      "unidad": "servicio",
+      "nombre": "Banquete 3 tiempos (50% res y 50% pollo o cerdo)",
+      "cantidad": 3,
+      "unidad": "tiempos",
       "obligatoria": true
     },
     {
-      "sku": "BODA-J1-ESENCIAL",
-      "categoria": "mobiliario",
-      "nombre": "Mobiliario básico",
-      "cantidad": 1,
-      "unidad": "paquete",
-      "obligatoria": true
-    },
-    {
-      "sku": "BODA-J1-PREMIUM",
-      "categoria": "catering",
-      "nombre": "Menú premium + barra libre 4h",
-      "cantidad": 1,
-      "unidad": "servicio",
-      "obligatoria": true
-    },
-    {
-      "sku": "BODA-J1-PREMIUM",
+      "sku": "EVT-J1-TC",
       "categoria": "audio",
-      "nombre": "Audio profesional",
+      "nombre": "DJ por todo el evento",
       "cantidad": 1,
-      "unidad": "set",
+      "unidad": "servicio",
       "obligatoria": true
     },
     {
-      "sku": "XV-J1-CLASICO",
-      "categoria": "decoracion",
-      "nombre": "Decoración temática",
+      "sku": "EVT-J1-TC",
+      "categoria": "personal",
+      "nombre": "In House Planner (coordinación antes y durante el evento)",
       "cantidad": 1,
-      "unidad": "set",
-      "obligatoria": false
+      "unidad": "servicio",
+      "obligatoria": true
+    },
+    {
+      "sku": "EVT-J1-PREMIUM",
+      "categoria": "otro",
+      "nombre": "Evento de tres días: viernes cortesía, sábado gran evento y domingo parrillada",
+      "cantidad": 3,
+      "unidad": "dias",
+      "obligatoria": true
+    },
+    {
+      "sku": "EVT-J1-PREMIUM",
+      "categoria": "otro",
+      "nombre": "Renta del jardín por 11 horas (estacionamiento, baños, áreas comunes)",
+      "cantidad": 11,
+      "unidad": "horas",
+      "obligatoria": true
+    },
+    {
+      "sku": "EVT-J1-PREMIUM",
+      "categoria": "otro",
+      "nombre": "Suite nupcial queen size, dos noches",
+      "cantidad": 2,
+      "unidad": "noches",
+      "obligatoria": true
+    },
+    {
+      "sku": "EVT-J1-PREMIUM",
+      "categoria": "catering",
+      "nombre": "Banquete 3 tiempos base 100% res",
+      "cantidad": 3,
+      "unidad": "tiempos",
+      "obligatoria": true
+    },
+    {
+      "sku": "EVT-J1-PREMIUM",
+      "categoria": "catering",
+      "nombre": "Barra libre nacional (tequila tradicional, ron Matusalem, vodka Stolichnaya, whisky etiqueta roja)",
+      "cantidad": 1,
+      "unidad": "servicio",
+      "obligatoria": true
+    },
+    {
+      "sku": "EVT-J1-PREMIUM",
+      "categoria": "mobiliario",
+      "nombre": "Table styling (copas, plato base y plaqué de color)",
+      "cantidad": 1,
+      "unidad": "servicio",
+      "obligatoria": true
+    },
+    {
+      "sku": "EVT-J1-PREMIUM",
+      "categoria": "mobiliario",
+      "nombre": "Sillas premium y plafón de diseño",
+      "cantidad": 1,
+      "unidad": "servicio",
+      "obligatoria": true
+    },
+    {
+      "sku": "EVT-J1-PREMIUM",
+      "categoria": "audio",
+      "nombre": "DJ por todo el evento y upgrade de barra de servicio / DJ booth",
+      "cantidad": 1,
+      "unidad": "servicio",
+      "obligatoria": true
+    },
+    {
+      "sku": "RENTA-J1",
+      "categoria": "otro",
+      "nombre": "Renta del jardín por 11 horas (estacionamiento, baños, áreas comunes, carpa de cocina)",
+      "cantidad": 11,
+      "unidad": "horas",
+      "obligatoria": true
+    },
+    {
+      "sku": "RENTA-J1",
+      "categoria": "otro",
+      "nombre": "Suite nupcial queen size, dos noches",
+      "cantidad": 2,
+      "unidad": "noches",
+      "obligatoria": true
+    },
+    {
+      "sku": "RENTA-J1",
+      "categoria": "personal",
+      "nombre": "Valet y personal de limpieza. No incluye planta de luz ni banquete",
+      "cantidad": 1,
+      "unidad": "servicio",
+      "obligatoria": true
     }
   ],
   "reglas": [
     {
-      "sku": "BODA-J1-ESENCIAL",
+      "sku": "EVT-J1-TC",
       "tipo": "anticipo_minimo",
-      "parametros_json": "{\"anticipo_pct\":30}",
-      "mensaje_prospecto": "Se requiere anticipo del 30% para apartar la fecha."
+      "parametros_json": "{\"anticipo_pct\":20,\"momento\":\"firma_contrato\"}",
+      "mensaje_prospecto": "A la firma del contrato se requiere anticipo del 20%."
     },
     {
-      "sku": "BODA-J1-PREMIUM",
-      "tipo": "solo_fin_semana",
-      "parametros_json": "{}",
-      "mensaje_prospecto": "El paquete Premium aplica solo fines de semana."
+      "sku": "EVT-J1-PREMIUM",
+      "tipo": "anticipo_minimo",
+      "parametros_json": "{\"anticipo_pct\":20,\"momento\":\"firma_contrato\"}",
+      "mensaje_prospecto": "A la firma del contrato se requiere anticipo del 20%."
+    },
+    {
+      "sku": "EVT-J1-TC",
+      "tipo": "horario",
+      "parametros_json": "{\"horas_locacion_jardin\":11}",
+      "mensaje_prospecto": "El jardín se renta 11 horas el sábado. Meseros y mezcladores cubren 10 horas de servicio continuo. El cierre límite de evento en plantilla es a las 2:00 a.m."
+    },
+    {
+      "sku": "EVT-J1-PREMIUM",
+      "tipo": "horario",
+      "parametros_json": "{\"horas_locacion_jardin\":11}",
+      "mensaje_prospecto": "El jardín se renta 11 horas el sábado. Meseros y mezcladores cubren 10 horas de servicio continuo. El cierre límite de evento en plantilla es a las 2:00 a.m."
+    },
+    {
+      "sku": "EVT-J1-TC",
+      "tipo": "otro",
+      "parametros_json": "{\"iva_incluido\":false,\"iva_pct\":16,\"tramitologia_incluida\":false}",
+      "mensaje_prospecto": "Los precios no incluyen el 16% de IVA ni tramitología."
+    },
+    {
+      "sku": "EVT-J1-PREMIUM",
+      "tipo": "otro",
+      "parametros_json": "{\"iva_incluido\":false,\"iva_pct\":16,\"tramitologia_incluida\":false}",
+      "mensaje_prospecto": "Los precios no incluyen el 16% de IVA ni tramitología."
+    },
+    {
+      "sku": "EVT-J1-TC",
+      "tipo": "otro",
+      "parametros_json": "{\"liquidar_dias_antes_evento\":30}",
+      "mensaje_prospecto": "El saldo se liquida 30 días antes del evento."
+    },
+    {
+      "sku": "EVT-J1-PREMIUM",
+      "tipo": "otro",
+      "parametros_json": "{\"liquidar_dias_antes_evento\":30}",
+      "mensaje_prospecto": "El saldo se liquida 30 días antes del evento."
+    },
+    {
+      "sku": "EVT-J1-TC",
+      "tipo": "otro",
+      "parametros_json": "{\"temporada_baja\":\"jun-sep\",\"descuento_desde\":30000}",
+      "mensaje_prospecto": "De junio a septiembre hay temporada baja con descuentos desde MXN 30,000. El monto exacto lo confirma un asesor."
+    },
+    {
+      "sku": "EVT-J1-PREMIUM",
+      "tipo": "otro",
+      "parametros_json": "{\"temporada_baja\":\"jun-sep\",\"descuento_desde\":30000}",
+      "mensaje_prospecto": "De junio a septiembre hay temporada baja con descuentos desde MXN 30,000. El monto exacto lo confirma un asesor."
+    },
+    {
+      "sku": "EVT-J1-TC",
+      "tipo": "otro",
+      "parametros_json": "{\"aforo_tramos_publicados\":[100,150,200,250,300],\"interpolar\":false}",
+      "mensaje_prospecto": "Las tarifas publicadas son por tramos de 100, 150, 200, 250 y 300 invitados. Otros tamaños los confirma un asesor."
+    },
+    {
+      "sku": "EVT-J1-PREMIUM",
+      "tipo": "otro",
+      "parametros_json": "{\"aforo_tramos_publicados\":[100,150,200,250,300],\"interpolar\":false}",
+      "mensaje_prospecto": "Las tarifas publicadas son por tramos de 100, 150, 200, 250 y 300 invitados. Otros tamaños los confirma un asesor."
+    },
+    {
+      "sku": "EVT-J1-TC",
+      "tipo": "otro",
+      "parametros_json": "{\"apartado_fecha\":false,\"vigencia_cotizacion_dias\":30}",
+      "mensaje_prospecto": "La cotización no representa apartado de fecha y tiene vigencia de 30 días naturales."
+    },
+    {
+      "sku": "EVT-J1-PREMIUM",
+      "tipo": "otro",
+      "parametros_json": "{\"apartado_fecha\":false,\"vigencia_cotizacion_dias\":30}",
+      "mensaje_prospecto": "La cotización no representa apartado de fecha y tiene vigencia de 30 días naturales."
+    },
+    {
+      "sku": "RENTA-J1",
+      "tipo": "anticipo_minimo",
+      "parametros_json": "{\"anticipo_pct\":20,\"momento\":\"firma_contrato\"}",
+      "mensaje_prospecto": "A la firma del contrato se requiere anticipo del 20%. Solo renta no tiene tarifa publicada en la ficha Bodas 2027; un asesor cotiza."
+    },
+    {
+      "sku": "RENTA-J1",
+      "tipo": "otro",
+      "parametros_json": "{\"incluye_planta_luz\":false}",
+      "mensaje_prospecto": "Solo renta no incluye planta de luz ni banquete."
     }
   ]
 }

@@ -9,7 +9,7 @@ paquetes:
   - sku: EVT-J1-PREMIUM
     nombre: Upgrade Premium (Paquete Bodas)
     tipo_evento: boda
-    sede: jardin-1
+    sede: tequesquitengo
     aforo_min: 100
     aforo_max: 300
     descripcion_corta: Paquete estándar más table styling, barra de servicio/DJ booth, barra libre nacional, sillas premium, plafón de diseño y menú 100% res. Tarifas 2027 por tramo de invitados.
@@ -23,7 +23,7 @@ paquetes:
   - sku: EVT-J1-TC
     nombre: Paquete Estándar (Paquete Bodas / Paquete TC)
     tipo_evento: boda
-    sede: jardin-1
+    sede: tequesquitengo
     aforo_min: 100
     aforo_max: 300
     descripcion_corta: Evento de tres días (viernes cortesía, sábado gran evento, domingo parrillada condicionada). Tarifas 2027 por tramo de invitados.
@@ -41,7 +41,7 @@ paquetes:
   - sku: RENTA-J1
     nombre: Solo renta
     tipo_evento: multi
-    sede: jardin-1
+    sede: tequesquitengo
     aforo_min: 1
     aforo_max: 999
     descripcion_corta: Locación 11 h con carpa de cocina, limpieza, suite y valet. No incluye planta de luz ni banquete. Sin tarifa publicada en ficha Bodas 2027.

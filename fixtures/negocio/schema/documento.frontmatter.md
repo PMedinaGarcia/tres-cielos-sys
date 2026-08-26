@@ -10,7 +10,7 @@ Cada markdown bajo `evergreen/` y `ediciones/*/lineas|modulos|cortesias|sede/` e
 | `inventario` | string | sí | `K01` … `K14` (familia; K11 es la familia de módulos) |
 | `tipo` | enum | sí | `faq` \| `ficha_sede` \| `politica` \| `tipos_evento` \| `narrativa_paquete` \| `modulo` \| `promocion` \| `safe_reply` |
 | `linea` | enum | sí | `premium` \| `tc` \| `renta` \| `shared` \| `evergreen` |
-| `sede` | string \| null | sí | `jardin-1` o `null` (global) |
+| `sede` | string \| null | sí | `tequesquitengo` o `null` (global) |
 | `edicion` | string \| `evergreen` | sí | `2026-07` o `evergreen` |
 | `vigente_desde` | date ISO | sí | Inclusive |
 | `vigente_hasta` | date ISO \| null | sí | `null` = abierta |
@@ -31,7 +31,7 @@ id: K11-COCTEL
 inventario: K11
 tipo: modulo
 linea: shared
-sede: jardin-1
+sede: tequesquitengo
 edicion: "2026-07"
 vigente_desde: 2026-07-01
 vigente_hasta: null

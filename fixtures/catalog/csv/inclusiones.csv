@@ -1,6 +1,20 @@
 sku,categoria,nombre,cantidad,unidad,obligatoria
-BODA-J1-ESENCIAL,catering,Menú tres tiempos,1,servicio,true
-BODA-J1-ESENCIAL,mobiliario,Mobiliario básico,1,paquete,true
-BODA-J1-PREMIUM,catering,Menú premium + barra libre 4h,1,servicio,true
-BODA-J1-PREMIUM,audio,Audio profesional,1,set,true
-XV-J1-CLASICO,decoracion,Decoración temática,1,set,false
+EVT-J1-TC,otro,"Evento de tres días: viernes cortesía, sábado gran evento y domingo parrillada",3,dias,true
+EVT-J1-TC,otro,"Renta del jardín por 11 horas (estacionamiento, baños, áreas comunes)",11,horas,true
+EVT-J1-TC,otro,"Suite nupcial queen size, dos noches",2,noches,true
+EVT-J1-TC,personal,Valet para el 100% de los invitados,100,porciento_invitados,true
+EVT-J1-TC,otro,Capilla techada y consagrada,50,sillas,true
+EVT-J1-TC,catering,"Banquete 3 tiempos (50% res y 50% pollo o cerdo)",3,tiempos,true
+EVT-J1-TC,audio,DJ por todo el evento,1,servicio,true
+EVT-J1-TC,personal,"In House Planner (coordinación antes y durante el evento)",1,servicio,true
+EVT-J1-PREMIUM,otro,"Evento de tres días: viernes cortesía, sábado gran evento y domingo parrillada",3,dias,true
+EVT-J1-PREMIUM,otro,"Renta del jardín por 11 horas (estacionamiento, baños, áreas comunes)",11,horas,true
+EVT-J1-PREMIUM,otro,"Suite nupcial queen size, dos noches",2,noches,true
+EVT-J1-PREMIUM,catering,Banquete 3 tiempos base 100% res,3,tiempos,true
+EVT-J1-PREMIUM,catering,"Barra libre nacional (tequila tradicional, ron Matusalem, vodka Stolichnaya, whisky etiqueta roja)",1,servicio,true
+EVT-J1-PREMIUM,mobiliario,"Table styling (copas, plato base y plaqué de color)",1,servicio,true
+EVT-J1-PREMIUM,mobiliario,Sillas premium y plafón de diseño,1,servicio,true
+EVT-J1-PREMIUM,audio,DJ por todo el evento y upgrade de barra de servicio / DJ booth,1,servicio,true
+RENTA-J1,otro,"Renta del jardín por 11 horas (estacionamiento, baños, áreas comunes, carpa de cocina)",11,horas,true
+RENTA-J1,otro,"Suite nupcial queen size, dos noches",2,noches,true
+RENTA-J1,personal,Valet y personal de limpieza. No incluye planta de luz ni banquete,1,servicio,true

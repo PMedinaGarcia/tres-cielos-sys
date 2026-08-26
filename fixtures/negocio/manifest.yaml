@@ -9,7 +9,7 @@
 
 edicion_activa: "2026-07"
 tarifa_paquetes_bodas: "2027"
-sede_go_live: jardin-1
+sede_go_live: tequesquitengo
 
 evergreen:
   - id: K01
