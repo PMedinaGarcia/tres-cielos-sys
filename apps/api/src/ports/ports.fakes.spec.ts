@@ -140,7 +140,7 @@ describe("ports fakes (DI)", () => {
     expect(t.text).toContain("Tres Cielos");
   });
 
-  it("ObjectStoragePort: put/get/signedUrl/delete en memoria", async () => {
+  it("ObjectStoragePort: put/get/signedUrl/exists/delete en memoria", async () => {
     await storage.put({
       key: "adjuntos/a.jpg",
       body: "bytes",
@@ -148,9 +148,12 @@ describe("ports fakes (DI)", () => {
     });
     const got = await storage.get("adjuntos/a.jpg");
     expect(got.body.toString("utf8")).toBe("bytes");
+    expect(await storage.exists("adjuntos/a.jpg")).toBe(true);
+    expect(await storage.ping()).toBe(true);
     const url = await storage.signedUrl({ key: "adjuntos/a.jpg" });
     expect(url).toContain("memory://");
     await storage.delete("adjuntos/a.jpg");
+    expect(await storage.exists("adjuntos/a.jpg")).toBe(false);
     try {
       await storage.get("adjuntos/a.jpg");
       fail("expected StorageError");

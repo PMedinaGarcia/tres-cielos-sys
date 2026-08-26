@@ -51,6 +51,14 @@ export class MemoryObjectStorageAdapter implements ObjectStoragePort {
     this.store.delete(key);
   }
 
+  async exists(key: string): Promise<boolean> {
+    return this.store.has(key);
+  }
+
+  async ping(): Promise<boolean> {
+    return true;
+  }
+
   keys(): string[] {
     return [...this.store.keys()];
   }

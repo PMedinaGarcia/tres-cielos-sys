@@ -48,6 +48,9 @@ export interface MediaRouteResult {
   ok: boolean;
   pipelineEstado: PipelineEstado;
   storageKey?: string;
+  storageBucket?: string;
+  checksum?: string;
+  bytes?: number;
   fragments: ParsedFragment[];
   publicaAK: boolean;
   motivoRechazo?: MotivoHandoffMedia | string;

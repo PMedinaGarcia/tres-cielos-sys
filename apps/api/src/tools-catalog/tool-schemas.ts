@@ -18,7 +18,7 @@ export const TOOL_CATALOG_SCHEMAS = [
           fecha: {
             type: "string",
             description:
-              "Fecha del evento YYYY-MM-DD; filtra vigencia de precios (si falta, se usa hoy).",
+              "Fecha del evento YYYY-MM-DD; filtra vigencia de precios (si falta, se usa 2027-06-15 de la ficha Bodas 2027).",
           },
         },
         required: ["tipoEvento"],
@@ -30,16 +30,17 @@ export const TOOL_CATALOG_SCHEMAS = [
     function: {
       name: "obtener_precio_paquete",
       description:
-        "Obtiene el precio vigente de un paquete por SKU o id. Única fuente de montos.",
+        "Obtiene el precio vigente de un paquete por SKU o id y aforo. Única fuente de montos. No interpolar tramos; solo 100/150/200/250/300.",
       parameters: {
         type: "object",
         properties: {
           sku: { type: "string" },
           paqueteId: { type: "string" },
+          aforo: { type: "number" },
           fecha: {
             type: "string",
             description:
-              "Fecha del evento YYYY-MM-DD para vigencia (si falta, se usa hoy).",
+              "Fecha del evento YYYY-MM-DD para vigencia (si falta, se usa 2027-06-15).",
           },
         },
       },
@@ -69,6 +70,7 @@ export const TOOL_CATALOG_SCHEMAS = [
         properties: {
           skus: { type: "array", items: { type: "string" } },
           ids: { type: "array", items: { type: "string" } },
+          aforo: { type: "number" },
           fecha: {
             type: "string",
             description: "Fecha del evento YYYY-MM-DD para vigencia de precios.",

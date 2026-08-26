@@ -25,6 +25,7 @@ export function detectIntencionMonetariaEnQuery(query: string): boolean {
     "cuánto cuesta",
     "precio",
     "precios",
+    "preico",
     "tarifa",
     "tarifas",
     "cotiza",
@@ -33,6 +34,8 @@ export function detectIntencionMonetariaEnQuery(query: string): boolean {
     "presupuesto",
     "monto",
     "paquete esencial",
+    "paquetes",
+    "pakete",
     "sku",
   ];
   return cues.some((c) => q.includes(c.normalize("NFD").replace(/\p{M}/gu, "")));

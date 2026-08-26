@@ -50,6 +50,10 @@ export class InboundMessageDto {
   @IsString()
   texto!: string;
 
+  @IsOptional()
+  @IsString()
+  buttonPayload?: string;
+
   @IsISO8601()
   recibidoEn!: string;
 

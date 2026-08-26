@@ -14,7 +14,9 @@ import {
   SourcePluginRegistry,
 } from "../plugins/source-plugin.registry";
 
-export function buildTestMediaRouter(): MediaRouterService {
+export function buildTestMediaRouter(
+  storage: FakeObjectStoragePort = new FakeObjectStoragePort(),
+): MediaRouterService {
   const scrub = new TariffScrubService();
   const pdf = new PdfParser(scrub);
   const docx = new DocxParser(scrub);
@@ -24,9 +26,5 @@ export function buildTestMediaRouter(): MediaRouterService {
   const registry = new SourcePluginRegistry(
     assembleSourcePlugins({ pdf, docx, xls, photo, video }),
   );
-  return new MediaRouterService(
-    new FakeObjectStoragePort(),
-    registry,
-    new SlaTrackerService(),
-  );
+  return new MediaRouterService(storage, registry, new SlaTrackerService());
 }

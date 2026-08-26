@@ -50,7 +50,7 @@ describe("Publish/archive + SLA", () => {
     expect(indexed.some((f) => f.inventarioId === "K02")).toBe(true);
 
     await publish.archive(documento.id);
-    expect(repo.listActiveFragments().length).toBe(0);
+    expect((await repo.listActiveFragments()).length).toBe(0);
     const after = await rag.listRecuperables({ sedeId: null });
     expect(after.every((f) => f.id !== fragments[0]?.id)).toBe(true);
   });

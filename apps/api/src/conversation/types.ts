@@ -67,6 +67,7 @@ export interface CamposCapturados {
   sedeNombre?: string | null;
   presupuestoOrientativo?: PresupuestoOrientativo | null;
   intencionCotizar?: boolean | null;
+  intencionVisita?: boolean | null;
 }
 
 export interface AdjuntoInbound {
@@ -74,6 +75,7 @@ export interface AdjuntoInbound {
   sizeBytes?: number;
   duracionSec?: number;
   storageKey?: string;
+  nombreOriginal?: string;
 }
 
 export interface InboundMessage {
@@ -88,6 +90,7 @@ export interface InboundMessage {
     waId?: string | null;
   };
   adjuntos?: AdjuntoInbound[];
+  buttonPayload?: string;
 }
 
 export interface TurnResponse {
@@ -103,6 +106,7 @@ export interface TurnResponse {
   pasoGuion?: PasoGuion;
   reasoningTraceId?: string | null;
   reasoningTrace?: import("@tres-cielos/shared").ReasoningTrace | null;
+  waContent?: import("@tres-cielos/shared").WaContent | null;
 }
 
 export interface ConversacionState {
@@ -134,6 +138,8 @@ export interface MensajeRecord {
   externalMessageId?: string;
   ruta?: RutaOrquestador;
   consumioCupo: boolean;
+  plantillaUtilityId?: string | null;
+  adjuntos?: AdjuntoInbound[];
 }
 
 export interface EventoOperativoRecord {

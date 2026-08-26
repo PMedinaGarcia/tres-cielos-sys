@@ -7,7 +7,7 @@ import {
 import { toolCatalogDefinitions } from "../../tools-catalog/tool-schemas";
 import { ToolsExecutorService } from "../../tools-catalog/tools-executor.service";
 import { RegistroConsultaCatalogoService } from "../../tools-catalog/registro-consulta-catalogo.service";
-import { LLM_PORT } from "../../ports/tokens";
+import { LLM_PORT, OBJECT_STORAGE_PORT } from "../../ports/tokens";
 import type { LlmPort } from "../../ports/llm.port";
 import { ScriptService } from "../script/script.service";
 import { HandoffService } from "../handoff/handoff.service";
@@ -34,14 +34,44 @@ import {
   decideRoute,
   isAdjuntoSoportado,
 } from "./routing.policies";
+import { composeCommercialFaq, COPY_VISITA } from "./commercial-faq.copy";
+import { matchCommercialFaqTopic } from "./commercial-faq.matcher";
+import { isIntencionVisita } from "./visit-intent";
 import {
   applyNoRecuperablePrecioGate,
   assertNoInventedMontos,
   isIntencionMonetaria,
   stripMontosFromProse,
 } from "./no-recuperable-precio.gate";
+import {
+  redactBuscarPaquetes,
+  redactBusquedaVacia,
+  redactCompararPaquetes,
+  redactInclusiones,
+  redactPrecioPaquete,
+  redactReglas,
+  redactSinPrecioVigente,
+  redactSinTramoExacto,
+} from "./catalog-copy";
 import { ReasoningTraceService } from "../reasoning/reasoning-trace.service";
 import { ExpedientePersistService } from "../../crm/expediente-persist.service";
+import { attachWaContent } from "../../channels/wa-content.composer";
+import { paqueteBodas2027Document } from "../../channels/guion-assets";
+import {
+  canonicalizeSku,
+  GUION_ADJUNTO_PAQUETE_BODAS,
+  GUION_PDF_FILENAME,
+  SEDE_SLUG,
+  sedeToCatalogSlug,
+} from "@tres-cielos/shared";
+import { ConfigService } from "@nestjs/config";
+import type { ObjectStoragePort } from "../../ports/object-storage.port";
+import {
+  GUION_SIGNED_URL_TTL_SEC,
+  STORAGE_KEYS,
+} from "../../ports/storage-prefixes";
+import { isObjectStorageLive } from "../../config/ai-mode";
+import { normalizeTipoEventoArg } from "../../tools-catalog/catalog-search.util";
 
 @Injectable()
 export class OrchestratorService {
@@ -61,6 +91,9 @@ export class OrchestratorService {
     @Inject(RAG_PIPELINE_PORT) private readonly rag: RagPipelinePort,
     private readonly reasoning: ReasoningTraceService,
     @Optional() private readonly expediente?: ExpedientePersistService,
+    @Optional() private readonly config?: ConfigService,
+    @Optional() @Inject(OBJECT_STORAGE_PORT)
+    private readonly storage?: ObjectStoragePort,
   ) {}
 
   async handleTurn(inbound: InboundMessage): Promise<TurnResponse> {
@@ -93,7 +126,7 @@ export class OrchestratorService {
         kind: "idempotencia",
         detail: { duplicate: true, externalMessageId: inbound.externalMessageId },
       });
-      return this.attachTrace({
+      return await this.attachTrace({
         conversacionId: conv.id,
         mensajeSalienteId: null,
         textoRespuesta: "",
@@ -114,6 +147,21 @@ export class OrchestratorService {
       timestamp: inbound.recibidoEn ?? new Date().toISOString(),
       externalMessageId: inbound.externalMessageId,
       consumioCupo: false,
+      adjuntos: inbound.adjuntos?.map((a) => ({
+        mimeType:
+          "mimeType" in a && a.mimeType
+            ? a.mimeType
+            : "mime" in a
+              ? String((a as { mime?: string }).mime ?? "")
+              : "",
+        sizeBytes: a.sizeBytes ?? (a as { bytes?: number }).bytes,
+        duracionSec: a.duracionSec,
+        storageKey: a.storageKey,
+        nombreOriginal:
+          "nombreOriginal" in a
+            ? String((a as { nombreOriginal?: string }).nombreOriginal ?? "")
+            : undefined,
+      })),
     });
 
     const adjuntoInvalido = (inbound.adjuntos ?? []).some((a) => {
@@ -145,6 +193,7 @@ export class OrchestratorService {
     const intent = await this.intent.classify({
       texto: inbound.texto ?? "",
       pasoGuion: conv.pasoGuion,
+      buttonPayload: inbound.buttonPayload,
     });
     this.reasoning.append({
       level: "intent",
@@ -152,6 +201,15 @@ export class OrchestratorService {
     });
 
     const capturaPendiente = this.script.isCapturaPendiente(conv);
+    if (isIntencionVisita(inbound.texto ?? "")) {
+      conv.camposCapturados = {
+        ...conv.camposCapturados,
+        intencionVisita: true,
+      };
+      await this.store.update(conv.id, {
+        camposCapturados: conv.camposCapturados,
+      });
+    }
     const route = decideRoute({
       estadoBot: conv.estadoBot,
       hardQuota,
@@ -160,6 +218,7 @@ export class OrchestratorService {
       capturaPendiente,
       adjuntoInvalido,
       intent,
+      buttonPayload: inbound.buttonPayload,
     });
     this.reasoning.append({
       level: "routing",
@@ -189,7 +248,11 @@ export class OrchestratorService {
           routing: route.kind,
         },
       });
-      return this.attachTrace({
+      const persisted = await this.store.findById(conv.id);
+      if (persisted) {
+        await this.expediente?.persistAfterTurn(persisted);
+      }
+      return await this.attachTrace({
         conversacionId: conv.id,
         mensajeSalienteId: null,
         textoRespuesta: "",
@@ -215,6 +278,10 @@ export class OrchestratorService {
 
     if (route.kind === "catalogo") {
       return this.runCatalogo(conv.id, inbound.texto ?? "", msgIn.id);
+    }
+
+    if (route.kind === "faq_comercial") {
+      return this.runFaqComercial(conv.id, inbound.texto ?? "", msgIn.id);
     }
 
     if (route.kind === "rag") {
@@ -261,11 +328,6 @@ export class OrchestratorService {
       listoParaCotizar: crm.listoParaCotizar,
     });
 
-    const persisted = await this.store.findById(conversacionId);
-    if (persisted) {
-      await this.expediente?.persistAfterTurn(persisted);
-    }
-
     return this.finishReply({
       conversacionId,
       oportunidadId: conv.oportunidadId,
@@ -275,6 +337,41 @@ export class OrchestratorService {
       pasoGuion: result.pasoGuion,
       calificacionResultado: crm.calificado ? "calificado" : "parcial",
       listoParaCotizar: crm.listoParaCotizar,
+      adjuntoGuion: result.adjuntoGuion,
+    });
+  }
+
+  private async runFaqComercial(
+    conversacionId: string,
+    texto: string,
+    mensajeEntranteId: string,
+  ): Promise<TurnResponse> {
+    const conv = (await this.store.findById(conversacionId))!;
+    const visita = isIntencionVisita(texto);
+    const topic = visita ? null : matchCommercialFaqTopic(texto);
+    const body = visita
+      ? COPY_VISITA
+      : topic && topic !== "fecha_minima"
+        ? composeCommercialFaq(topic)
+        : composeCommercialFaq("overview");
+    this.reasoning.append({
+      level: "catalog_tools",
+      tools: [
+        {
+          nombre: "faq_comercial",
+          ok: true,
+          filasSku: [visita ? "visita" : topic && topic !== "fecha_minima" ? topic : "overview"],
+        },
+      ],
+    });
+    await this.store.update(conversacionId, { ultimaRuta: "catalogo" });
+    return this.finishReply({
+      conversacionId,
+      oportunidadId: conv.oportunidadId,
+      texto: body,
+      ruta: "catalogo",
+      mensajeEntranteId,
+      pasoGuion: conv.pasoGuion,
     });
   }
 
@@ -391,7 +488,19 @@ export class OrchestratorService {
         );
       }
 
-      if (!exec.ok || exec.errorCode === "sin_paquete" || exec.errorCode === "sin_precio_vigente") {
+      if (exec.errorCode === "sin_precio_vigente") {
+        const honest = redactSinPrecioVigente(exec.result);
+        redactionParts.push(honest.texto);
+        continue;
+      }
+
+      if (exec.errorCode === "sin_tramo_exacto") {
+        const honest = redactSinTramoExacto(exec.result);
+        redactionParts.push(honest.texto);
+        continue;
+      }
+
+      if (!exec.ok || exec.errorCode === "sin_paquete") {
         this.emitCatalogTools(toolPayloads);
         return this.finishHandoff(
           conversacionId,
@@ -400,6 +509,32 @@ export class OrchestratorService {
           mensajeEntranteId,
           registroId,
         );
+      }
+
+      if (
+        exec.name === "buscar_paquetes" &&
+        Array.isArray(exec.result) &&
+        exec.result.length === 0
+      ) {
+        const diag = await this.tools.sugerirCercanos({
+          tipoEvento: String(args.tipoEvento ?? conv.camposCapturados.tipoEvento ?? "boda"),
+          aforo: args.aforo != null ? Number(args.aforo) : undefined,
+          sede: args.sede != null ? String(args.sede) : undefined,
+          fecha: args.fecha != null ? String(args.fecha) : undefined,
+        });
+        toolPayloads.push({
+          nombre: "sugerir_paquetes_cercanos",
+          latenciaMs: 0,
+          ok: true,
+          filasSku: diag.cercanos
+            .map((c) => c.sku)
+            .filter((s): s is string => !!s),
+          errorCode: null,
+        });
+        const vacio = redactBusquedaVacia(diag);
+        redactionParts.push(vacio.texto);
+        montosPermitidos.push(...vacio.montos);
+        continue;
       }
 
       const redacted = redactToolResult(exec.name, exec.result);
@@ -624,6 +759,7 @@ export class OrchestratorService {
     calificacionResultado?: string;
     listoParaCotizar?: boolean;
     estadoBot?: TurnResponse["estadoBot"];
+    adjuntoGuion?: string | null;
   }): Promise<TurnResponse> {
     this.quota.consumeMessaging(1);
     const msgOut = await this.store.appendMensaje(input.conversacionId, {
@@ -662,18 +798,30 @@ export class OrchestratorService {
       },
     });
 
-    return this.attachTrace({
-      conversacionId: input.conversacionId,
-      mensajeSalienteId: msgOut.id,
-      textoRespuesta: input.texto,
-      ruta: input.ruta,
-      estadoBot: input.estadoBot ?? conv.estadoBot,
-      eventoOperativoId: evento.id,
-      registroConsultaCatalogoId: input.registroConsultaCatalogoId ?? null,
-      registroRecuperacionId: input.registroRecuperacionId ?? null,
-      motivoHandoff: input.motivoHandoff ?? null,
-      pasoGuion: input.pasoGuion ?? conv.pasoGuion,
-    });
+    const response = await this.attachTrace(
+      {
+        conversacionId: input.conversacionId,
+        mensajeSalienteId: msgOut.id,
+        textoRespuesta: input.texto,
+        ruta: input.ruta,
+        estadoBot: input.estadoBot ?? conv.estadoBot,
+        eventoOperativoId: evento.id,
+        registroConsultaCatalogoId: input.registroConsultaCatalogoId ?? null,
+        registroRecuperacionId: input.registroRecuperacionId ?? null,
+        motivoHandoff: input.motivoHandoff ?? null,
+        pasoGuion: input.pasoGuion ?? conv.pasoGuion,
+      },
+      input.adjuntoGuion,
+    );
+
+    const persisted = await this.store.findById(input.conversacionId);
+    if (persisted) {
+      await this.expediente?.persistAfterTurn(persisted, {
+        plantillaUtilityId: response.waContent?.templateId ?? null,
+      });
+    }
+
+    return response;
   }
 
   private emitCatalogTools(
@@ -695,7 +843,10 @@ export class OrchestratorService {
     });
   }
 
-  private attachTrace(res: TurnResponse): TurnResponse {
+  private async attachTrace(
+    res: TurnResponse,
+    adjuntoGuion?: string | null,
+  ): Promise<TurnResponse> {
     const finished = this.reasoning.finish({
       ruta: res.ruta,
       estadoBot: res.estadoBot,
@@ -704,11 +855,35 @@ export class OrchestratorService {
       registroConsultaCatalogoId: res.registroConsultaCatalogoId,
       registroRecuperacionId: res.registroRecuperacionId ?? null,
     });
-    return {
+    const document =
+      adjuntoGuion === GUION_ADJUNTO_PAQUETE_BODAS
+        ? await this.resolveGuionDocument()
+        : undefined;
+    return attachWaContent({
       ...res,
       reasoningTraceId: finished?.id ?? this.reasoning.currentId() ?? null,
       reasoningTrace: finished ?? this.reasoning.current() ?? null,
-    };
+      document,
+    });
+  }
+
+  private async resolveGuionDocument() {
+    if (this.storage && this.config && isObjectStorageLive(this.config)) {
+      try {
+        const url = await this.storage.signedUrl({
+          key: STORAGE_KEYS.guionPaqueteBodas,
+          expiresInSec: GUION_SIGNED_URL_TTL_SEC,
+        });
+        return {
+          filename: GUION_PDF_FILENAME,
+          mime: "application/pdf" as const,
+          url,
+        };
+      } catch {
+        /* fallback público */
+      }
+    }
+    return paqueteBodas2027Document();
   }
 }
 
@@ -723,9 +898,14 @@ function catalogSystemPrompt(campos: CamposCapturados): string {
     "Eres el planner de tools del catálogo Tres Cielos.",
     "Solo puedes usar las tools listadas. Nunca inventes precios. Montos únicamente de tool results.",
     "El usuario puede escribir con faltas de ortografía; interpreta la intención.",
-    "Si mencionan un paquete por nombre informal (esencial, premium), usa buscar_paquetes u obtener_precio_paquete.",
+    "Si mencionan un paquete por nombre informal (estándar, básico, premium, upgrade, paquete bodas), usa buscar_paquetes, comparar_paquetes u obtener_precio_paquete. Nunca digas Jardín 1 ni Esencial.",
+    "Paquetes publicados: Paquete Estándar (EVT-J1-TC) y Upgrade Premium (EVT-J1-PREMIUM). XV, corporativo y solo renta: transferir_a_humano motivo sin_catalogo.",
+    "Qué tiene / qué trae / qué incluye / detalle del estándar o premium: listar_inclusiones de ese SKU. Sin SKU, listar_inclusiones de ambos paquetes de boda. No uses obtener_precio_paquete para esas frases.",
+    "Políticas de pago, horario de evento y exclusiones las responde otra rama; si igual te llegan, evaluar_reglas_paquete.",
+    "Precios por tramo 100/150/200/250/300; no interpolar. Fecha de evento (no de consulta); si falta, 2027-06-15.",
     `Contexto ya capturado del lead: ${JSON.stringify(ctx)}`,
     "Si hay fechaTentativa, pásala como fecha ISO (YYYY-MM-DD) a buscar_paquetes y obtener_precio_paquete.",
+    "La sede de catálogo es el slug tequesquitengo, nunca el nombre comercial.",
   ].join(" ");
 }
 
@@ -736,18 +916,30 @@ function mergeCatalogToolArgs(
 ): Record<string, unknown> {
   const fecha = fechaTentativaToIso(campos.fechaTentativa);
   const next = { ...args };
+  if (typeof next.sku === "string") {
+    next.sku = canonicalizeSku(next.sku) ?? next.sku;
+  }
+  if (Array.isArray(next.skus)) {
+    next.skus = next.skus.map((s) =>
+      typeof s === "string" ? (canonicalizeSku(s) ?? s) : s,
+    );
+  }
   if (name === "buscar_paquetes") {
-    if (!next.tipoEvento && campos.tipoEvento) next.tipoEvento = campos.tipoEvento;
+    if (campos.tipoEvento) next.tipoEvento = campos.tipoEvento;
+    else if (!next.tipoEvento) next.tipoEvento = "boda";
+    const tipo = normalizeTipoEventoArg(next.tipoEvento);
+    if (tipo) next.tipoEvento = tipo;
     if (next.aforo == null && campos.aforo != null) next.aforo = campos.aforo;
-    if (!next.sede && campos.sedeNombre) next.sede = campos.sedeNombre;
+    if (campos.sedeId || campos.sedeNombre) {
+      next.sede = SEDE_SLUG;
+    } else if (next.sede != null) {
+      next.sede = sedeToCatalogSlug(String(next.sede)) ?? next.sede;
+    }
     if (!next.fecha && fecha) next.fecha = fecha;
   }
-  if (
-    (name === "obtener_precio_paquete" || name === "comparar_paquetes") &&
-    !next.fecha &&
-    fecha
-  ) {
-    next.fecha = fecha;
+  if (name === "obtener_precio_paquete" || name === "comparar_paquetes") {
+    if (!next.fecha && fecha) next.fecha = fecha;
+    if (next.aforo == null && campos.aforo != null) next.aforo = campos.aforo;
   }
   return next;
 }
@@ -772,81 +964,45 @@ function redactToolResult(
   const r = result as Record<string, unknown>;
 
   if (toolName === "obtener_precio_paquete" && typeof r.monto === "number") {
-    montos.push(r.monto);
-    paqueteId = typeof r.paqueteId === "string" ? r.paqueteId : null;
-    precioSnapshot = {
-      moneda: r.moneda,
-      monto: r.monto,
-      rangoMin: r.rangoMin,
-      rangoMax: r.rangoMax,
-      unidad: r.unidad,
-      vigenteDesde: r.vigenteDesde,
-      vigenteHasta: r.vigenteHasta,
-    };
-    return {
-      texto: `El paquete ${r.sku} (${r.nombre}) tiene precio vigente de ${r.moneda} ${r.monto} por ${r.unidad}.`,
-      montos,
-      paqueteId,
-      precioSnapshot,
-    };
+    return redactPrecioPaquete(r);
   }
 
   if (toolName === "buscar_paquetes" && Array.isArray(result)) {
-    const lines = (result as Array<Record<string, unknown>>).map((p) => {
-      const muestra = p.precioMuestra as { monto?: number; moneda?: string } | null;
-      if (muestra?.monto != null) montos.push(muestra.monto);
-      return `- ${p.sku}: ${p.nombre} (aforo ${p.aforoMin}-${p.aforoMax})${
-        muestra?.monto != null ? ` · desde ${muestra.moneda} ${muestra.monto}` : ""
-      }`;
-    });
+    const listed = redactBuscarPaquetes(result);
     return {
-      texto:
-        lines.length > 0
-          ? `Encontré estos paquetes publicados:\n${lines.join("\n")}`
-          : "No hay paquetes publicados que coincidan con esos filtros.",
-      montos,
+      texto: listed.texto || "Sin datos de catálogo.",
+      montos: listed.montos,
       paqueteId,
       precioSnapshot,
     };
   }
 
   if (toolName === "listar_inclusiones") {
-    paqueteId = typeof r.paqueteId === "string" ? r.paqueteId : null;
-    const inclusiones = (r.inclusiones as Array<{ nombre: string }>) ?? [];
+    const listed = redactInclusiones(r);
     return {
-      texto: `Inclusiones de ${r.sku}: ${inclusiones.map((i) => i.nombre).join(", ") || "sin listado"}.`,
-      montos,
-      paqueteId,
+      texto: listed.texto,
+      montos: listed.montos,
+      paqueteId: listed.paqueteId,
       precioSnapshot,
     };
   }
 
   if (toolName === "comparar_paquetes") {
-    const items = (r.items as Array<Record<string, unknown>>) ?? [];
-    const lines = items.map((i) => {
-      const precio = i.precio as { monto?: number; moneda?: string } | null;
-      if (precio?.monto != null) montos.push(precio.monto);
-      return `- ${i.sku}: ${i.nombre}${
-        precio?.monto != null ? ` · ${precio.moneda} ${precio.monto}` : " · sin precio vigente"
-      }`;
-    });
+    const compared = redactCompararPaquetes(r);
     return {
-      texto: `Comparación:\n${lines.join("\n")}`,
-      montos,
+      texto: compared.texto,
+      montos: compared.montos,
       paqueteId,
       precioSnapshot,
     };
   }
 
   if (toolName === "evaluar_reglas_paquete") {
-    paqueteId = typeof r.paqueteId === "string" ? r.paqueteId : null;
-    const reglas = (r.reglas as Array<{ tipo: string; mensajeProspecto?: string }>) ?? [];
+    const reglas = redactReglas(r);
     return {
-      texto: `Reglas de ${r.sku}: ${
-        reglas.map((x) => x.mensajeProspecto || x.tipo).join("; ") || "sin reglas"
-      }.`,
-      montos,
-      paqueteId,
+      texto: reglas.texto,
+      montos: reglas.montos,
+      paqueteId: reglas.paqueteId,
       precioSnapshot,
     };
   }

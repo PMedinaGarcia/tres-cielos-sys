@@ -23,11 +23,7 @@ export interface GateInput {
   hayFilasCatalogo?: boolean;
 }
 
-export function isIntencionMonetaria(texto: string): boolean {
-  return /\b(precio|precion|cuesta|custa|cu[aá]nto|kuanto|costo|cotiz|paquete|pakete|inclusi|tarifa|anticipo)\b/i.test(
-    texto,
-  );
-}
+export { isIntencionMonetaria } from "./monetary-intent";
 
 /**
  * Aplica políticas 02 §4.5.
@@ -72,6 +68,7 @@ export function applyNoRecuperablePrecioGate(input: GateInput): GateAction {
 export function stripMontosFromProse(texto: string): string {
   return texto
     .replace(/\$\s?\d[\d,]*(?:\.\d+)?/g, "[monto omitido]")
+    .replace(/\b(?:mxn|usd)\s+\d[\d,]*(?:\.\d+)?/gi, "[monto omitido]")
     .replace(/\b\d{4,7}\s*(?:mxn|pesos)\b/gi, "[monto omitido]");
 }
 
@@ -81,6 +78,7 @@ export function assertNoInventedMontos(input: {
 }): { ok: boolean; montosSospechosos: string[] } {
   const found = [
     ...input.respuesta.matchAll(/\$\s?(\d[\d,]*(?:\.\d+)?)/g),
+    ...input.respuesta.matchAll(/\b(?:mxn|usd)\s+(\d[\d,]*(?:\.\d+)?)/gi),
     ...input.respuesta.matchAll(/\b(\d{4,7})\s*(?:mxn|pesos)\b/gi),
   ].map((m) => m[1].replace(/,/g, ""));
 

@@ -1,4 +1,11 @@
+import { HABLAR_ASESOR_PAYLOAD } from "@tres-cielos/shared";
 import type { IntentClasificado, PasoGuion } from "../types";
+import {
+  isPackageDetailQuery,
+  matchCommercialFaqTopic,
+} from "./commercial-faq.matcher";
+import { DATOS_DUROS_RE, MONTO_RIESGO_RE } from "./monetary-intent";
+import { isIntencionVisita } from "./visit-intent";
 
 const HUMAN_RE =
   /\b(hablar con (un |una )?(humano|asesor|persona|agente)|quiero (un )?asesor|pasame (con|a) (un )?humano|atenci[oó]n humana)\b/i;
@@ -9,19 +16,20 @@ const QUEJA_RE =
 const CONFLICTO_RE =
   /\b(abogad[oa]|legal|demandar|procon|profeco)\b/i;
 
-const DATOS_DUROS_RE =
-  /\b(precio|precion|cuesta|custa|cu[aá]nto|kuanto|costo|cotiz|cotisar|paquete|pakete|sku|inclusi[oó]n|incluye|compar(a|ar) paquet|anticipo m[ií]nimo|tarifa)\b/i;
-
+/** Venue / ficha de sede. Políticas comerciales y horario de evento van a faq_comercial. */
 const DOCUMENTAL_RE =
-  /\b(ubicaci[oó]n|c[oó]mo llegar|horario|pol[ií]tica|estacionamiento|dress code|faq|venue|jard[ií]n|descripci[oó]n)\b/i;
+  /\b(ubicaci[oó]n|c[oó]mo llegar|estacionamiento|dress code|faq|venue|jard[ií]n|descripci[oó]n)\b/i;
 
-const MONTO_RIESGO_RE =
-  /\b(\$\s*\d|\d+\s*(mxn|pesos)|cu[aá]nto|precio|tarifa|costo)\b/i;
-
-export function detectForcedHandoff(texto: string): {
+export function detectForcedHandoff(
+  texto: string,
+  buttonPayload?: string | null,
+): {
   handoff: boolean;
   motivo: "solicitud_usuario" | "queja" | "conflicto" | null;
 } {
+  if (buttonPayload === HABLAR_ASESOR_PAYLOAD) {
+    return { handoff: true, motivo: "solicitud_usuario" };
+  }
   if (HUMAN_RE.test(texto)) {
     return { handoff: true, motivo: "solicitud_usuario" };
   }
@@ -37,11 +45,14 @@ export function detectForcedHandoff(texto: string): {
 export function classifyIntentLexical(
   texto: string,
   pasoGuion: PasoGuion,
+  buttonPayload?: string | null,
 ): IntentClasificado {
-  const forced = detectForcedHandoff(texto);
+  const forced = detectForcedHandoff(texto, buttonPayload);
   if (forced.handoff) return "solicitud_humana";
 
-  if (DATOS_DUROS_RE.test(texto)) return "datos_duros";
+  if (isPackageDetailQuery(texto) || DATOS_DUROS_RE.test(texto)) {
+    return "datos_duros";
+  }
   if (DOCUMENTAL_RE.test(texto)) return "pregunta_documental";
 
   if (pasoGuion !== "faq_libre") return "guion_captura";
@@ -58,9 +69,10 @@ export function classifyIntentLexical(
 export type RoutingDecision =
   | { kind: "silencio" }
   | { kind: "quota_hard" }
-  | { kind: "handoff"; motivo: "solicitud_usuario" | "queja" | "conflicto" | "adjunto_no_soportado" | "cupo_ia" }
+  | { kind: "handoff"; motivo: "solicitud_usuario" | "queja" | "conflicto" | "adjunto_no_soportado" | "cupo_ia" | "otro" }
   | { kind: "guion" }
   | { kind: "catalogo" }
+  | { kind: "faq_comercial" }
   | { kind: "rag" }
   | { kind: "safe" };
 
@@ -72,27 +84,44 @@ export function decideRoute(input: {
   capturaPendiente: boolean;
   adjuntoInvalido: boolean;
   intent: IntentClasificado;
+  buttonPayload?: string | null;
 }): RoutingDecision {
   if (input.estadoBot !== "activo") return { kind: "silencio" };
   if (input.hardQuota) return { kind: "quota_hard" };
 
-  const forced = detectForcedHandoff(input.texto);
+  const forced = detectForcedHandoff(input.texto, input.buttonPayload);
   if (forced.handoff && forced.motivo) {
     return { kind: "handoff", motivo: forced.motivo };
+  }
+  if (input.intent === "solicitud_humana") {
+    return { kind: "handoff", motivo: "solicitud_usuario" };
   }
 
   if (input.adjuntoInvalido) {
     return { kind: "handoff", motivo: "adjunto_no_soportado" };
   }
 
-  if (input.capturaPendiente && input.intent !== "datos_duros" && input.intent !== "solicitud_humana") {
-    // Precio interrumpe guion; resto sigue captura
+  const comercial = matchCommercialFaqTopic(input.texto);
+  if (comercial === "fecha_minima") {
+    return { kind: "handoff", motivo: "otro" };
+  }
+
+  if (input.capturaPendiente && input.intent !== "datos_duros") {
+    // Precio / ficha de paquete interrumpen; FAQ comercial solo en faq_libre
+    if (comercial && input.pasoGuion === "faq_libre") {
+      return { kind: "faq_comercial" };
+    }
+    if (isIntencionVisita(input.texto) && input.pasoGuion === "faq_libre") {
+      return { kind: "faq_comercial" };
+    }
     if (input.intent === "pregunta_documental" && input.pasoGuion === "faq_libre") {
       return { kind: "rag" };
     }
     if (input.capturaPendiente) return { kind: "guion" };
   }
 
+  if (comercial) return { kind: "faq_comercial" };
+  if (isIntencionVisita(input.texto)) return { kind: "faq_comercial" };
   if (input.intent === "datos_duros") return { kind: "catalogo" };
   if (input.intent === "pregunta_documental") return { kind: "rag" };
   if (input.intent === "guion_captura") return { kind: "guion" };

@@ -10,7 +10,7 @@ describe("orchestrator-turn contract (apéndice)", () => {
       canal: "whatsapp",
       externalThreadId: "sandbox-thread-1",
       externalMessageId: "sandbox-msg-1",
-      texto: "¿Cuánto cuesta el paquete BODA-J1-ESENCIAL?",
+      texto: "¿Cuánto cuesta el paquete EVT-J1-TC?",
       recibidoEn: "2026-07-28T15:00:00.000Z",
       perfilCanal: { nombre: "QA", waId: "+520000000000" },
       adjuntos: [],

@@ -1,6 +1,8 @@
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadBucketCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -19,21 +21,24 @@ import { StorageError } from "../ports/errors";
 @Injectable()
 export class S3StorageAdapter implements ObjectStoragePort {
   private readonly client: S3Client;
-  private readonly bucket: string;
+  readonly bucket: string;
 
   constructor(private readonly config: ConfigService) {
     const region = this.config.get<string>("storage.region") ?? "us-east-1";
-    const endpoint = this.config.get<string>("storage.endpoint");
+    const endpoint = this.config.get<string>("storage.endpoint")?.trim();
     this.bucket = this.config.get<string>("storage.bucket") ?? "tres-cielos-dev";
+    const accessKeyId = this.config.get<string>("storage.accessKeyId")?.trim();
+    const secretAccessKey = this.config
+      .get<string>("storage.secretAccessKey")
+      ?.trim();
+    const credentials =
+      accessKeyId && secretAccessKey
+        ? { accessKeyId, secretAccessKey }
+        : undefined;
     this.client = new S3Client({
       region,
-      ...(endpoint
-        ? { endpoint, forcePathStyle: true }
-        : {}),
-      credentials: {
-        accessKeyId: this.config.get<string>("storage.accessKeyId") ?? "",
-        secretAccessKey: this.config.get<string>("storage.secretAccessKey") ?? "",
-      },
+      ...(endpoint ? { endpoint, forcePathStyle: true } : {}),
+      ...(credentials ? { credentials } : {}),
     });
   }
 
@@ -100,4 +105,41 @@ export class S3StorageAdapter implements ObjectStoragePort {
       throw new StorageError(`S3 delete failed: ${String(err)}`, "s3", err);
     }
   }
+
+  async exists(key: string): Promise<boolean> {
+    try {
+      await this.client.send(
+        new HeadObjectCommand({ Bucket: this.bucket, Key: key }),
+      );
+      return true;
+    } catch (err) {
+      if (isS3NotFound(err)) return false;
+      throw new StorageError(`S3 exists failed: ${String(err)}`, "s3", err);
+    }
+  }
+
+  async ping(): Promise<boolean> {
+    try {
+      await this.client.send(new HeadBucketCommand({ Bucket: this.bucket }));
+      return true;
+    } catch (err) {
+      throw new StorageError(`S3 ping failed: ${String(err)}`, "s3", err);
+    }
+  }
+}
+
+function isS3NotFound(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const name = "name" in err ? String(err.name) : "";
+  const status =
+    "$metadata" in err
+      ? (err as { $metadata?: { httpStatusCode?: number } }).$metadata
+          ?.httpStatusCode
+      : undefined;
+  return (
+    name === "NotFound" ||
+    name === "NoSuchKey" ||
+    name === "NotFoundError" ||
+    status === 404
+  );
 }

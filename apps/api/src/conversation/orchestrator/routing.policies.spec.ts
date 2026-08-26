@@ -12,6 +12,12 @@ describe("routing.policies (D-BOT-1)", () => {
     expect(r.motivo).toBe("solicitud_usuario");
   });
 
+  it("payload hablar_asesor escala aunque el texto no lo pida", () => {
+    const r = detectForcedHandoff("ok", "hablar_asesor");
+    expect(r.handoff).toBe(true);
+    expect(r.motivo).toBe("solicitud_usuario");
+  });
+
   it("detecta queja → handoff", () => {
     expect(detectForcedHandoff("esto es una queja formal").motivo).toBe("queja");
   });
@@ -26,6 +32,19 @@ describe("routing.policies (D-BOT-1)", () => {
     expect(
       classifyIntentLexical("kiero saber kuanto sale el esencial", "faq_libre"),
     ).toBe("datos_duros");
+  });
+
+  it("clasifica datos_duros con plurales y typos de precio", () => {
+    expect(classifyIntentLexical("Que precios manejan", "faq_libre")).toBe(
+      "datos_duros",
+    );
+    expect(classifyIntentLexical("Preico", "faq_libre")).toBe("datos_duros");
+    expect(classifyIntentLexical("quiero cotizar", "faq_libre")).toBe(
+      "datos_duros",
+    );
+    expect(classifyIntentLexical("qué paquetes tienen", "faq_libre")).toBe(
+      "datos_duros",
+    );
   });
 
   it("clasifica documental", () => {
@@ -75,6 +94,20 @@ describe("routing.policies (D-BOT-1)", () => {
     expect(d).toEqual({ kind: "handoff", motivo: "solicitud_usuario" });
   });
 
+  it("payload hablar_asesor interrumpe el guion en nombre", () => {
+    const d = decideRoute({
+      estadoBot: "activo",
+      hardQuota: false,
+      texto: "ok",
+      pasoGuion: "nombre",
+      capturaPendiente: true,
+      adjuntoInvalido: false,
+      intent: "guion_captura",
+      buttonPayload: "hablar_asesor",
+    });
+    expect(d).toEqual({ kind: "handoff", motivo: "solicitud_usuario" });
+  });
+
   it("orden: guion cuando captura pendiente", () => {
     expect(
       decideRoute({
@@ -103,6 +136,15 @@ describe("routing.policies (D-BOT-1)", () => {
     ).toBe("catalogo");
   });
 
+  it("clasifica detalle de paquete mal formado como datos_duros", () => {
+    expect(classifyIntentLexical("que tiene el estandar", "faq_libre")).toBe(
+      "datos_duros",
+    );
+    expect(classifyIntentLexical("Politicas", "faq_libre")).not.toBe(
+      "pregunta_documental",
+    );
+  });
+
   it("documental → rag", () => {
     expect(
       decideRoute({
@@ -115,6 +157,76 @@ describe("routing.policies (D-BOT-1)", () => {
         intent: "pregunta_documental",
       }).kind,
     ).toBe("rag");
+  });
+
+  it("Politicas en faq_libre → faq_comercial, no rag", () => {
+    expect(
+      decideRoute({
+        estadoBot: "activo",
+        hardQuota: false,
+        texto: "Politicas",
+        pasoGuion: "faq_libre",
+        capturaPendiente: false,
+        adjuntoInvalido: false,
+        intent: "ambiguo",
+      }).kind,
+    ).toBe("faq_comercial");
+  });
+
+  it("quiero visitar en faq_libre → faq_comercial, no rag", () => {
+    expect(
+      decideRoute({
+        estadoBot: "activo",
+        hardQuota: false,
+        texto: "quiero visitar",
+        pasoGuion: "faq_libre",
+        capturaPendiente: false,
+        adjuntoInvalido: false,
+        intent: "ambiguo",
+      }).kind,
+    ).toBe("faq_comercial");
+  });
+
+  it("conocer el jardin no va a RAG de ubicación", () => {
+    expect(
+      decideRoute({
+        estadoBot: "activo",
+        hardQuota: false,
+        texto: "quiero conocer el jardin",
+        pasoGuion: "faq_libre",
+        capturaPendiente: false,
+        adjuntoInvalido: false,
+        intent: "pregunta_documental",
+      }).kind,
+    ).toBe("faq_comercial");
+  });
+
+  it("fecha mínima de contratación → handoff", () => {
+    expect(
+      decideRoute({
+        estadoBot: "activo",
+        hardQuota: false,
+        texto: "fecha minima de contratacion",
+        pasoGuion: "faq_libre",
+        capturaPendiente: false,
+        adjuntoInvalido: false,
+        intent: "ambiguo",
+      }),
+    ).toEqual({ kind: "handoff", motivo: "otro" });
+  });
+
+  it("FAQ comercial no interrumpe captura de guion", () => {
+    expect(
+      decideRoute({
+        estadoBot: "activo",
+        hardQuota: false,
+        texto: "Politicas",
+        pasoGuion: "nombre",
+        capturaPendiente: true,
+        adjuntoInvalido: false,
+        intent: "guion_captura",
+      }).kind,
+    ).toBe("guion");
   });
 
   it("adjunto inválido → handoff", () => {

@@ -6,3 +6,4 @@ export * from "./rerank.port";
 export * from "./vision.port";
 export * from "./transcription.port";
 export * from "./object-storage.port";
+export * from "./storage-prefixes";

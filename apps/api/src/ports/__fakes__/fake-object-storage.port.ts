@@ -58,6 +58,14 @@ export class FakeObjectStoragePort implements ObjectStoragePort {
     this.store.delete(key);
   }
 
+  async exists(key: string): Promise<boolean> {
+    return this.store.has(key);
+  }
+
+  async ping(): Promise<boolean> {
+    return true;
+  }
+
   /** Test helper */
   keys(): string[] {
     return [...this.store.keys()];

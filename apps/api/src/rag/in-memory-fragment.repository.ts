@@ -2,12 +2,14 @@ import { Injectable } from "@nestjs/common";
 import {
   FragmentRepository,
   HybridSearchFilters,
+  ScoredFragment,
 } from "./fragment.repository";
+import { cosineSimilarity, ftsRank, tokenizeSpanish } from "./hybrid-search.util";
 import { FragmentoRecuperable, PipelineEstado } from "./types";
 
 /**
- * Stub in-memory hasta que Fase A exponga FragmentoVectorial + pgvector/FTS en Prisma.
- * Reproduce los filtros duros del hybrid search (activo, publicado, listo, sede).
+ * Índice in-memory (CI / AI_PROVIDERS_MODE=fake).
+ * Filtros duros alineados a hybrid search (activo, publicado, listo, sede).
  */
 @Injectable()
 export class InMemoryFragmentRepository implements FragmentRepository {
@@ -40,8 +42,42 @@ export class InMemoryFragmentRepository implements FragmentRepository {
   async listRecuperables(
     filters: HybridSearchFilters,
   ): Promise<FragmentoRecuperable[]> {
-    const all = [...this.store.values()];
-    return all.filter((f) => passesHardFilters(f, filters));
+    return [...this.store.values()].filter((f) =>
+      passesHardFilters(f, filters),
+    );
+  }
+
+  async searchVector(
+    queryEmbedding: number[],
+    filters: HybridSearchFilters,
+    topN: number,
+  ): Promise<ScoredFragment[]> {
+    const docs = await this.listRecuperables(filters);
+    return docs
+      .map((f) => ({
+        fragmento: f,
+        score: cosineSimilarity(queryEmbedding, f.embedding),
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, topN);
+  }
+
+  async searchFts(
+    query: string,
+    filters: HybridSearchFilters,
+    topN: number,
+  ): Promise<ScoredFragment[]> {
+    const qTokens = tokenizeSpanish(query);
+    if (qTokens.size === 0) return [];
+    const docs = await this.listRecuperables(filters);
+    return docs
+      .map((f) => ({
+        fragmento: f,
+        score: ftsRank(qTokens, f.texto),
+      }))
+      .filter((h) => h.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, topN);
   }
 }
 

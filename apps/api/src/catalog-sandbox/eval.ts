@@ -20,6 +20,8 @@ async function runCase(
     case "obtener_precio_paquete": {
       const res = await tools.obtenerPrecioPaquete({
         sku: input.sku as string,
+        aforo: input.aforo as number | undefined,
+        fecha: input.fecha as string | undefined,
       });
       if (expect.error) {
         assert(

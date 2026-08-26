@@ -1,5 +1,11 @@
 import { Inject, Injectable, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import {
+  GUION_ADJUNTO_PAQUETE_BODAS,
+  SEDE_ID,
+  SEDE_NOMBRE,
+  type GuionAdjuntoId,
+} from "@tres-cielos/shared";
 import { isLiveAiProviders } from "../../config";
 import { LLM_PORT } from "../../ports/tokens";
 import type { LlmPort } from "../../ports/llm.port";
@@ -8,6 +14,7 @@ import type {
   ConversacionState,
   PasoGuion,
 } from "../types";
+import { stripAccents } from "../text-normalize";
 import { explainFechaTentativa } from "./fecha-tentativa.parser";
 import { extractScriptPasoWithLlm } from "./script-llm.extract";
 
@@ -17,12 +24,20 @@ export interface ScriptTurnResult {
   camposCapturados: CamposCapturados;
   avanzado: boolean;
   guionCompleto: boolean;
+  adjuntoGuion?: GuionAdjuntoId;
 }
-
-const SEDES_ACTIVAS = ["jardín 1", "jardin 1", "jardín1", "jardin1", "j1"];
 
 const PREGUNTA_FECHA =
   "¿Qué fecha tentativa tienen? Necesito día, mes y año, por ejemplo 22 de diciembre de 2026 o 15/03/2027.";
+
+const PREGUNTA_OCASION = "¿Qué tipo de evento celebran?";
+
+const PREGUNTA_INTENCION = "¿Desean cotizar o reservar con nosotros?";
+
+const COPY_SEDE_E_INTENCION =
+  `Nuestra sede es ${SEDE_NOMBRE}. Te compartimos la ficha de paquetes 2027. ${PREGUNTA_INTENCION}`;
+
+const COPY_INTENCION_RETRY = "¿Confirman que desean cotizar?";
 
 const COPY_FECHA_SIN_ANIO =
   "Necesito día, mes y año. Por ejemplo: 22 de diciembre de 2026.";
@@ -84,7 +99,7 @@ export class ScriptService {
           );
         }
         return reply(
-          `Gracias, ${nombre}. ¿Qué tipo de evento celebran? (boda, xv, corporativo u otro)`,
+          `Gracias, ${nombre}. ${PREGUNTA_OCASION}`,
           "ocasion",
           campos,
         );
@@ -92,7 +107,7 @@ export class ScriptService {
       if (campos.nombre) {
         paso = "ocasion";
         return {
-          textoRespuesta: `¡Hola ${campos.nombre}! Soy el asistente de Tres Cielos. ¿Qué tipo de evento celebran? (boda, xv, corporativo u otro)`,
+          textoRespuesta: `¡Hola ${campos.nombre}! Soy el asistente de Tres Cielos. ${PREGUNTA_OCASION}`,
           pasoGuion: paso,
           camposCapturados: campos,
           avanzado: true,
@@ -124,7 +139,7 @@ export class ScriptService {
         }
         campos.nombre = nombre;
         return reply(
-          `Gracias, ${nombre}. ¿Qué tipo de evento celebran? (boda, xv, corporativo u otro)`,
+          `Gracias, ${nombre}. ${PREGUNTA_OCASION}`,
           "ocasion",
           campos,
         );
@@ -135,11 +150,7 @@ export class ScriptService {
           (await this.llmExtract(paso, trimmed, campos))?.tipoEvento ??
           null;
         if (!tipo) {
-          return reply(
-            "¿El evento es boda, xv, corporativo, social u otro?",
-            paso,
-            campos,
-          );
+          return reply(PREGUNTA_OCASION, paso, campos);
         }
         campos.tipoEvento = tipo;
         return reply(
@@ -173,11 +184,7 @@ export class ScriptService {
         const parsed = parseAforo(trimmed);
         if (parsed.ok) {
           campos.aforo = parsed.aforo;
-          return reply(
-            "¿Qué sede les interesa? Por ahora atendemos Jardín 1.",
-            "sede",
-            campos,
-          );
+          return replySedeEIntencion(campos);
         }
         if (parsed.motivo === "unidad_invalida") {
           const frag = parsed.fragmento ?? trimmed;
@@ -204,33 +211,10 @@ export class ScriptService {
           );
         }
         campos.aforo = llmAforo;
-        return reply(
-          "¿Qué sede les interesa? Por ahora atendemos Jardín 1.",
-          "sede",
-          campos,
-        );
+        return replySedeEIntencion(campos);
       }
       case "sede": {
-        const sedeLex = extractSede(trimmed);
-        const sede =
-          sedeLex ??
-          ((await this.llmExtract(paso, trimmed, campos))?.sedeConfirmada
-            ? "Jardín 1"
-            : null);
-        if (!sede) {
-          return reply(
-            "Por el momento la sede activa es Jardín 1. ¿Confirmas Jardín 1?",
-            paso,
-            campos,
-          );
-        }
-        campos.sedeNombre = sede;
-        campos.sedeId = "sede-jardin-1";
-        return reply(
-          "¿Desean cotizar o reservar con nosotros? (sí / no)",
-          "intencion",
-          campos,
-        );
+        return replySedeEIntencion(campos);
       }
       case "intencion": {
         const intent =
@@ -238,7 +222,7 @@ export class ScriptService {
           (await this.llmExtract(paso, trimmed, campos))?.intencionCotizar ??
           null;
         if (intent == null) {
-          return reply("¿Confirman que desean cotizar? Responde sí o no.", paso, campos);
+          return reply(COPY_INTENCION_RETRY, paso, campos);
         }
         campos.intencionCotizar = intent;
         if (!intent) {
@@ -282,6 +266,19 @@ export class ScriptService {
   }
 }
 
+function assignSedeUnica(campos: CamposCapturados): void {
+  campos.sedeNombre = SEDE_NOMBRE;
+  campos.sedeId = SEDE_ID;
+}
+
+function replySedeEIntencion(campos: CamposCapturados): ScriptTurnResult {
+  assignSedeUnica(campos);
+  return {
+    ...reply(COPY_SEDE_E_INTENCION, "intencion", campos),
+    adjuntoGuion: GUION_ADJUNTO_PAQUETE_BODAS,
+  };
+}
+
 function reply(
   textoRespuesta: string,
   pasoGuion: PasoGuion,
@@ -295,10 +292,6 @@ function reply(
     avanzado: true,
     guionCompleto,
   };
-}
-
-function stripAccents(texto: string): string {
-  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 function extractNombre(texto: string): string | null {
@@ -355,22 +348,6 @@ function parseAforo(texto: string): AforoParseResult {
     return { ok: false, motivo: "fuera_rango", fragmento };
   }
   return { ok: true, aforo: n };
-}
-
-function extractSede(texto: string): string | null {
-  const t = stripAccents(texto.toLowerCase());
-  if (
-    SEDES_ACTIVAS.some((s) =>
-      t.includes(stripAccents(s)),
-    ) ||
-    /jardn/.test(t)
-  ) {
-    return "Jardín 1";
-  }
-  if (/^(si|sí|ok|va|dale|confirmo)\b/.test(t) || /confirm/.test(t)) {
-    return "Jardín 1";
-  }
-  return null;
 }
 
 function extractSiNo(texto: string): boolean | null {

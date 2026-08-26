@@ -8,6 +8,8 @@ import {
 describe("no_recuperable_precio gate (C4 ≥80% branches)", () => {
   it("detecta intención monetaria", () => {
     expect(isIntencionMonetaria("¿Cuánto cuesta el paquete?")).toBe(true);
+    expect(isIntencionMonetaria("Que precios manejan")).toBe(true);
+    expect(isIntencionMonetaria("Preico")).toBe(true);
     expect(isIntencionMonetaria("¿dónde queda el jardín?")).toBe(false);
   });
 

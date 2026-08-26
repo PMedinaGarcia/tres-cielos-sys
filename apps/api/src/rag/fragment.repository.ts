@@ -9,10 +9,25 @@ export interface HybridSearchFilters {
   tiposDocumento?: string[];
 }
 
+export interface ScoredFragment {
+  fragmento: FragmentoRecuperable;
+  score: number;
+}
+
 export interface FragmentRepository {
   listRecuperables(filters: HybridSearchFilters): Promise<FragmentoRecuperable[]>;
   getByIds(ids: string[]): Promise<FragmentoRecuperable[]>;
-  replaceAll(fragmentos: FragmentoRecuperable[]): void;
-  upsert(fragmento: FragmentoRecuperable): void;
-  deactivate(ids: string[]): void;
+  searchVector(
+    queryEmbedding: number[],
+    filters: HybridSearchFilters,
+    topN: number,
+  ): Promise<ScoredFragment[]>;
+  searchFts(
+    query: string,
+    filters: HybridSearchFilters,
+    topN: number,
+  ): Promise<ScoredFragment[]>;
+  replaceAll(fragmentos: FragmentoRecuperable[]): void | Promise<void>;
+  upsert(fragmento: FragmentoRecuperable): void | Promise<void>;
+  deactivate(ids: string[]): void | Promise<void>;
 }

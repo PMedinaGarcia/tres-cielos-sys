@@ -5,6 +5,7 @@ export { RerankService, RerankProviderError } from "./rerank.service";
 export { GeneratorService } from "./generator.service";
 export { RegistroRecuperacionService } from "./registro-recuperacion.service";
 export { InMemoryFragmentRepository } from "./in-memory-fragment.repository";
+export { PrismaFragmentRepository } from "./prisma-fragment.repository";
 export { FRAGMENT_REPOSITORY } from "./tokens";
 export type {
   RagAnswerContext,
@@ -19,5 +20,5 @@ export {
 } from "./types";
 export {
   buildKnowledgeFixtures,
-  FIXTURE_SEDE_JARDIN_1,
+  FIXTURE_SEDE_TEQUESQUITENGO,
 } from "./fixtures/knowledge-fixtures";

@@ -2,18 +2,24 @@ import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import type { ParsedFragment, TipoMaterial } from "../contracts/media.types";
 import {
-  KnowledgeRepositoryStub,
+  KNOWLEDGE_REPOSITORY,
   type DocumentoFuenteRecord,
   type FragmentoRecord,
-} from "../repository/knowledge.repository.stub";
+  type KnowledgeRepository,
+} from "../repository/knowledge.repository";
 import { MediaRouterService } from "../media-router.service";
 import { SlaTrackerService } from "./sla-tracker.service";
 import { FRAGMENT_REPOSITORY } from "../../rag/tokens";
 import type { FragmentRepository } from "../../rag/fragment.repository";
-import type { FragmentoRecuperable, TipoMaterial as RagTipoMaterial } from "../../rag/types";
+import type { FragmentoRecuperable } from "../../rag/types";
 import { hashToEmbedding } from "../../ports/__fakes__/hash";
 import { EMBEDDINGS_PORT } from "../../ports/tokens";
 import type { EmbeddingsPort } from "../../ports/embeddings.port";
+import { STORAGE_PREFIXES } from "../../ports/storage-prefixes";
+import {
+  toOrigenDerivacion,
+  toRagTipoMaterial,
+} from "../../rag/material-mapping";
 
 export interface PublishInput {
   titulo: string;
@@ -26,7 +32,7 @@ export interface PublishInput {
 
 /**
  * Publicar/archivar biblioteca K + invalidación de versión anterior.
- * Bridge: upsert al mismo FRAGMENT_REPOSITORY que usa RAG.
+ * Persistencia: KnowledgeRepository (stub o Prisma) + FRAGMENT_REPOSITORY.
  */
 @Injectable()
 export class PublishArchiveService {
@@ -35,7 +41,7 @@ export class PublishArchiveService {
 
   constructor(
     private readonly mediaRouter: MediaRouterService,
-    private readonly repo: KnowledgeRepositoryStub,
+    @Inject(KNOWLEDGE_REPOSITORY) private readonly repo: KnowledgeRepository,
     private readonly sla: SlaTrackerService,
     @Optional() @Inject(FRAGMENT_REPOSITORY)
     private readonly ragFragments?: FragmentRepository,
@@ -48,11 +54,13 @@ export class PublishArchiveService {
     fragments: FragmentoRecord[];
     sla: ReturnType<SlaTrackerService["latest"]>;
   }> {
+    const documentoId = randomUUID();
     const routed = await this.mediaRouter.route({
       buffer: input.buffer,
       mime: input.mime,
       nombreArchivo: input.nombreArchivo,
       origen: "biblioteca_k",
+      keyPrefix: `${STORAGE_PREFIXES.conocimiento}/${documentoId}`,
     });
 
     if (!routed.ok || !routed.publicaAK) {
@@ -61,28 +69,38 @@ export class PublishArchiveService {
       );
     }
 
-    const previous = this.repo.findPublishedByTitulo(input.titulo, input.sedeId);
+    const previous = await this.repo.findPublishedByTitulo(
+      input.titulo,
+      input.sedeId,
+    );
     for (const old of previous) {
-      this.deactivateRagForDocumento(old.id);
+      await this.deactivateRagForDocumento(old.id);
     }
 
     const familyId = randomUUID();
-    this.repo.archiveByTitulo(input.titulo, input.sedeId);
+    await this.repo.archiveByTitulo(input.titulo, input.sedeId);
 
-    const documento = this.repo.createDocumento({
-      id: randomUUID(),
+    const inventarioId =
+      input.inventarioId ?? inferInventarioId(input.titulo);
+    const documento = await this.repo.createDocumento({
+      id: documentoId,
       titulo: input.titulo,
-      version: this.repo.nextVersion(input.titulo, input.sedeId),
+      version: await this.repo.nextVersion(input.titulo, input.sedeId),
       estadoPublicacion: "publicado",
       pipelineEstado: "listo",
       storageKey: routed.storageKey!,
+      storageBucket: routed.storageBucket,
       mime: input.mime,
       sedeId: input.sedeId,
       familyId,
       publicadoEn: new Date().toISOString(),
+      inventarioId,
+      checksum: routed.checksum,
+      bytes: routed.bytes ?? input.buffer.length,
+      nombreArchivoCita: input.nombreArchivo ?? input.titulo,
     });
 
-    const fragments = this.repo.replaceFragments(
+    const fragments = await this.repo.replaceFragments(
       documento.id,
       routed.fragments.map((f: ParsedFragment, i) => ({
         id: randomUUID(),
@@ -96,8 +114,6 @@ export class PublishArchiveService {
       })),
     );
 
-    const inventarioId =
-      input.inventarioId ?? inferInventarioId(input.titulo);
     await this.indexInRag(
       documento,
       fragments,
@@ -111,29 +127,36 @@ export class PublishArchiveService {
 
     const tipo = routed.fragments[0]?.tipoMaterial ?? "pdf";
     if (routed.slaMs !== undefined) {
-      this.sla.record(tipo, routed.slaMs, documento.storageKey);
+      this.sla.record(tipo as TipoMaterial, routed.slaMs, documento.storageKey);
     }
 
     return { documento, fragments, sla: this.sla.latest() };
   }
 
   async archive(documentoId: string): Promise<DocumentoFuenteRecord> {
-    const doc = this.repo.archiveDocumento(documentoId);
-    this.repo.deactivateFragments(documentoId);
-    this.deactivateRagForDocumento(documentoId);
+    const doc = await this.repo.archiveDocumento(documentoId);
+    await this.repo.deactivateFragments(documentoId);
+    await this.deactivateRagForDocumento(documentoId);
     return doc;
   }
 
-  listActiveFragments(): FragmentoRecord[] {
+  async listActiveFragments(): Promise<FragmentoRecord[]> {
     return this.repo.listActiveFragments();
   }
 
-  private deactivateRagForDocumento(documentoId: string): void {
+  private async deactivateRagForDocumento(documentoId: string): Promise<void> {
     const ids = this.ragIdsByDocumento.get(documentoId) ?? [];
     if (ids.length && this.ragFragments) {
-      this.ragFragments.deactivate(ids);
+      await this.ragFragments.deactivate(ids);
     }
     this.ragIdsByDocumento.delete(documentoId);
+    if (!ids.length && this.ragFragments) {
+      const remaining = await this.repo.listActiveFragments();
+      const stale = remaining
+        .filter((f) => f.documentoId === documentoId)
+        .map((f) => f.id);
+      if (stale.length) await this.ragFragments.deactivate(stale);
+    }
   }
 
   private async indexInRag(
@@ -154,13 +177,13 @@ export class PublishArchiveService {
         documentoEstado: "publicado",
         pipelineEstado: "listo",
         sedeId: documento.sedeId ?? null,
-        tipoMaterial: toRagTipoMaterial(f.tipoMaterial),
-        origenDerivacion: toOrigen(f.origenDerivacion),
+        tipoMaterial: toRagTipoMaterial(undefined, String(f.tipoMaterial)),
+        origenDerivacion: toOrigenDerivacion(f.origenDerivacion),
         noRecuperablePrecio: f.noRecuperablePrecio,
         nombreArchivoCita,
         inventarioId,
       };
-      this.ragFragments.upsert(recuperable);
+      await this.ragFragments.upsert(recuperable);
       ids.push(f.id);
     }
     this.ragIdsByDocumento.set(documento.id, ids);
@@ -178,37 +201,4 @@ export class PublishArchiveService {
 function inferInventarioId(titulo: string): string | undefined {
   const m = titulo.trim().match(/^(K\d+)/i);
   return m ? m[1]!.toUpperCase() : undefined;
-}
-
-function toRagTipoMaterial(t: TipoMaterial | string): RagTipoMaterial {
-  switch (t) {
-    case "docx":
-      return "word";
-    case "imagen":
-      return "foto";
-    case "xlsx":
-    case "csv":
-      return "xls";
-    case "pdf":
-      return "pdf";
-    case "video":
-      return "video";
-    default:
-      return "otro";
-  }
-}
-
-function toOrigen(
-  o: string,
-): FragmentoRecuperable["origenDerivacion"] {
-  if (
-    o === "nativo" ||
-    o === "texto_nativo" ||
-    o === "vision" ||
-    o === "whisper" ||
-    o === "xls_narrativo"
-  ) {
-    return o;
-  }
-  return "texto_nativo";
 }

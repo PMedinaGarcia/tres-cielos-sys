@@ -3,7 +3,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { FakeEmbeddingsPort } from "../ports/__fakes__";
 import { EMBEDDINGS_PORT } from "../ports/tokens";
 import {
-  FIXTURE_SEDE_JARDIN_1,
+  FIXTURE_SEDE_TEQUESQUITENGO,
   buildKnowledgeFixtures,
 } from "./fixtures/knowledge-fixtures";
 import { HybridSearchService, fuseAndDedupe } from "./hybrid-search.service";
@@ -32,7 +32,7 @@ describe("HybridSearchService (D1)", () => {
 
   it("fusiona vector+FTS, dedupe, y recorta a top ≤ 20", async () => {
     const hits = await hybrid.search("horario visitas jardín", {
-      sedeId: FIXTURE_SEDE_JARDIN_1,
+      sedeId: FIXTURE_SEDE_TEQUESQUITENGO,
       topN: 15,
     });
 
@@ -48,7 +48,7 @@ describe("HybridSearchService (D1)", () => {
 
   it("filtros duros: excluye inactivo, no publicado y pipeline ≠ listo", async () => {
     const hits = await hybrid.search("horario secreto pipeline borrador", {
-      sedeId: FIXTURE_SEDE_JARDIN_1,
+      sedeId: FIXTURE_SEDE_TEQUESQUITENGO,
     });
     const ids = new Set(hits.map((h) => h.fragmento.id));
     expect(ids.has("frag-borrador")).toBe(false);
@@ -58,7 +58,7 @@ describe("HybridSearchService (D1)", () => {
 
   it("sede: globales + sede lead; sin sede solo globales", async () => {
     const withSede = await hybrid.search("capacidad jardín invitados", {
-      sedeId: FIXTURE_SEDE_JARDIN_1,
+      sedeId: FIXTURE_SEDE_TEQUESQUITENGO,
     });
     expect(withSede.some((h) => h.fragmento.inventarioId === "K02")).toBe(true);
 

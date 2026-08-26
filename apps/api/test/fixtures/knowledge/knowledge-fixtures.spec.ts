@@ -1,5 +1,5 @@
 import {
-  FIXTURE_SEDE_JARDIN_1,
+  FIXTURE_SEDE_TEQUESQUITENGO,
   buildKnowledgeFixtures,
 } from "../../../src/rag/fixtures/knowledge-fixtures";
 
@@ -19,9 +19,9 @@ describe("Knowledge fixtures K01/K02/K08/K09 (D5)", () => {
     expect(ids.has("K09")).toBe(true);
   });
 
-  it("K02 está acotado a sede Jardín 1", () => {
+  it("K02 está acotado a sede Tequesquitengo", () => {
     const k02 = fixtures.filter((f) => f.inventarioId === "K02" && f.activo);
-    expect(k02.every((f) => f.sedeId === FIXTURE_SEDE_JARDIN_1)).toBe(true);
+    expect(k02.every((f) => f.sedeId === FIXTURE_SEDE_TEQUESQUITENGO)).toBe(true);
   });
 
   it("K09 aporta copy safe institucional", () => {

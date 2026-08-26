@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { OBJECT_STORAGE_PORT } from "./contracts/port-tokens";
 import type { ObjectStoragePort } from "./contracts/object-storage.port";
+import { STORAGE_PREFIXES } from "../ports/storage-prefixes";
 import {
   MEDIA_LIMITS,
   MIME_ALLOWLIST,
@@ -72,11 +73,14 @@ export class MediaRouterService {
     const publicaAK = input.origen === "biblioteca_k";
     const prefix =
       input.keyPrefix ??
-      (publicaAK ? "conocimiento" : "adjunto_canal");
+      (publicaAK
+        ? STORAGE_PREFIXES.conocimiento
+        : STORAGE_PREFIXES.adjuntoCanal);
     const checksum = createHash("sha256").update(input.buffer).digest("hex");
     const storageKey = `${prefix}/${randomUUID()}/${input.nombreArchivo ?? tipo}`;
 
     let putKey: string;
+    let putBucket: string | undefined;
     try {
       const put = await this.storage.put({
         key: storageKey,
@@ -84,6 +88,7 @@ export class MediaRouterService {
         contentType: input.mime,
       });
       putKey = put.key;
+      putBucket = put.bucket;
     } catch (err) {
       this.logger.error(`storage put failed: ${String(err)}`);
       return {
@@ -122,6 +127,9 @@ export class MediaRouterService {
           ok: false,
           pipelineEstado: "rechazado",
           storageKey: putKey,
+          storageBucket: putBucket,
+          checksum,
+          bytes: input.buffer.length,
           fragments: [],
           publicaAK: false,
           motivoRechazo: parsed.motivo,
@@ -131,6 +139,9 @@ export class MediaRouterService {
           ok: true,
           pipelineEstado: "listo",
           storageKey: putKey,
+          storageBucket: putBucket,
+          checksum,
+          bytes: input.buffer.length,
           fragments: [],
           publicaAK: false,
           catalogoSnapshot: parsed.catalogoRows,
@@ -140,6 +151,9 @@ export class MediaRouterService {
           ok: true,
           pipelineEstado: "listo",
           storageKey: putKey,
+          storageBucket: putBucket,
+          checksum,
+          bytes: input.buffer.length,
           fragments: parsed.fragments,
           publicaAK,
         };
@@ -158,6 +172,9 @@ export class MediaRouterService {
         ok: false,
         pipelineEstado: "error",
         storageKey: putKey,
+        storageBucket: putBucket,
+        checksum,
+        bytes: input.buffer.length,
         fragments: [],
         publicaAK: false,
         errorTipificado: "proveedor_ia",

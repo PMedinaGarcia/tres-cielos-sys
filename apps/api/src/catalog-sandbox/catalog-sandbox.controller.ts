@@ -45,8 +45,14 @@ export class CatalogSandboxController {
     @Query("sku") sku?: string,
     @Query("paqueteId") paqueteId?: string,
     @Query("fecha") fecha?: string,
+    @Query("aforo") aforo?: string,
   ) {
-    return this.tools.obtenerPrecioPaquete({ sku, paqueteId, fecha });
+    return this.tools.obtenerPrecioPaquete({
+      sku,
+      paqueteId,
+      fecha,
+      aforo: aforo != null ? Number(aforo) : undefined,
+    });
   }
 
   @Get("tools/listar_inclusiones")

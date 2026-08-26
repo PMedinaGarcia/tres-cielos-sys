@@ -17,8 +17,13 @@ export class IntentClassifierService {
   async classify(input: {
     texto: string;
     pasoGuion: PasoGuion;
+    buttonPayload?: string | null;
   }): Promise<IntentClasificado> {
-    const lexical = classifyIntentLexical(input.texto, input.pasoGuion);
+    const lexical = classifyIntentLexical(
+      input.texto,
+      input.pasoGuion,
+      input.buttonPayload,
+    );
     if (lexical !== "ambiguo") return lexical;
     if (!this.llm || !isLiveAiProviders(this.config)) return lexical;
 

@@ -83,9 +83,27 @@ describe("ScriptService (B2)", () => {
         }),
         texto,
       );
-      expect(r.pasoGuion).toBe("sede");
+      expect(r.pasoGuion).toBe("intencion");
       expect(r.camposCapturados.aforo).toBe(120);
+      expect(r.camposCapturados.sedeNombre).toBe("Tres Cielos Tequesquitengo");
+      expect(r.camposCapturados.sedeId).toBe("sede-tequesquitengo");
+      expect(r.adjuntoGuion).toBe("paquete-bodas-2027");
+      expect(r.textoRespuesta).toMatch(/Tres Cielos Tequesquitengo/);
+      expect(r.textoRespuesta).toMatch(/cotizar/i);
     }
+  });
+
+  it("tap ocasion.boda (texto canónico) avanza a fecha", async () => {
+    const r = await script.handleTurn(
+      baseConv({
+        pasoGuion: "ocasion",
+        camposCapturados: { nombre: "Ana" },
+      }),
+      "boda",
+    );
+    expect(r.pasoGuion).toBe("fecha");
+    expect(r.camposCapturados.tipoEvento).toBe("boda");
+    expect(r.textoRespuesta).not.toMatch(/boda, xv/i);
   });
 
   it("flujo mínimo hasta faq_libre sin presupuesto", async () => {
@@ -96,7 +114,6 @@ describe("ScriptService (B2)", () => {
       { texto: "boda" },
       { texto: "2026-11-14" },
       { texto: "150" },
-      { texto: "Jardín 1" },
       { texto: "sí" },
     ];
     for (const s of steps) {
@@ -109,20 +126,27 @@ describe("ScriptService (B2)", () => {
     }
     expect(conv.pasoGuion).toBe("faq_libre");
     expect(script.isCompleto(conv.camposCapturados)).toBe(true);
+    expect(conv.camposCapturados.sedeNombre).toBe("Tres Cielos Tequesquitengo");
+    expect(conv.camposCapturados.sedeId).toBe("sede-tequesquitengo");
     expect(conv.camposCapturados.presupuestoOrientativo).toBeUndefined();
   });
 
-  it("sede pasa a intención, no a presupuesto", async () => {
+  it("hilo en paso sede autosigna Tequesquitengo y pasa a intención con PDF", async () => {
     const r = await script.handleTurn(
       baseConv({
         pasoGuion: "sede",
         camposCapturados: { nombre: "Ana", tipoEvento: "boda", aforo: 120 },
       }),
-      "Jardín 1",
+      "ok",
     );
     expect(r.pasoGuion).toBe("intencion");
+    expect(r.camposCapturados.sedeNombre).toBe("Tres Cielos Tequesquitengo");
+    expect(r.camposCapturados.sedeId).toBe("sede-tequesquitengo");
+    expect(r.adjuntoGuion).toBe("paquete-bodas-2027");
+    expect(r.textoRespuesta).toMatch(/Tequesquitengo/);
     expect(r.textoRespuesta).toMatch(/cotizar/i);
     expect(r.textoRespuesta).not.toMatch(/presupuesto/i);
+    expect(r.textoRespuesta).not.toMatch(/sí \/ no/i);
   });
 
   it("paso presupuesto legado se trata como intención", async () => {

@@ -21,7 +21,7 @@ describe("anti-hallucination.catalog (C3)", () => {
       messages: [
         {
           role: "user",
-          content: "¿Cuánto cuesta el paquete BODA-J1-ESENCIAL?",
+          content: "¿Cuánto cuesta el paquete EVT-J1-TC?",
         },
       ],
       tools: [
@@ -33,7 +33,23 @@ describe("anti-hallucination.catalog (C3)", () => {
       ],
     });
     expect(out.toolCalls[0]?.name).toBe("obtener_precio_paquete");
-    expect(out.toolCalls[0]?.argumentsJson).toContain("BODA-J1-ESENCIAL");
+    expect(out.toolCalls[0]?.argumentsJson).toContain("EVT-J1-TC");
+  });
+
+  it("CatalogAwareLlm planifica buscar_paquetes para pregunta genérica de precios", async () => {
+    const llm = new CatalogAwareLlmPort();
+    const out = await llm.completeWithTools({
+      messages: [{ role: "user", content: "Que precios manejan" }],
+      tools: [
+        { name: "buscar_paquetes", description: "buscar", parameters: {} },
+        {
+          name: "obtener_precio_paquete",
+          description: "precio",
+          parameters: {},
+        },
+      ],
+    });
+    expect(out.toolCalls[0]?.name).toBe("buscar_paquetes");
   });
 
   it("respuesta solo con montos de tool (0 inventados)", async () => {
@@ -43,17 +59,20 @@ describe("anti-hallucination.catalog (C3)", () => {
 
     const catalog = {
       obtenerPrecioPaquete: jest.fn(async () => ({
-        sku: "BODA-J1-ESENCIAL",
+        sku: "EVT-J1-TC",
         paqueteId: "pkg-1",
-        nombre: "Esencial",
+        nombre: "Paquete Estándar",
         moneda: "MXN",
-        monto: 85000,
-        rangoMin: null,
-        rangoMax: null,
-        unidad: "evento",
+        monto: 2980,
+        rangoMin: 100,
+        rangoMax: 100,
+        unidad: "persona",
         condiciones: null,
-        vigenteDesde: new Date(),
-        vigenteHasta: null,
+        vigenteDesde: new Date("2027-01-01"),
+        vigenteHasta: new Date("2027-12-31"),
+        aforoTramo: 100,
+        totalEvento: 298000,
+        desde: true,
       })),
       buscarPaquetes: jest.fn(),
       listarInclusiones: jest.fn(),
@@ -86,17 +105,18 @@ describe("anti-hallucination.catalog (C3)", () => {
       canal: "whatsapp",
       externalThreadId: "t-c3",
       externalMessageId: "m-c3",
-      texto: "¿Cuánto cuesta el paquete BODA-J1-ESENCIAL?",
+      texto: "¿Cuánto cuesta el paquete EVT-J1-TC?",
       recibidoEn: new Date().toISOString(),
     });
 
     expect(res.ruta).toBe("catalogo");
     expect(res.registroConsultaCatalogoId).toBeTruthy();
-    expect(res.textoRespuesta).toContain("85000");
+    expect(res.textoRespuesta).toMatch(/2[,.]980/);
+    expect(res.textoRespuesta).not.toContain("EVT-J1-TC");
     expect(
       assertNoInventedMontos({
         respuesta: res.textoRespuesta ?? "",
-        montosPermitidos: [85000],
+        montosPermitidos: [2980, 298000],
       }).ok,
     ).toBe(true);
 
@@ -105,7 +125,7 @@ describe("anti-hallucination.catalog (C3)", () => {
     expect(reg?.ok).toBe(true);
   });
 
-  it("sin_precio_vigente → handoff sin inventar monto", async () => {
+  it("sin_precio_vigente → copy honesto sin inventar monto", async () => {
     const store = new ConversationStoreService();
     const audit = new AuditEventoService();
     const registro = new RegistroConsultaCatalogoService();
@@ -113,8 +133,9 @@ describe("anti-hallucination.catalog (C3)", () => {
     const catalog = {
       obtenerPrecioPaquete: jest.fn(async () => ({
         error: "sin_precio_vigente" as const,
-        sku: "BODA-J1-ESENCIAL",
+        sku: "EVT-J1-TC",
         paqueteId: "pkg-1",
+        nombre: "Paquete Estándar",
       })),
       buscarPaquetes: jest.fn(),
       listarInclusiones: jest.fn(),
@@ -147,12 +168,13 @@ describe("anti-hallucination.catalog (C3)", () => {
       canal: "whatsapp",
       externalThreadId: "t-c3b",
       externalMessageId: "m-c3b",
-      texto: "¿Cuánto cuesta BODA-J1-ESENCIAL?",
+      texto: "¿Cuánto cuesta EVT-J1-TC?",
       recibidoEn: new Date().toISOString(),
     });
 
-    expect(res.ruta).toBe("handoff");
-    expect(res.motivoHandoff).toBe("sin_catalogo");
-    expect(res.textoRespuesta ?? "").not.toMatch(/\$\s?\d/);
+      expect(res.ruta).toBe("catalogo");
+      expect(res.textoRespuesta ?? "").toMatch(/aún no hay precio vigente/i);
+      expect(res.textoRespuesta ?? "").not.toMatch(/\$\s?\d/);
+      expect(res.textoRespuesta ?? "").not.toContain("EVT-J1-TC");
   });
 });

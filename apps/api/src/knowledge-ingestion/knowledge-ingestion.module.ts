@@ -1,6 +1,9 @@
 import { Module } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { AiProvidersModule } from "../ai-providers/ai-providers.module";
 import { RagPipelineModule } from "../rag/rag-pipeline.module";
+import { AuthModule } from "../auth/auth.module";
+import { resolveRagStore } from "../config/ai-mode";
 import { TariffScrubService } from "./scrub/tariff-scrub.service";
 import { PdfParser } from "./parsers/pdf.parser";
 import { DocxParser } from "./parsers/docx.parser";
@@ -12,6 +15,8 @@ import { SlaTrackerService } from "./jobs/sla-tracker.service";
 import { PublishArchiveService } from "./jobs/publish-archive.service";
 import { ChannelAttachmentJobService } from "./jobs/channel-attachment-job.service";
 import { KnowledgeRepositoryStub } from "./repository/knowledge.repository.stub";
+import { PrismaKnowledgeRepository } from "./repository/prisma-knowledge.repository";
+import { KNOWLEDGE_REPOSITORY } from "./repository/knowledge.repository";
 import { OcrPriceGateService } from "./ocr-price-gate.service";
 import { PdfSourcePlugin } from "./plugins/pdf.source-plugin";
 import { DocxSourcePlugin } from "./plugins/docx.source-plugin";
@@ -22,13 +27,12 @@ import {
   SOURCE_PLUGINS,
   SourcePluginRegistry,
 } from "./plugins/source-plugin.registry";
+import { KnowledgeCorpusSeedService } from "./knowledge-corpus-seed.service";
+import { ConocimientoController } from "./conocimiento.controller";
 
-/**
- * KnowledgeIngestionModule — Fase E.
- * Ampliar indexado: nuevo SourcePlugin + entrada en SOURCE_PLUGINS / corpus-inventory.json.
- */
 @Module({
-  imports: [AiProvidersModule, RagPipelineModule],
+  imports: [AiProvidersModule, RagPipelineModule, AuthModule],
+  controllers: [ConocimientoController],
   providers: [
     TariffScrubService,
     PdfParser,
@@ -61,10 +65,22 @@ import {
     SourcePluginRegistry,
     SlaTrackerService,
     KnowledgeRepositoryStub,
+    PrismaKnowledgeRepository,
+    {
+      provide: KNOWLEDGE_REPOSITORY,
+      inject: [ConfigService, PrismaKnowledgeRepository, KnowledgeRepositoryStub],
+      useFactory: (
+        config: ConfigService,
+        prismaRepo: PrismaKnowledgeRepository,
+        stub: KnowledgeRepositoryStub,
+      ) =>
+        resolveRagStore(config) === "prisma" ? prismaRepo : stub,
+    },
     MediaRouterService,
     PublishArchiveService,
     ChannelAttachmentJobService,
     OcrPriceGateService,
+    KnowledgeCorpusSeedService,
   ],
   exports: [
     AiProvidersModule,
@@ -74,6 +90,7 @@ import {
     ChannelAttachmentJobService,
     OcrPriceGateService,
     KnowledgeRepositoryStub,
+    KNOWLEDGE_REPOSITORY,
     SlaTrackerService,
     XlsRouter,
     SourcePluginRegistry,

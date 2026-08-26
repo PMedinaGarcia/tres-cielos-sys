@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { CatalogToolsService } from "./catalog-tools.service";
+import type { DiagnosticoBusquedaVacia } from "./catalog-search.util";
 import type { ToolCatalogName } from "./tool-schemas";
 
 export interface ToolCallRequest {
@@ -53,6 +54,7 @@ export class ToolsExecutorService {
           sku: args.sku != null ? String(args.sku) : undefined,
           paqueteId: args.paqueteId != null ? String(args.paqueteId) : undefined,
           fecha: args.fecha != null ? String(args.fecha) : undefined,
+          aforo: args.aforo != null ? Number(args.aforo) : undefined,
         });
         break;
       case "listar_inclusiones":
@@ -66,6 +68,7 @@ export class ToolsExecutorService {
           skus: Array.isArray(args.skus) ? (args.skus as string[]) : undefined,
           ids: Array.isArray(args.ids) ? (args.ids as string[]) : undefined,
           fecha: args.fecha != null ? String(args.fecha) : undefined,
+          aforo: args.aforo != null ? Number(args.aforo) : undefined,
         });
         break;
       case "evaluar_reglas_paquete":
@@ -101,6 +104,23 @@ export class ToolsExecutorService {
       errorCode,
       result,
     };
+  }
+
+  async sugerirCercanos(input: {
+    tipoEvento: string;
+    aforo?: number;
+    sede?: string;
+    fecha?: string;
+  }): Promise<DiagnosticoBusquedaVacia> {
+    if (typeof this.catalog.diagnosticoBusquedaVacia !== "function") {
+      return {
+        motivo: "sin_publicados",
+        tipoEvento: input.tipoEvento,
+        aforoLead: input.aforo,
+        cercanos: [],
+      };
+    }
+    return this.catalog.diagnosticoBusquedaVacia(input);
   }
 }
 

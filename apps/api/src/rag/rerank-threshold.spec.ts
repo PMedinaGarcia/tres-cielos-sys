@@ -12,7 +12,7 @@ import {
 } from "../ports/tokens";
 import { hasCitaTipada } from "./citation.util";
 import {
-  FIXTURE_SEDE_JARDIN_1,
+  FIXTURE_SEDE_TEQUESQUITENGO,
   buildKnowledgeFixtures,
 } from "./fixtures/knowledge-fixtures";
 import { GeneratorService } from "./generator.service";
@@ -87,7 +87,7 @@ describe("RagPipeline — rerank threshold (C5)", () => {
 
     const result = await pipeline.answer(
       "¿Cuál es el horario de visitas del jardín?",
-      { sedeId: FIXTURE_SEDE_JARDIN_1 },
+      { sedeId: FIXTURE_SEDE_TEQUESQUITENGO },
     );
 
     expect(result.ok).toBe(true);
@@ -117,7 +117,7 @@ describe("RagPipeline — rerank threshold (C5)", () => {
     });
 
     const result = await pipeline.answer("¿Horario de visitas?", {
-      sedeId: FIXTURE_SEDE_JARDIN_1,
+      sedeId: FIXTURE_SEDE_TEQUESQUITENGO,
     });
 
     expect(result.ok).toBe(false);

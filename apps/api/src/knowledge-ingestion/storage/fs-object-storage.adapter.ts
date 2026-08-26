@@ -65,4 +65,22 @@ export class FsObjectStorageAdapter implements ObjectStoragePort {
     await fs.rm(full, { force: true });
     await fs.rm(`${full}.meta.json`, { force: true });
   }
+
+  async exists(key: string): Promise<boolean> {
+    try {
+      await fs.access(this.resolveKey(key));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async ping(): Promise<boolean> {
+    try {
+      await fs.mkdir(this.root(), { recursive: true });
+      return true;
+    } catch {
+      return false;
+    }
+  }
 }

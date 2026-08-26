@@ -32,4 +32,7 @@ export interface ObjectStoragePort {
   get(key: string): Promise<GetObjectResult>;
   signedUrl(request: SignedUrlRequest): Promise<string>;
   delete(key: string): Promise<void>;
+  exists(key: string): Promise<boolean>;
+  /** HeadBucket / sanity check. Fake y FS siempre true si el backend responde. */
+  ping(): Promise<boolean>;
 }

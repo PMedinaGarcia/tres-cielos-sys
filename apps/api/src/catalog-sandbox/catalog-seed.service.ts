@@ -1,10 +1,17 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional, Inject } from "@nestjs/common";
 import { CatalogSnapshot } from "@tres-cielos/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { OBJECT_STORAGE_PORT } from "../ports/tokens";
+import type { ObjectStoragePort } from "../ports/object-storage.port";
+import { STORAGE_PREFIXES } from "../ports/storage-prefixes";
 
 @Injectable()
 export class CatalogSeedService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() @Inject(OBJECT_STORAGE_PORT)
+    private readonly storage?: ObjectStoragePort,
+  ) {}
 
   async seedFromSnapshot(
     snapshot: CatalogSnapshot,
@@ -13,6 +20,12 @@ export class CatalogSeedService {
     const iniciadoEn = new Date();
     let filasOk = 0;
     const errores: { sku?: string; motivo: string }[] = [];
+
+    const snapshotSkus = snapshot.paquetes.map((p) => p.sku);
+    await this.prisma.paquete.updateMany({
+      where: { codigoSku: { notIn: snapshotSkus } },
+      data: { estado: "archivado" },
+    });
 
     for (const p of snapshot.paquetes) {
       try {
@@ -148,7 +161,7 @@ export class CatalogSeedService {
           ? "parcial"
           : "fallo";
 
-    await this.prisma.importacionCatalogo.create({
+    const importacion = await this.prisma.importacionCatalogo.create({
       data: {
         actor: "sandbox",
         archivo,
@@ -161,6 +174,27 @@ export class CatalogSeedService {
       },
     });
 
+    await this.persistSnapshotObject(importacion.id, archivo, snapshot);
+
     return { filasOk, filasError: errores.length, errores, resultado };
+  }
+
+  private async persistSnapshotObject(
+    importId: string,
+    archivo: string,
+    snapshot: CatalogSnapshot,
+  ): Promise<void> {
+    if (!this.storage) return;
+    try {
+      const body = Buffer.from(JSON.stringify(snapshot), "utf8");
+      const key = `${STORAGE_PREFIXES.catalogo}/${importId}/${archivo}`;
+      await this.storage.put({
+        key,
+        body,
+        contentType: "application/json",
+      });
+    } catch {
+      /* seed de catálogo no debe fallar si el bucket no está */
+    }
   }
 }

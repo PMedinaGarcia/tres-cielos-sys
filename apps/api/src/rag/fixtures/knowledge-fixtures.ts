@@ -1,7 +1,7 @@
 import { hashToEmbedding } from "../../ports/__fakes__/hash";
 import { FragmentoRecuperable } from "../types";
+import { SEDE_ID } from "@tres-cielos/shared";
 
-const SEDE_JARDIN_1 = "sede-jardin-1";
 const EMBED_DIM = 1536;
 
 /**
@@ -31,20 +31,20 @@ export function buildKnowledgeFixtures(): FragmentoRecuperable[] {
     frag({
       id: "frag-k02-ficha",
       inventarioId: "K02",
-      nombreArchivoCita: "K02-ficha-jardin-1.docx",
+      nombreArchivoCita: "K02-ficha-tequesquitengo.docx",
       tipoMaterial: "word",
-      sedeId: SEDE_JARDIN_1,
+      sedeId: SEDE_ID,
       texto:
-        "Jardín 1 es la sede activa de Tres Cielos. Capacidad orientativa hasta 200 invitados en formato jardín. Cuenta con áreas outdoor e indoor ligero. Restricción: no se permite pirotecnia.",
+        "Tres Cielos Tequesquitengo es la sede activa de Tres Cielos. Capacidad orientativa hasta 300 invitados en formato jardín. Cuenta con áreas outdoor e indoor ligero. Restricción: no se permite pirotecnia.",
     }),
     frag({
       id: "frag-k02-horario-visitas",
       inventarioId: "K02",
-      nombreArchivoCita: "K02-ficha-jardin-1.docx",
+      nombreArchivoCita: "K02-ficha-tequesquitengo.docx",
       tipoMaterial: "word",
-      sedeId: SEDE_JARDIN_1,
+      sedeId: SEDE_ID,
       texto:
-        "Horario de visitas de Jardín 1: martes a sábado 11:00 a 18:00. Para domingos se requiere agendar con anticipación.",
+        "Horario de visitas de Tres Cielos Tequesquitengo: martes a sábado 11:00 a 18:00. Para domingos se requiere agendar con anticipación.",
     }),
     frag({
       id: "frag-k08-limites",
@@ -98,14 +98,14 @@ export function buildKnowledgeFixtures(): FragmentoRecuperable[] {
       inventarioId: "K02",
       nombreArchivoCita: "version-vieja.docx",
       tipoMaterial: "word",
-      sedeId: SEDE_JARDIN_1,
+      sedeId: SEDE_ID,
       activo: false,
       texto: "Versión archivada de horario antiguo 10:00 a 17:00.",
     }),
   ];
 }
 
-export const FIXTURE_SEDE_JARDIN_1 = SEDE_JARDIN_1;
+export const FIXTURE_SEDE_TEQUESQUITENGO = SEDE_ID;
 
 function frag(
   partial: Partial<FragmentoRecuperable> &

@@ -1,51 +1,26 @@
 import { Injectable } from "@nestjs/common";
-import type { TipoMaterial } from "../contracts/media.types";
+import type {
+  DocumentoFuenteRecord,
+  FragmentoRecord,
+  KnowledgeRepository,
+} from "./knowledge.repository";
 
 /**
- * Campos esperados Fase A (Prisma) — stub in-memory.
- *
- * DocumentoFuente: id, titulo, version, estado_publicacion, pipeline_estado,
- *   storage_key, mime, sede_id?, family_id, publicado_en?
- * FragmentoVectorial: id, documento_id, texto, no_recuperable_precio,
- *   tipo_material, origen_derivacion, activo, orden, embedding?, tsvector?
- * Asset: id, storage_key, mime, bytes, checksum, proposito, pipeline_estado
- * AdjuntoMensaje: id, mensaje_id, asset_id, clasificacion_intent? — NO FK a Fragmento K
+ * Stub in-memory para tests. PrismaKnowledgeRepository es el store live.
  */
-export interface DocumentoFuenteRecord {
-  id: string;
-  titulo: string;
-  version: number;
-  estadoPublicacion: "borrador" | "publicado" | "archivado";
-  pipelineEstado: string;
-  storageKey: string;
-  mime: string;
-  sedeId?: string;
-  familyId: string;
-  publicadoEn?: string;
-}
-
-export interface FragmentoRecord {
-  id: string;
-  documentoId: string;
-  texto: string;
-  noRecuperablePrecio: boolean;
-  tipoMaterial: TipoMaterial | string;
-  origenDerivacion: string;
-  activo: boolean;
-  orden: number;
-}
-
 @Injectable()
-export class KnowledgeRepositoryStub {
+export class KnowledgeRepositoryStub implements KnowledgeRepository {
   private documentos = new Map<string, DocumentoFuenteRecord>();
   private fragments = new Map<string, FragmentoRecord[]>();
 
-  createDocumento(doc: DocumentoFuenteRecord): DocumentoFuenteRecord {
+  async createDocumento(
+    doc: DocumentoFuenteRecord,
+  ): Promise<DocumentoFuenteRecord> {
     this.documentos.set(doc.id, doc);
     return doc;
   }
 
-  nextVersion(titulo: string, sedeId?: string): number {
+  async nextVersion(titulo: string, sedeId?: string): Promise<number> {
     let max = 0;
     for (const d of this.documentos.values()) {
       if (d.titulo === titulo && d.sedeId === sedeId) {
@@ -55,10 +30,10 @@ export class KnowledgeRepositoryStub {
     return max + 1;
   }
 
-  findPublishedByTitulo(
+  async findPublishedByTitulo(
     titulo: string,
     sedeId?: string,
-  ): DocumentoFuenteRecord[] {
+  ): Promise<DocumentoFuenteRecord[]> {
     return [...this.documentos.values()].filter(
       (d) =>
         d.titulo === titulo &&
@@ -67,7 +42,7 @@ export class KnowledgeRepositoryStub {
     );
   }
 
-  archiveByTitulo(titulo: string, sedeId?: string): void {
+  async archiveByTitulo(titulo: string, sedeId?: string): Promise<void> {
     for (const d of this.documentos.values()) {
       if (
         d.titulo === titulo &&
@@ -75,32 +50,32 @@ export class KnowledgeRepositoryStub {
         d.estadoPublicacion === "publicado"
       ) {
         d.estadoPublicacion = "archivado";
-        this.deactivateFragments(d.id);
+        await this.deactivateFragments(d.id);
       }
     }
   }
 
-  archiveDocumento(id: string): DocumentoFuenteRecord {
+  async archiveDocumento(id: string): Promise<DocumentoFuenteRecord> {
     const d = this.documentos.get(id);
     if (!d) throw new Error(`DOCUMENTO_NOT_FOUND:${id}`);
     d.estadoPublicacion = "archivado";
     return d;
   }
 
-  replaceFragments(
+  async replaceFragments(
     documentoId: string,
     fragments: FragmentoRecord[],
-  ): FragmentoRecord[] {
+  ): Promise<FragmentoRecord[]> {
     this.fragments.set(documentoId, fragments);
     return fragments;
   }
 
-  deactivateFragments(documentoId: string): void {
+  async deactivateFragments(documentoId: string): Promise<void> {
     const list = this.fragments.get(documentoId) ?? [];
     for (const f of list) f.activo = false;
   }
 
-  listActiveFragments(): FragmentoRecord[] {
+  async listActiveFragments(): Promise<FragmentoRecord[]> {
     const out: FragmentoRecord[] = [];
     for (const [docId, frags] of this.fragments) {
       const doc = this.documentos.get(docId);
@@ -111,6 +86,17 @@ export class KnowledgeRepositoryStub {
       }
     }
     return out;
+  }
+
+  async hasPublishedInventario(inventarioId: string): Promise<boolean> {
+    return [...this.documentos.values()].some(
+      (d) =>
+        d.inventarioId === inventarioId && d.estadoPublicacion === "publicado",
+    );
+  }
+
+  async getDocumento(id: string): Promise<DocumentoFuenteRecord | null> {
+    return this.documentos.get(id) ?? null;
   }
 
   /** Tests */

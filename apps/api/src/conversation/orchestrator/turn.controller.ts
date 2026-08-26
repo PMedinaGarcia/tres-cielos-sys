@@ -9,14 +9,13 @@ import {
   UseGuards,
   UsePipes,
   ValidationPipe,
-  SetMetadata,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { OrchestratorService } from "./orchestrator.service";
 import { InboundMessageDto } from "./dto/inbound-message.dto";
+import { Public } from "../../common/public.decorator";
 
-export const IS_PUBLIC_KEY = "isPublic";
-export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
+export { Public, IS_PUBLIC_KEY } from "../../common/public.decorator";
 
 /**
  * Guard del endpoint sandbox turn.

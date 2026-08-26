@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { TariffScrubService } from "./scrub/tariff-scrub.service";
-import type { FragmentoRecord } from "./repository/knowledge.repository.stub";
+import type { FragmentoRecord } from "./repository/knowledge.repository";
 
 export interface OcrGateInput {
   pregunta: string;
