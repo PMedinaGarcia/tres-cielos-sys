@@ -1,5 +1,6 @@
 "use client";
 
+import { ConfirmDeleteDialog } from "@/components/crm/confirm-delete";
 import { GlassPanel } from "@/components/glass-panel";
 import {
   COLA_LABEL,
@@ -10,7 +11,7 @@ import {
   TIPO_EVENTO_LABEL,
   VISITA_LABEL,
 } from "@/components/crm/labels";
-import { listClientes } from "@/lib/crm-api";
+import { deleteCliente, listClientes } from "@/lib/crm-api";
 import { ApiError } from "@/lib/http";
 import type { ColaCrm, EstadoAtencion, EtapaCotizacion, VisitaEstado } from "@tres-cielos/shared";
 import { COLA_CRM, ESTADO_ATENCION, TIPO_EVENTO } from "@tres-cielos/shared";
@@ -28,6 +29,11 @@ export default function CrmPage() {
   const [rows, setRows] = useState<Awaited<ReturnType<typeof listClientes>>["data"]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [pending, setPending] = useState<{ id: string; nombre: string } | null>(
+    null,
+  );
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   async function load(nextQ = qApplied) {
     setError(null);
@@ -59,6 +65,23 @@ export default function CrmPage() {
   function onSearch(e: FormEvent) {
     e.preventDefault();
     setQApplied(q.trim());
+  }
+
+  async function confirmDelete() {
+    if (!pending) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteCliente(pending.id);
+      setPending(null);
+      await load();
+    } catch (e) {
+      setDeleteError(
+        e instanceof ApiError ? e.message : "No se pudo eliminar el registro",
+      );
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -165,10 +188,13 @@ export default function CrmPage() {
         ) : (
           <ul className="divide-y divide-white/40">
             {rows.map((c) => (
-              <li key={c.id}>
+              <li
+                key={c.id}
+                className="flex flex-wrap items-center gap-2 py-3"
+              >
                 <Link
                   href={`/crm/${c.id}`}
-                  className="flex flex-wrap items-center justify-between gap-3 py-3 transition hover:text-teal"
+                  className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3 transition hover:text-teal"
                 >
                   <div>
                     <p className="font-medium">{displayName(c.nombre)}</p>
@@ -216,11 +242,42 @@ export default function CrmPage() {
                     </span>
                   </div>
                 </Link>
+                <button
+                  type="button"
+                  className="shrink-0 rounded-full px-3 py-1.5 text-xs text-red-800 transition hover:bg-red-50"
+                  onClick={() => {
+                    setDeleteError(null);
+                    setPending({
+                      id: c.id,
+                      nombre: displayName(c.nombre),
+                    });
+                  }}
+                >
+                  Eliminar
+                </button>
               </li>
             ))}
           </ul>
         )}
       </GlassPanel>
+      <ConfirmDeleteDialog
+        open={pending != null}
+        title="Eliminar registro"
+        description={
+          pending
+            ? `Se borra la ficha de ${pending.nombre}, sus hilos y el historial. El próximo contacto del mismo número o canal creará un expediente nuevo.`
+            : ""
+        }
+        busy={deleting}
+        error={deleteError}
+        onCancel={() => {
+          if (!deleting) {
+            setPending(null);
+            setDeleteError(null);
+          }
+        }}
+        onConfirm={() => void confirmDelete()}
+      />
     </div>
   );
 }

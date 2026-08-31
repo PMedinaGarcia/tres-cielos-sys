@@ -98,6 +98,11 @@ export async function replaceTagsCliente(
   return json.data;
 }
 
+export async function deleteCliente(id: string): Promise<void> {
+  const res = await apiFetch(`/clientes/${id}`, { method: "DELETE" });
+  await readJson(res);
+}
+
 export async function getClienteHistorial(
   id: string,
   query: { page?: number; pageSize?: number; tipo?: string } = {},

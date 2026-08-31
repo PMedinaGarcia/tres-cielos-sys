@@ -1,5 +1,6 @@
 "use client";
 
+import { ConfirmDeleteDialog } from "@/components/crm/confirm-delete";
 import { FichaPanel } from "@/components/crm/ficha-panel";
 import { HistorialFeed } from "@/components/crm/historial-feed";
 import { OportunidadPanel } from "@/components/crm/oportunidad-panel";
@@ -7,6 +8,7 @@ import { displayName } from "@/components/crm/labels";
 import { GlassPanel } from "@/components/glass-panel";
 import {
   addNotaCliente,
+  deleteCliente,
   getCliente,
   getClienteHistorial,
   patchCliente,
@@ -16,11 +18,12 @@ import {
 import { ApiError } from "@/lib/http";
 import type { ClienteDetail, HistorialItemDto } from "@tres-cielos/shared";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 export default function CrmExpedientePage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const id = params.id;
   const [cliente, setCliente] = useState<ClienteDetail | null>(null);
   const [historial, setHistorial] = useState<HistorialItemDto[]>([]);
@@ -29,6 +32,9 @@ export default function CrmExpedientePage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [histLoading, setHistLoading] = useState(true);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const loadCliente = useCallback(async () => {
     const data = await getCliente(id);
@@ -77,6 +83,21 @@ export default function CrmExpedientePage() {
     }
   }
 
+  async function confirmDelete() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteCliente(id);
+      router.push("/crm");
+    } catch (e) {
+      setDeleteError(
+        e instanceof ApiError ? e.message : "No se pudo eliminar el registro",
+      );
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   if (!cliente && error) {
     return (
       <div className="mx-auto max-w-6xl px-6 py-10">
@@ -109,6 +130,17 @@ export default function CrmExpedientePage() {
             {displayName(cliente.nombre)}
           </h1>
         </div>
+        <button
+          type="button"
+          className="rounded-xl border border-red-200 bg-white/40 px-4 py-2 text-sm text-red-800 transition hover:bg-red-50 disabled:opacity-40"
+          disabled={busy || deleting}
+          onClick={() => {
+            setDeleteError(null);
+            setConfirmOpen(true);
+          }}
+        >
+          Eliminar registro
+        </button>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
@@ -149,6 +181,20 @@ export default function CrmExpedientePage() {
           />
         </GlassPanel>
       </div>
+      <ConfirmDeleteDialog
+        open={confirmOpen}
+        title="Eliminar registro"
+        description={`Se borra la ficha de ${displayName(cliente.nombre)}, sus hilos y el historial. El próximo contacto del mismo número o canal creará un expediente nuevo.`}
+        busy={deleting}
+        error={deleteError}
+        onCancel={() => {
+          if (!deleting) {
+            setConfirmOpen(false);
+            setDeleteError(null);
+          }
+        }}
+        onConfirm={() => void confirmDelete()}
+      />
     </div>
   );
 }

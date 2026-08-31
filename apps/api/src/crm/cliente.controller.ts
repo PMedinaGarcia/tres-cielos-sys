@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -68,6 +70,12 @@ export class ClienteController {
     @Body() dto: ActualizarClienteDto,
   ) {
     return this.clientes.update(actor, id, dto);
+  }
+
+  @Delete(":id")
+  @HttpCode(204)
+  remove(@CurrentUser() actor: PanelUser, @Param("id") id: string) {
+    return this.clientes.remove(actor, id);
   }
 
   @Post(":id/notas")

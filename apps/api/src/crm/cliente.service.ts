@@ -105,6 +105,12 @@ export class ClienteService {
     };
   }
 
+  async remove(actor: PanelUser, id: string): Promise<void> {
+    this.assertDb();
+    await this.requireScoped(actor, id);
+    await this.prisma!.cliente.delete({ where: { id } });
+  }
+
   async update(actor: PanelUser, id: string, dto: ActualizarClienteDto) {
     this.assertDb();
     const existing = await this.requireScoped(actor, id);

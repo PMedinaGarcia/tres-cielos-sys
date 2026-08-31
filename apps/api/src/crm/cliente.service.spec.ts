@@ -54,6 +54,7 @@ describe("ClienteService", () => {
       findFirst: jest.fn(),
       findUniqueOrThrow: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn(),
     },
     interaccion: {
       findMany: jest.fn(),
@@ -250,5 +251,32 @@ describe("ClienteService", () => {
     expect(identidad.vinculosFor).toHaveBeenCalledWith("cli-1");
     expect(res.data[0]?.vinculo).toBe("posible_duplicado");
     expect(res.data[0]?.contenido.length).toBeGreaterThan(180);
+  });
+
+  it("elimina el cliente en alcance", async () => {
+    prisma.cliente.findFirst.mockResolvedValue(clienteRow());
+    prisma.cliente.delete.mockResolvedValue(clienteRow());
+    await service.remove(asesor, "cli-1");
+    expect(prisma.cliente.delete).toHaveBeenCalledWith({
+      where: { id: "cli-1" },
+    });
+  });
+
+  it("404 si el asesor no ve al cliente al eliminar", async () => {
+    prisma.cliente.findFirst.mockResolvedValue(null);
+    await expect(service.remove(asesor, "cli-x")).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(prisma.cliente.delete).not.toHaveBeenCalled();
+  });
+
+  it("asesor no elimina cliente de otro", async () => {
+    prisma.cliente.findFirst.mockResolvedValue(
+      clienteRow({ asesorAsignadoId: "otro" }),
+    );
+    await expect(service.remove(asesor, "cli-1")).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    expect(prisma.cliente.delete).not.toHaveBeenCalled();
   });
 });
