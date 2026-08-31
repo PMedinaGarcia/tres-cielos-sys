@@ -80,4 +80,28 @@ describe("derivarInteligencia", () => {
     expect(r.estancado).toBe(true);
     expect(r.siguienteAccion).toBe("Recontactar");
   });
+
+  it("perfil + pedido false → perfilando", () => {
+    const r = derivarInteligencia({
+      ...base,
+      tipoEvento: "boda",
+      perfilCompleto: true,
+      pedidoCotizacion: false,
+      intencionCotizar: false,
+      pasoGuion: "faq_libre",
+    });
+    expect(r.etapaCotizacion).toBe("perfilando");
+  });
+
+  it("perfil + pedido true sin SKU → explorando", () => {
+    const r = derivarInteligencia({
+      ...base,
+      tipoEvento: "boda",
+      perfilCompleto: true,
+      pedidoCotizacion: true,
+      intencionCotizar: true,
+    });
+    expect(r.etapaCotizacion).toBe("explorando");
+    expect(r.siguienteAccion).toBe("Seguir calificación");
+  });
 });

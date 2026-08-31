@@ -1,7 +1,8 @@
+import { publicApiUrl } from "./api-url";
+
 export { ACCESS_COOKIE, REFRESH_COOKIE } from "./auth-cookies";
 
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3011";
+export const API_URL = publicApiUrl();
 
 export class ApiError extends Error {
   constructor(

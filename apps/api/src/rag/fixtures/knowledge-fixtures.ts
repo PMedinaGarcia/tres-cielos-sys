@@ -17,7 +17,7 @@ export function buildKnowledgeFixtures(): FragmentoRecuperable[] {
       tipoMaterial: "faq",
       sedeId: null,
       texto:
-        "Los horarios comerciales de visitas al venue Tres Cielos son de martes a sábado de 11:00 a 18:00. Domingos solo con cita previa. Somos un jardín para eventos sociales.",
+        "Tres Cielos es un jardín para eventos sociales. Las visitas al venue las agenda un asesor; no hay horario de visita publicado en este canal.",
     }),
     frag({
       id: "frag-k01-ubicacion",
@@ -26,7 +26,7 @@ export function buildKnowledgeFixtures(): FragmentoRecuperable[] {
       tipoMaterial: "faq",
       sedeId: null,
       texto:
-        "Tres Cielos es un venue tipo jardín. Cómo llegar a alto nivel: acceso por avenida principal del polo de eventos; el detalle de ubicación se confirma con el asesor al agendar visita.",
+        "La sede operativa de Tres Cielos es Tres Cielos Tequesquitengo. Dirección: Lago de Teques Lote 36, 4ª sección, CP 62915, Tequesquitengo, Jojutla, Morelos. Referencia vial: Bajada 6 hasta el fondo. El jardín está a orilla del lago de Tequesquitengo, a unos 90 minutos de la Ciudad de México.",
     }),
     frag({
       id: "frag-k02-ficha",
@@ -35,7 +35,7 @@ export function buildKnowledgeFixtures(): FragmentoRecuperable[] {
       tipoMaterial: "word",
       sedeId: SEDE_ID,
       texto:
-        "Tres Cielos Tequesquitengo es la sede activa de Tres Cielos. Capacidad orientativa hasta 300 invitados en formato jardín. Cuenta con áreas outdoor e indoor ligero. Restricción: no se permite pirotecnia.",
+        "Tres Cielos Tequesquitengo es la sede activa de Tres Cielos. Dirección: Lago de Teques Lote 36, 4ª sección, CP 62915, Tequesquitengo, Jojutla, Morelos. Venue tipo jardín: estacionamiento, baños y áreas comunes; capilla techada y consagrada; carpa fija de unos 600 m² en paquetes de bodas; explanada; pista de baile de seis por seis metros; suite nupcial en el predio.",
     }),
     frag({
       id: "frag-k02-horario-visitas",
@@ -44,7 +44,16 @@ export function buildKnowledgeFixtures(): FragmentoRecuperable[] {
       tipoMaterial: "word",
       sedeId: SEDE_ID,
       texto:
-        "Horario de visitas de Tres Cielos Tequesquitengo: martes a sábado 11:00 a 18:00. Para domingos se requiere agendar con anticipación.",
+        "Las visitas a Tres Cielos Tequesquitengo las agenda un asesor. No hay horario de visita publicado en este canal.",
+    }),
+    frag({
+      id: "frag-k02-como-llegar",
+      inventarioId: "K02",
+      nombreArchivoCita: "K02-ficha-tequesquitengo.docx",
+      tipoMaterial: "word",
+      sedeId: SEDE_ID,
+      texto:
+        "Cómo llegar a Tres Cielos Tequesquitengo: Bajada 6 hasta el fondo. El jardín está a orilla del lago de Tequesquitengo, a unos 90 minutos de la Ciudad de México. La prueba de menú se realiza en Cuernavaca; eso no es la dirección del jardín. La oficina de informes en CDMX no es la locación del evento.",
     }),
     frag({
       id: "frag-k08-limites",

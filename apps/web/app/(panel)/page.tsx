@@ -1,6 +1,7 @@
 import { GlassPanel } from "@/components/glass-panel";
+import { internalApiUrl, publicApiUrl } from "@/lib/api-url";
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3011";
+const apiUrl = publicApiUrl();
 
 async function fetchHealth(): Promise<{
   ok: boolean;
@@ -8,7 +9,7 @@ async function fetchHealth(): Promise<{
   error?: string;
 }> {
   try {
-    const res = await fetch(`${apiUrl}/health`, { cache: "no-store" });
+    const res = await fetch(`${internalApiUrl()}/health`, { cache: "no-store" });
     const body = await res.json();
     return { ok: res.ok, body };
   } catch (e) {

@@ -87,6 +87,10 @@ export type ReasoningStep = ReasoningStepBase &
           adjuntoInvalido: boolean;
           hardQuota: boolean;
           pasoGuion?: PasoGuion | string;
+          perfilListo?: boolean;
+          pedidoCotizacion?: boolean | null;
+          pedidoCotizacionFuente?: string | null;
+          recotizarPorSlots?: boolean;
         };
       }
     | {

@@ -52,6 +52,8 @@ apps/api/prisma/*.db-journal
 *.swp
 *.swo
 
-# Turbo / Railway local
+# Turbo / Railway local CLI state (keep IaC in git)
 .turbo/
-.railway/
+.railway/*
+!.railway/railway.ts
+!.railway/README.md

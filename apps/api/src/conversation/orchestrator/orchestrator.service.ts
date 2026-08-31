@@ -29,6 +29,17 @@ import type {
   TurnResponse,
 } from "../types";
 import { fechaTentativaToIso } from "../script/fecha-tentativa.parser";
+import {
+  applyCatalogWriteback,
+  composePedidoCatalogoFromCampos,
+  evaluarPedidoCotizacion,
+  harvestCamposLexical,
+  isFraseInteresCotizar,
+  isGuionCompleto,
+  isPerfilListo,
+  isRecotizarPorSlots,
+  nextPasoGuion,
+} from "../script/harvest-campos";
 import { IntentClassifierService } from "./intent-classifier.service";
 import {
   decideRoute,
@@ -200,8 +211,36 @@ export class OrchestratorService {
       value: intent,
     });
 
-    const capturaPendiente = this.script.isCapturaPendiente(conv);
-    if (isIntencionVisita(inbound.texto ?? "")) {
+    const textoIn = inbound.texto ?? "";
+    const pasoFrom = conv.pasoGuion;
+    const harvested = harvestCamposLexical(textoIn, conv.camposCapturados, {
+      focusedPaso: conv.pasoGuion,
+    });
+    const camposRuta =
+      harvested.filled.length > 0 ? harvested.campos : conv.camposCapturados;
+
+    const capturaPendiente = this.script.isCapturaPendiente({
+      ...conv,
+      camposCapturados: camposRuta,
+    });
+    const perfilListo = isPerfilListo(camposRuta);
+    const recotizarPorSlots = isRecotizarPorSlots({
+      pasoGuion: conv.pasoGuion,
+      perfilListo,
+      intencionCotizar: camposRuta.intencionCotizar,
+      filled: harvested.filled,
+    });
+    const pedidoEval = evaluarPedidoCotizacion({
+      texto: textoIn,
+      pasoGuion: conv.pasoGuion,
+      campos: camposRuta,
+      perfilListo,
+    });
+    await this.store.update(conv.id, {
+      pedidoCotizacion: pedidoEval.evaluable ? pedidoEval.pedido : null,
+      pedidoCotizacionFuente: pedidoEval.fuente,
+    });
+    if (isIntencionVisita(textoIn)) {
       conv.camposCapturados = {
         ...conv.camposCapturados,
         intencionVisita: true,
@@ -213,13 +252,31 @@ export class OrchestratorService {
     const route = decideRoute({
       estadoBot: conv.estadoBot,
       hardQuota,
-      texto: inbound.texto ?? "",
+      texto: textoIn,
       pasoGuion: conv.pasoGuion,
       capturaPendiente,
       adjuntoInvalido,
       intent,
       buttonPayload: inbound.buttonPayload,
+      pedidoCotizacion: pedidoEval.pedido === true,
+      perfilListo,
+      recotizarPorSlots,
     });
+    if (harvested.filled.length > 0 && route.kind !== "guion") {
+      const nextPaso = nextPasoGuion(harvested.campos);
+      conv.camposCapturados = harvested.campos;
+      conv.pasoGuion = nextPaso;
+      await this.store.update(conv.id, {
+        camposCapturados: harvested.campos,
+        pasoGuion: nextPaso,
+      });
+      this.reasoning.append({
+        level: "guion",
+        pasoFrom,
+        pasoTo: nextPaso,
+        camposDelta: harvested.filled as string[],
+      });
+    }
     this.reasoning.append({
       level: "routing",
       decision: {
@@ -231,6 +288,10 @@ export class OrchestratorService {
         adjuntoInvalido,
         hardQuota,
         pasoGuion: conv.pasoGuion,
+        perfilListo,
+        pedidoCotizacion: pedidoEval.pedido,
+        pedidoCotizacionFuente: pedidoEval.fuente,
+        recotizarPorSlots,
       },
     });
 
@@ -277,7 +338,8 @@ export class OrchestratorService {
     }
 
     if (route.kind === "catalogo") {
-      return this.runCatalogo(conv.id, inbound.texto ?? "", msgIn.id);
+      const catalogTexto = catalogQueryText(textoIn, camposRuta);
+      return this.runCatalogo(conv.id, catalogTexto, msgIn.id);
     }
 
     if (route.kind === "faq_comercial") {
@@ -438,6 +500,7 @@ export class OrchestratorService {
     let precioSnapshot: Record<string, unknown> | null = null;
     const montosPermitidos: Array<number | string> = [];
     const redactionParts: string[] = [];
+    let lastCatalogArgs: Record<string, unknown> = {};
 
     for (const call of toolCalls) {
       let args: Record<string, unknown> = {};
@@ -451,6 +514,12 @@ export class OrchestratorService {
       }
 
       args = mergeCatalogToolArgs(call.name, args, conv.camposCapturados);
+      if (
+        call.name === "buscar_paquetes" ||
+        call.name === "obtener_precio_paquete"
+      ) {
+        lastCatalogArgs = args;
+      }
 
       const exec = await this.tools.execute({
         name: call.name,
@@ -564,16 +633,55 @@ export class OrchestratorService {
       );
     }
 
+    const campos = applyCatalogWriteback(
+      conv.camposCapturados,
+      lastCatalogArgs,
+      texto,
+    );
+    const pasoGuion = isGuionCompleto(campos)
+      ? "faq_libre"
+      : nextPasoGuion(campos);
+
     await this.store.update(conversacionId, {
       paqueteTentativoId: paqueteId,
       ultimaRuta: "catalogo",
+      camposCapturados: campos,
+      pasoGuion,
     });
+
+    const registroRow = registroId
+      ? await this.registroCatalogo.findById(registroId)
+      : null;
+    const consultaCatalogo = registroRow
+      ? {
+          id: registroRow.id,
+          tool: String(registroRow.tool),
+          input: registroRow.input,
+          filasSku: registroRow.filasSku,
+          ok: registroRow.ok,
+          creadoEn: registroRow.creadoEn,
+        }
+      : null;
+    if (consultaCatalogo) {
+      await this.audit.emit({
+        tipo: "consulta_catalogo",
+        conversacionId,
+        oportunidadId: conv.oportunidadId,
+        mensajeId: mensajeEntranteId,
+        payload: {
+          ...consultaCatalogo,
+          paqueteTentativoId: paqueteId,
+          tools: toolPayloads,
+        },
+      });
+    }
 
     const refreshed = (await this.store.findById(conversacionId))!;
     const crm = await this.crm.applyAfterTurn(refreshed, {
       paqueteTentativoId: paqueteId,
       precioSnapshot,
       registroConsultaCatalogoId: registroId,
+      consultaCatalogo,
     });
     await this.store.update(conversacionId, {
       brief: crm.brief,
@@ -589,7 +697,7 @@ export class OrchestratorService {
       texto: textoRespuesta,
       ruta: "catalogo",
       mensajeEntranteId,
-      pasoGuion: conv.pasoGuion,
+      pasoGuion,
       tools: toolPayloads,
       registroConsultaCatalogoId: registroId,
       calificacionResultado: crm.calificado ? "calificado" : "parcial",
@@ -792,6 +900,9 @@ export class OrchestratorService {
         motivoHandoff: input.motivoHandoff ?? null,
         calificacionResultado: input.calificacionResultado ?? null,
         listoParaCotizar: input.listoParaCotizar ?? null,
+        perfilListo: isPerfilListo(conv.camposCapturados),
+        pedidoCotizacion: conv.pedidoCotizacion ?? null,
+        pedidoCotizacionFuente: conv.pedidoCotizacionFuente ?? null,
         registroConsultaCatalogoId: input.registroConsultaCatalogoId ?? null,
         registroRecuperacionId: input.registroRecuperacionId ?? null,
         mensajeEntranteId: input.mensajeEntranteId,
@@ -887,6 +998,13 @@ export class OrchestratorService {
   }
 }
 
+function catalogQueryText(texto: string, campos: CamposCapturados): string {
+  if (isIntencionMonetaria(texto) || isFraseInteresCotizar(texto)) {
+    return texto;
+  }
+  return composePedidoCatalogoFromCampos(campos);
+}
+
 function catalogSystemPrompt(campos: CamposCapturados): string {
   const ctx = {
     tipoEvento: campos.tipoEvento ?? null,
@@ -926,20 +1044,19 @@ function mergeCatalogToolArgs(
   }
   if (name === "buscar_paquetes") {
     if (campos.tipoEvento) next.tipoEvento = campos.tipoEvento;
-    else if (!next.tipoEvento) next.tipoEvento = "boda";
     const tipo = normalizeTipoEventoArg(next.tipoEvento);
     if (tipo) next.tipoEvento = tipo;
-    if (next.aforo == null && campos.aforo != null) next.aforo = campos.aforo;
+    if (campos.aforo != null) next.aforo = campos.aforo;
     if (campos.sedeId || campos.sedeNombre) {
       next.sede = SEDE_SLUG;
     } else if (next.sede != null) {
       next.sede = sedeToCatalogSlug(String(next.sede)) ?? next.sede;
     }
-    if (!next.fecha && fecha) next.fecha = fecha;
+    if (fecha) next.fecha = fecha;
   }
   if (name === "obtener_precio_paquete" || name === "comparar_paquetes") {
-    if (!next.fecha && fecha) next.fecha = fecha;
-    if (next.aforo == null && campos.aforo != null) next.aforo = campos.aforo;
+    if (fecha) next.fecha = fecha;
+    if (campos.aforo != null) next.aforo = campos.aforo;
   }
   return next;
 }
@@ -972,7 +1089,7 @@ function redactToolResult(
     return {
       texto: listed.texto || "Sin datos de catálogo.",
       montos: listed.montos,
-      paqueteId,
+      paqueteId: firstPaqueteId(result),
       precioSnapshot,
     };
   }
@@ -1013,6 +1130,24 @@ function redactToolResult(
     paqueteId,
     precioSnapshot,
   };
+}
+
+function firstPaqueteId(result: unknown): string | null {
+  if (!result) return null;
+  if (Array.isArray(result)) {
+    for (const item of result) {
+      if (!item || typeof item !== "object") continue;
+      const id = (item as { id?: unknown }).id;
+      if (typeof id === "string" && id) return id;
+    }
+    return null;
+  }
+  if (typeof result === "object") {
+    const rec = result as { paqueteId?: unknown; id?: unknown };
+    if (typeof rec.paqueteId === "string" && rec.paqueteId) return rec.paqueteId;
+    if (typeof rec.id === "string" && rec.id) return rec.id;
+  }
+  return null;
 }
 
 /** Re-export tipado del fake catalog-aware (tests). */

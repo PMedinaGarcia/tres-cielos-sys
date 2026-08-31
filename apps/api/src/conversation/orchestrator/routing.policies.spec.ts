@@ -51,6 +51,18 @@ describe("routing.policies (D-BOT-1)", () => {
     expect(
       classifyIntentLexical("¿Cuál es la ubicación del jardín?", "faq_libre"),
     ).toBe("pregunta_documental");
+    expect(classifyIntentLexical("dónde queda", "faq_libre")).toBe(
+      "pregunta_documental",
+    );
+    expect(classifyIntentLexical("cuál es la dirección", "faq_libre")).toBe(
+      "pregunta_documental",
+    );
+    expect(classifyIntentLexical("cómo llego", "faq_libre")).toBe(
+      "pregunta_documental",
+    );
+    expect(classifyIntentLexical("waze", "faq_libre")).toBe(
+      "pregunta_documental",
+    );
   });
 
   it("orden: estado ≠ activo → silencio", () => {
@@ -122,7 +134,46 @@ describe("routing.policies (D-BOT-1)", () => {
     ).toBe("guion");
   });
 
-  it("precio interrumpe guion → catálogo", () => {
+  it("captura pendiente + ubicación → rag (no guion)", () => {
+    expect(
+      decideRoute({
+        estadoBot: "activo",
+        hardQuota: false,
+        texto: "dónde queda el jardín",
+        pasoGuion: "nombre",
+        capturaPendiente: true,
+        adjuntoInvalido: false,
+        intent: "pregunta_documental",
+      }).kind,
+    ).toBe("rag");
+    expect(
+      decideRoute({
+        estadoBot: "activo",
+        hardQuota: false,
+        texto: "cuál es la dirección",
+        pasoGuion: "aforo",
+        capturaPendiente: true,
+        adjuntoInvalido: false,
+        intent: "guion_captura",
+      }).kind,
+    ).toBe("rag");
+  });
+
+  it("captura pendiente + visita sigue en guion", () => {
+    expect(
+      decideRoute({
+        estadoBot: "activo",
+        hardQuota: false,
+        texto: "quiero visitar",
+        pasoGuion: "nombre",
+        capturaPendiente: true,
+        adjuntoInvalido: false,
+        intent: "ambiguo",
+      }).kind,
+    ).toBe("guion");
+  });
+
+  it("captura pendiente + datos_duros → guion (precio no interrumpe)", () => {
     expect(
       decideRoute({
         estadoBot: "activo",
@@ -130,6 +181,20 @@ describe("routing.policies (D-BOT-1)", () => {
         texto: "¿cuánto cuesta BODA-J1-ESENCIAL?",
         pasoGuion: "aforo",
         capturaPendiente: true,
+        adjuntoInvalido: false,
+        intent: "datos_duros",
+      }).kind,
+    ).toBe("guion");
+  });
+
+  it("faq_libre + datos_duros → catálogo", () => {
+    expect(
+      decideRoute({
+        estadoBot: "activo",
+        hardQuota: false,
+        texto: "¿cuánto cuesta BODA-J1-ESENCIAL?",
+        pasoGuion: "faq_libre",
+        capturaPendiente: false,
         adjuntoInvalido: false,
         intent: "datos_duros",
       }).kind,
@@ -241,6 +306,86 @@ describe("routing.policies (D-BOT-1)", () => {
         intent: "ambiguo",
       }),
     ).toEqual({ kind: "handoff", motivo: "adjunto_no_soportado" });
+  });
+
+  it("perfil listo + pedido + guion_captura → catálogo", () => {
+    expect(
+      decideRoute({
+        estadoBot: "activo",
+        hardQuota: false,
+        texto: "Paty",
+        pasoGuion: "nombre",
+        capturaPendiente: false,
+        adjuntoInvalido: false,
+        intent: "guion_captura",
+        pedidoCotizacion: true,
+        perfilListo: true,
+      }).kind,
+    ).toBe("catalogo");
+  });
+
+  it("captura pendiente gana aunque haya pedido y perfil listo", () => {
+    expect(
+      decideRoute({
+        estadoBot: "activo",
+        hardQuota: false,
+        texto: "Paty",
+        pasoGuion: "nombre",
+        capturaPendiente: true,
+        adjuntoInvalido: false,
+        intent: "guion_captura",
+        pedidoCotizacion: true,
+        perfilListo: true,
+      }).kind,
+    ).toBe("guion");
+  });
+
+  it("faq_libre + recotizarPorSlots + ambiguo → catálogo", () => {
+    expect(
+      decideRoute({
+        estadoBot: "activo",
+        hardQuota: false,
+        texto: "Para el 22 de Enero de 2027 entonces",
+        pasoGuion: "faq_libre",
+        capturaPendiente: false,
+        adjuntoInvalido: false,
+        intent: "ambiguo",
+        perfilListo: true,
+        recotizarPorSlots: true,
+      }).kind,
+    ).toBe("catalogo");
+  });
+
+  it("documental gana a recotizarPorSlots", () => {
+    expect(
+      decideRoute({
+        estadoBot: "activo",
+        hardQuota: false,
+        texto: "cómo llego el 22 de enero de 2027",
+        pasoGuion: "faq_libre",
+        capturaPendiente: false,
+        adjuntoInvalido: false,
+        intent: "pregunta_documental",
+        perfilListo: true,
+        recotizarPorSlots: true,
+      }).kind,
+    ).toBe("rag");
+  });
+
+  it("captura pendiente gana a recotizarPorSlots", () => {
+    expect(
+      decideRoute({
+        estadoBot: "activo",
+        hardQuota: false,
+        texto: "22 de enero de 2027",
+        pasoGuion: "fecha",
+        capturaPendiente: true,
+        adjuntoInvalido: false,
+        intent: "guion_captura",
+        perfilListo: false,
+        recotizarPorSlots: true,
+      }).kind,
+    ).toBe("guion");
   });
 
   it("MIME no soportado", () => {

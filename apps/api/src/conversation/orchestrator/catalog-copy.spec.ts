@@ -6,6 +6,7 @@ import {
   redactSinPrecioVigente,
   redactSinTramoExacto,
 } from "./catalog-copy";
+import { anioTarifaPublicada } from "@tres-cielos/shared";
 
 describe("catalog-copy (prospecto)", () => {
   it("formatea montos MXN con miles", () => {
@@ -52,6 +53,8 @@ describe("catalog-copy (prospecto)", () => {
       },
     ]);
     expect(out.texto).toMatch(/aún no hay precio publicado/i);
+    expect(out.texto).toMatch(new RegExp(`tarifas vigentes son ${anioTarifaPublicada()}`, "i"));
+    expect(out.texto).toMatch(new RegExp(`día, mes y año de ${anioTarifaPublicada()}`, "i"));
     expect(out.texto).toContain("Paquete Estándar");
     expect(out.texto).not.toMatch(/\$\s?\d/);
     expect(out.montos).toEqual([]);

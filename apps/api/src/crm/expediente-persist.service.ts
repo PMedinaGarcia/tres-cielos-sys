@@ -10,6 +10,11 @@ import type {
 import { PrismaService } from "../prisma/prisma.service";
 import { AssignmentService } from "../assignment/assignment.service";
 import { fechaTentativaToIso } from "../conversation/script/fecha-tentativa.parser";
+import {
+  isPerfilListo,
+  looksLikePersonName,
+  type PedidoCotizacionFuente,
+} from "../conversation/script/harvest-campos";
 import type {
   CamposCapturados,
   ConversacionState,
@@ -30,7 +35,6 @@ import { IdentidadService } from "./identidad.service";
 import {
   derivarInteligencia,
   nextEtapaPipeline,
-  perfilDesdeOportunidad,
 } from "./inteligencia/playbook-evento";
 import type {
   EtapaCotizacion,
@@ -166,14 +170,19 @@ export class ExpedientePersistService {
       include: { cliente: true, oportunidad: true },
     });
 
+    const nombreValido =
+      campos.nombre && looksLikePersonName(campos.nombre)
+        ? campos.nombre
+        : null;
+
     const resolved = await this.resolveCliente({
       existingClienteId:
         existing?.clienteId ?? existing?.oportunidad.clienteId,
       identifiers,
       display: {
-        nombre: campos.nombre ?? null,
+        nombre: nombreValido,
         telefono: telefono ? telefono : null,
-        nombrePerfilCanal: campos.nombre ?? null,
+        nombrePerfilCanal: null,
         canalOrigen: canal,
         sedeInteresId: campos.sedeId ?? null,
       },
@@ -292,12 +301,21 @@ export class ExpedientePersistService {
       plantillaUtilityId: extras.plantillaUtilityId,
     });
 
+    await this.persistConsultaCatalogo({
+      clienteId: cliente.id,
+      oportunidadId,
+      conversacionId,
+      conv,
+      previousBrief: existing?.oportunidad?.briefJson ?? null,
+    });
+
     await this.emitHechosComerciales({
       clienteId: cliente.id,
       oportunidadId,
       conversacionId,
       conv,
       previous: existing?.oportunidad ?? null,
+      previousCampos: existing?.camposCapturados ?? null,
       visitaChanged: comercial.visitaChanged,
       visitaEstado: comercial.visitaEstado,
       etapaChanged: comercial.etapaChanged,
@@ -367,7 +385,7 @@ export class ExpedientePersistService {
       cliente = await prisma.cliente.update({
         where: { id: canonical.id },
         data: {
-          nombre: input.display.nombre ?? undefined,
+          nombre: input.display.nombre,
           telefono: input.display.telefono ?? undefined,
           nombrePerfilCanal: input.display.nombrePerfilCanal ?? undefined,
           canalOrigen: input.display.canalOrigen,
@@ -520,6 +538,7 @@ export class ExpedientePersistService {
       visitaEstado?: VisitaEstado;
       etapa?: EtapaPipeline;
     } | null;
+    previousCampos: unknown;
     visitaChanged: boolean;
     visitaEstado: VisitaEstado;
     etapaChanged: boolean;
@@ -556,27 +575,13 @@ export class ExpedientePersistService {
         },
       });
     }
-    if (input.conv.listoParaCotizar && !prev?.listoParaCotizar) {
-      const ya = await prisma.interaccion.findFirst({
-        where: {
-          oportunidadId: input.oportunidadId,
-          tipo: "intencion_cotizar",
-        },
-      });
-      if (!ya) {
-        await prisma.interaccion.create({
-          data: {
-            clienteId: input.clienteId,
-            oportunidadId: input.oportunidadId,
-            conversacionId: input.conversacionId,
-            tipo: "intencion_cotizar",
-            actor: "bot",
-            resumen: "Oportunidad lista para cotizar",
-            payload: { listoParaCotizar: true },
-          },
-        });
-      }
-    }
+    await this.emitPedidoCotizacion({
+      clienteId: input.clienteId,
+      oportunidadId: input.oportunidadId,
+      conversacionId: input.conversacionId,
+      conv: input.conv,
+      previousCampos: input.previousCampos,
+    });
 
     if (!prev) return;
     const fechaIso = fechaTentativaToIso(
@@ -610,6 +615,80 @@ export class ExpedientePersistService {
         actor: "bot",
         resumen: `Brief actualizado (${campos.join(", ")})`,
         payload: { campos },
+      },
+    });
+  }
+
+  private async emitPedidoCotizacion(input: {
+    clienteId: string;
+    oportunidadId: string;
+    conversacionId: string;
+    conv: ConversacionState;
+    previousCampos: unknown;
+  }): Promise<void> {
+    const pedido = input.conv.pedidoCotizacion;
+    if (pedido !== true && pedido !== false) return;
+    if (!isPerfilListo(input.conv.camposCapturados)) return;
+
+    const justListo =
+      isPerfilListo(input.conv.camposCapturados) &&
+      !isPerfilListo(camposFromStored(input.previousCampos));
+
+    const last = await this.prisma!.interaccion.findFirst({
+      where: {
+        oportunidadId: input.oportunidadId,
+        tipo: "intencion_cotizar",
+      },
+      orderBy: { creadoEn: "desc" },
+    });
+    const lastPedido = pedidoFromPayload(last?.payload);
+    const shouldEmit =
+      (justListo && lastPedido == null) ||
+      (lastPedido === false && pedido === true);
+    if (!shouldEmit) return;
+
+    const fuente =
+      (input.conv.pedidoCotizacionFuente as PedidoCotizacionFuente | null) ??
+      null;
+    await this.prisma!.interaccion.create({
+      data: {
+        clienteId: input.clienteId,
+        oportunidadId: input.oportunidadId,
+        conversacionId: input.conversacionId,
+        tipo: "intencion_cotizar",
+        actor: "bot",
+        resumen: pedido
+          ? "Lead pidió cotizar"
+          : "Lead no pidió cotizar",
+        payload: {
+          pedido,
+          fuente,
+          pasoGuion: input.conv.pasoGuion,
+        },
+      },
+    });
+  }
+
+  private async persistConsultaCatalogo(input: {
+    clienteId: string;
+    oportunidadId: string;
+    conversacionId: string;
+    conv: ConversacionState;
+    previousBrief: unknown;
+  }): Promise<void> {
+    const snapshot = consultaFromBrief(input.conv.brief);
+    if (!snapshot) return;
+    const prev = consultaFromBrief(input.previousBrief);
+    if (prev?.id === snapshot.id) return;
+    const prisma = this.prisma!;
+    await prisma.eventoOperativo.create({
+      data: {
+        tipo: "consulta_catalogo",
+        actor: "bot",
+        payload: snapshot as Prisma.InputJsonValue,
+        clienteId: input.clienteId,
+        oportunidadId: input.oportunidadId,
+        conversacionId: input.conversacionId,
       },
     });
   }
@@ -914,12 +993,7 @@ function comercialFromTurn(input: {
     visitaEstado = "solicitada";
   }
   const etapa = nextEtapaPipeline(input.prev?.etapa, input.conv.calificado);
-  const perfilCompleto = perfilDesdeOportunidad({
-    tipoEvento: input.tipoEvento,
-    fechaTentativa: input.fechaTentativa,
-    aforo: input.conv.camposCapturados.aforo ?? null,
-    sede: input.sedeNombre,
-  });
+  const perfilCompleto = isPerfilListo(input.conv.camposCapturados);
   const intel = derivarInteligencia({
     tipoEvento: input.tipoEvento,
     calificacion: input.conv.calificado ? "calificado" : "en_exploracion",
@@ -935,6 +1009,7 @@ function comercialFromTurn(input: {
     pasoGuion: input.conv.pasoGuion,
     perfilCompleto,
     intencionCotizar: input.conv.camposCapturados.intencionCotizar ?? null,
+    pedidoCotizacion: input.conv.pedidoCotizacion ?? null,
     ultimoContactoEn: new Date(),
     estadoAtencion: mapEstadoAtencion(input.conv.estadoBot),
   });
@@ -948,10 +1023,30 @@ function comercialFromTurn(input: {
   };
 }
 
+function consultaFromBrief(brief: unknown): {
+  id: string;
+  tool?: unknown;
+  input?: unknown;
+  filasSku?: unknown;
+  ok?: unknown;
+  creadoEn?: unknown;
+} | null {
+  if (!brief || typeof brief !== "object" || Array.isArray(brief)) return null;
+  const snap = (brief as Record<string, unknown>).consultaCatalogoAlMomento;
+  if (!snap || typeof snap !== "object" || Array.isArray(snap)) return null;
+  const id = (snap as { id?: unknown }).id;
+  if (typeof id !== "string" || !id) return null;
+  return snap as { id: string };
+}
+
 function camposToJson(campos: CamposCapturados): Prisma.InputJsonValue {
+  const nombre =
+    campos.nombre && looksLikePersonName(campos.nombre)
+      ? campos.nombre
+      : null;
   return {
     telefono: campos.telefono ?? null,
-    nombre: campos.nombre ?? null,
+    nombre,
     fechaTentativa: campos.fechaTentativa ?? null,
     tipoEvento: campos.tipoEvento ?? null,
     aforo: campos.aforo ?? null,
@@ -961,6 +1056,21 @@ function camposToJson(campos: CamposCapturados): Prisma.InputJsonValue {
     intencionCotizar: campos.intencionCotizar ?? null,
     intencionVisita: campos.intencionVisita ?? null,
   } as Prisma.InputJsonValue;
+}
+
+function camposFromStored(json: unknown): CamposCapturados {
+  if (!json || typeof json !== "object" || Array.isArray(json)) return {};
+  return json as CamposCapturados;
+}
+
+function pedidoFromPayload(payload: unknown): boolean | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return null;
+  }
+  const p = payload as Record<string, unknown>;
+  if ("pedido" in p) return Boolean(p.pedido);
+  if (p.listoParaCotizar === true) return true;
+  return null;
 }
 
 function truncate(text: string, max: number): string {

@@ -8,8 +8,8 @@ Los archivos concretos: [`fixtures/negocio/`](../../fixtures/negocio/README.md).
 
 | ID | Documento | Tipo | Alcance | Qué cubre este corpus | Estado en repo |
 |---|---|---|---|---|---|
-| K01 | FAQ general | FAQ | Global | Venue jardín; **no** inventa horarios de visita ni cómo llegar | Evergreen, huecos explícitos |
-| K02 | Ficha Jardín 1 | Ficha de sede | Sede 1 | Hechos de locación de las plantillas (capilla, carpa, explanada, suite, Cuernavaca como sede de prueba de menú). No sustituye el fixture de test | Borrador de evidencia `2026-07` |
+| K01 | FAQ general | FAQ | Global | Venue jardín; dirección de alto nivel (Lote 36 / Bajada 6); **no** inventa horarios de visita | Evergreen |
+| K02 | Ficha Jardín 1 | Ficha de sede | Sede 1 | Dirección, Bajada 6, lago, ~90 min CDMX, locación de plantillas. GPS, visitas detalladas y pirotecnia pendientes | Publicado `2026-07` |
 | K03 | Ficha Jardín 2 | Ficha de sede | Sede 2 | Sin evidencia en las Excel | No creado |
 | K04 | Tipos de evento | Narrativa | Global | Tarifas 2027 de paquete = **boda**; renta multi; otras ocasiones → asesor | Evergreen |
 | K05 | Apoyo narrativo de paquetes | Narrativa | Por línea | Estándar vs Premium vs renta, **sin montos**; programa 3 días | Edición 2027 overlay |

@@ -1,6 +1,11 @@
 /** Copy de prospecto para tools de catálogo: nombres comerciales, sin SKU ni jerga de filtros. */
 
-import { AFORO_TRAMOS_BODA, SEDE_NOMBRE } from "@tres-cielos/shared";
+import {
+  AFORO_TRAMOS_BODA,
+  SEDE_NOMBRE,
+  anioTarifaPublicada,
+  ejemploFechaTarifaPublicada,
+} from "@tres-cielos/shared";
 import type {
   DiagnosticoBusquedaVacia,
   PaqueteCatalogoVista,
@@ -95,8 +100,20 @@ function labelTipo(tipo?: string): string {
 const OFERTA_ASESOR =
   "Si prefieres, usa «Hablar con asesor» y te contactamos en 15–30 min.";
 
-const NOTA_IVA_TRAMOS =
-  "Los precios 2027 no incluyen IVA. Si me das invitados (100, 150, 200, 250 o 300) te cotizo el total.";
+function anioPreciosCopy(vigenteDesde?: unknown): number {
+  if (vigenteDesde instanceof Date && !Number.isNaN(vigenteDesde.getTime())) {
+    return vigenteDesde.getUTCFullYear();
+  }
+  if (typeof vigenteDesde === "string") {
+    const y = Number(/^(\d{4})/.exec(vigenteDesde)?.[1]);
+    if (Number.isFinite(y) && y >= 2000) return y;
+  }
+  return anioTarifaPublicada();
+}
+
+function notaIvaTramos(anio = anioTarifaPublicada()): string {
+  return `Los precios ${anio} no incluyen IVA. Si me das invitados (100, 150, 200, 250 o 300) te cotizo el total.`;
+}
 
 export function redactBuscarPaquetes(result: unknown): {
   texto: string;
@@ -132,20 +149,23 @@ export function redactBuscarPaquetes(result: unknown): {
   }
 
   if (conPrecio.length === 0) {
+    const anio = anioTarifaPublicada();
+    const ejemplo = ejemploFechaTarifaPublicada(anio);
     return {
-      texto: `Estos paquetes aplican para tu evento en ${SEDE_NOMBRE}, pero para esa fecha aún no hay precio publicado:\n${lines.join("\n")}\n${OFERTA_ASESOR}`,
+      texto: `Estos paquetes aplican para tu evento en ${SEDE_NOMBRE}, pero para esa fecha aún no hay precio publicado (las tarifas vigentes son ${anio}):\n${lines.join("\n")}\nIndica un día, mes y año de ${anio}, por ejemplo ${ejemplo.humana}.\n${OFERTA_ASESOR}`,
       montos,
     };
   }
 
   const intro = `Para tu evento en ${SEDE_NOMBRE} encontré:`;
   const desde = items.some((p) => p.precioMuestra?.desde);
+  const anio = anioTarifaPublicada();
   const nota =
     sinPrecio.length > 0
       ? `\nNo cotizo montos que no estén vigentes para esa fecha.`
       : desde
-        ? `\n${NOTA_IVA_TRAMOS}`
-        : "\nLos precios 2027 no incluyen IVA.";
+        ? `\n${notaIvaTramos(anio)}`
+        : `\nLos precios ${anio} no incluyen IVA.`;
   return {
     texto: `${intro}\n${lines.join("\n")}${nota}\n${contrasteBuscarPaquetes()}`,
     montos,
@@ -235,12 +255,13 @@ export function redactPrecioPaquete(r: Record<string, unknown>): {
       : null;
 
   let texto: string;
+  const anio = anioPreciosCopy(r.vigenteDesde);
   if (monto == null) {
     texto = `El paquete ${nombre} está publicado, pero para esa fecha aún no hay precio vigente. ${OFERTA_ASESOR}`;
   } else if (desde) {
-    texto = `El ${nombre} en ${SEDE_NOMBRE} tiene tarifa 2027 desde ${formatMonto(moneda, monto)} ${unidad} (100 invitados). ${NOTA_IVA_TRAMOS}`;
+    texto = `El ${nombre} en ${SEDE_NOMBRE} tiene tarifa ${anio} desde ${formatMonto(moneda, monto)} ${unidad} (100 invitados). ${notaIvaTramos(anio)}`;
   } else if (totalEvento != null && aforoTramo != null) {
-    texto = `El ${nombre} en ${SEDE_NOMBRE} tiene precio vigente de ${formatMonto(moneda, monto)} ${unidad} (${formatMonto(moneda, totalEvento)} total, ${aforoTramo} invitados). Los precios 2027 no incluyen IVA.`;
+    texto = `El ${nombre} en ${SEDE_NOMBRE} tiene precio vigente de ${formatMonto(moneda, monto)} ${unidad} (${formatMonto(moneda, totalEvento)} total, ${aforoTramo} invitados). Los precios ${anio} no incluyen IVA.`;
   } else {
     texto = `El paquete ${nombre} tiene precio vigente de ${formatMonto(moneda, monto)} ${unidad}.`;
   }
@@ -388,7 +409,7 @@ export function redactCompararPaquetes(r: Record<string, unknown>): {
     return `- ${nombre} · para esa fecha aún no hay precio vigente${extra}`;
   });
   return {
-    texto: `Comparación en ${SEDE_NOMBRE}:\n${lines.join("\n")}\nLos precios 2027 no incluyen IVA.`,
+    texto: `Comparación en ${SEDE_NOMBRE}:\n${lines.join("\n")}\nLos precios ${anioTarifaPublicada()} no incluyen IVA.`,
     montos,
   };
 }

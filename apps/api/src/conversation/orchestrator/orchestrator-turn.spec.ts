@@ -464,7 +464,11 @@ describe("OrchestratorService.handleTurn (B1/B6)", () => {
     expect(res.ruta).toBe("catalogo");
     expect(res.textoRespuesta).toContain("Paquete Estándar");
     expect(res.textoRespuesta).toMatch(/aún no hay precio publicado/i);
+    expect(res.textoRespuesta).toMatch(/tarifas vigentes son 2027/i);
+    expect(res.textoRespuesta).toMatch(/día, mes y año de 2027/i);
     expect(res.textoRespuesta ?? "").not.toMatch(/\$\s?\d/);
+    const after = await store.findById(conv.id);
+    expect(after?.paqueteTentativoId).toBe("pkg-1");
   });
 
   it("Politicas en faq_libre responde briefing, no handoff", async () => {
@@ -609,5 +613,362 @@ describe("OrchestratorService.handleTurn (B1/B6)", () => {
     expect(res.textoRespuesta).toMatch(/barra libre/i);
     expect(res.textoRespuesta).not.toMatch(/no puedo confirmar ese dato/i);
     expect(res.estadoBot).toBe("activo");
+  });
+
+  it("cotización inicial pide nombre, persiste slots y no abre catálogo", async () => {
+    const paquetes = [
+      {
+        id: "pkg-1",
+        sku: "EVT-J1-TC",
+        nombre: "Paquete Estándar",
+        tipoEvento: "boda",
+        sede: "tequesquitengo",
+        aforoMin: 100,
+        aforoMax: 300,
+        descripcionCorta: "",
+        precioTramo: "exact" as const,
+        precioMuestra: {
+          monto: 2550,
+          moneda: "MXN",
+          unidad: "persona",
+          aforoTramo: 150,
+          totalEvento: 382500,
+          desde: false,
+        },
+      },
+    ];
+    const { orch, store, catalogFake, audit } = buildOrchestrator({
+      tools: {
+        buscarPaquetes: jest.fn(async () => paquetes),
+      },
+    });
+    const thread = "t-slot-fill-sandbox";
+    const t1 = await orch.handleTurn({
+      canal: "whatsapp",
+      externalThreadId: thread,
+      externalMessageId: "m-cotiz",
+      texto:
+        "Necesito que me ayudes con una cotización para una boda el 22 de diciembre del 2027 para 150 invitados",
+      recibidoEn: new Date().toISOString(),
+      perfilCanal: { nombre: null },
+    });
+
+    expect(t1.ruta).toBe("guion");
+    expect(t1.pasoGuion).toBe("nombre");
+    expect(t1.textoRespuesta).toMatch(/nombre/i);
+    expect(t1.textoRespuesta).not.toMatch(/tipo de evento/i);
+    expect(t1.waContent?.templateId).toBe("guion.nombre");
+    expect(catalogFake.buscarPaquetes).not.toHaveBeenCalled();
+    const t1Saliente = audit
+      .listByConversacion(t1.conversacionId)
+      .find((e) => e.tipo === "bot_mensaje_saliente");
+    expect(t1Saliente?.payload.pedidoCotizacion ?? null).toBeNull();
+
+    const conv = await store.resolveOrCreate({
+      canal: "whatsapp",
+      externalThreadId: thread,
+    });
+    expect(conv.camposCapturados.tipoEvento).toBe("boda");
+    expect(conv.camposCapturados.aforo).toBe(150);
+    expect(conv.camposCapturados.fechaTentativa).toMatchObject({
+      tipo: "dia",
+      fecha: "2027-12-22",
+    });
+    expect(conv.camposCapturados.intencionCotizar).toBe(true);
+    expect(conv.camposCapturados.nombre).toBeFalsy();
+    expect(conv.pasoGuion).toBe("nombre");
+
+    const t2 = await orch.handleTurn({
+      canal: "whatsapp",
+      externalThreadId: thread,
+      externalMessageId: "m-nombre",
+      texto: "Paty",
+      recibidoEn: new Date().toISOString(),
+      perfilCanal: { nombre: null },
+    });
+
+    expect(t2.ruta).toBe("catalogo");
+    expect(t2.pasoGuion).toBe("faq_libre");
+    expect(t2.textoRespuesta).not.toMatch(/tipo de evento/i);
+    expect(t2.waContent?.templateId).not.toBe("guion.ocasion");
+    expect(catalogFake.buscarPaquetes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        aforo: 150,
+        fecha: "2027-12-22",
+        tipoEvento: "boda",
+      }),
+    );
+    const routing = t2.reasoningTrace?.steps.find((s) => s.level === "routing");
+    expect(routing && "inputs" in routing && routing.inputs.pedidoCotizacion).toBe(
+      true,
+    );
+    expect(
+      routing && "inputs" in routing && routing.inputs.pedidoCotizacionFuente,
+    ).toBe("intencion_previa");
+    const t2Salientes = audit
+      .listByConversacion(t2.conversacionId)
+      .filter((e) => e.tipo === "bot_mensaje_saliente");
+    const t2Saliente = t2Salientes[t2Salientes.length - 1];
+    expect(t2Saliente?.payload.pedidoCotizacion).toBe(true);
+    expect(t2Saliente?.payload.pedidoCotizacionFuente).toBe("intencion_previa");
+    const afterName = await store.resolveOrCreate({
+      canal: "whatsapp",
+      externalThreadId: thread,
+    });
+    expect(afterName.camposCapturados.nombre?.toLowerCase()).toBe("paty");
+
+    const t3 = await orch.handleTurn({
+      canal: "whatsapp",
+      externalThreadId: thread,
+      externalMessageId: "m-precios",
+      texto: "Que precios manejan",
+      recibidoEn: new Date().toISOString(),
+      perfilCanal: { nombre: null },
+    });
+
+    expect(t3.ruta).toBe("catalogo");
+    expect(catalogFake.buscarPaquetes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        aforo: 150,
+        fecha: "2027-12-22",
+        tipoEvento: "boda",
+      }),
+    );
+  });
+
+  it("rechazo en intencion no abre catálogo", async () => {
+    const { orch, store, catalogFake, audit } = buildOrchestrator({
+      tools: {
+        buscarPaquetes: jest.fn(async () => []),
+      },
+    });
+    const conv = await store.resolveOrCreate({
+      canal: "whatsapp",
+      externalThreadId: "t-rechazo",
+    });
+    await store.update(conv.id, {
+      pasoGuion: "intencion",
+      camposCapturados: {
+        nombre: "Paty",
+        tipoEvento: "boda",
+        fechaTentativa: { tipo: "dia", fecha: "2027-12-22", flexible: false },
+        aforo: 150,
+        sedeId: "sede-tequesquitengo",
+        sedeNombre: "Tres Cielos Tequesquitengo",
+      },
+    });
+
+    const res = await orch.handleTurn({
+      canal: "whatsapp",
+      externalThreadId: "t-rechazo",
+      externalMessageId: "m-no",
+      texto: "no",
+      recibidoEn: new Date().toISOString(),
+      perfilCanal: { nombre: null },
+    });
+
+    expect(res.ruta).toBe("guion");
+    expect(res.pasoGuion).toBe("faq_libre");
+    expect(res.textoRespuesta).toMatch(/si más adelante quieres cotizar/i);
+    expect(catalogFake.buscarPaquetes).not.toHaveBeenCalled();
+    const saliente = audit
+      .listByConversacion(res.conversacionId)
+      .find((e) => e.tipo === "bot_mensaje_saliente");
+    expect(saliente?.payload.pedidoCotizacion).toBe(false);
+    expect(saliente?.payload.pedidoCotizacionFuente).toBe("rechazo");
+  });
+
+  it("nombre de perfil + cotización rica igual pide nombre", async () => {
+    const { orch, store, catalogFake } = buildOrchestrator({
+      tools: {
+        buscarPaquetes: jest.fn(async () => []),
+      },
+    });
+    const t1 = await orch.handleTurn({
+      canal: "whatsapp",
+      externalThreadId: "t-perfil-nombre",
+      externalMessageId: "m-cotiz-perfil",
+      texto:
+        "Quiero cotizar una boda para 150 personas el 22 de diciembre 2027",
+      recibidoEn: new Date().toISOString(),
+      perfilCanal: { nombre: "Ana" },
+    });
+
+    expect(t1.ruta).toBe("guion");
+    expect(t1.pasoGuion).toBe("nombre");
+    expect(t1.textoRespuesta).toMatch(/nombre/i);
+    expect(catalogFake.buscarPaquetes).not.toHaveBeenCalled();
+
+    const conv = await store.resolveOrCreate({
+      canal: "whatsapp",
+      externalThreadId: "t-perfil-nombre",
+    });
+    expect(conv.camposCapturados.nombre).toBeFalsy();
+    expect(conv.camposCapturados.tipoEvento).toBe("boda");
+    expect(conv.camposCapturados.aforo).toBe(150);
+  });
+
+  it("corrige fecha 2026→2027 en faq_libre y recotiza en catálogo", async () => {
+    const { orch, store, catalogFake, audit } = buildOrchestrator({
+      tools: {
+        buscarPaquetes: jest.fn(async () => [
+          {
+            id: "pkg-1",
+            sku: "EVT-J1-TC",
+            nombre: "Paquete Estándar",
+            tipoEvento: "boda",
+            sede: "tequesquitengo",
+            aforoMin: 100,
+            aforoMax: 300,
+            descripcionCorta: "",
+            precioMuestra: {
+              monto: 2280,
+              moneda: "MXN",
+              unidad: "persona",
+              aforoTramo: 150,
+              totalEvento: 342000,
+            },
+          },
+        ]),
+      },
+    });
+    const conv = await store.resolveOrCreate({
+      canal: "whatsapp",
+      externalThreadId: "t-recotizar-fecha",
+    });
+    await store.update(conv.id, {
+      pasoGuion: "faq_libre",
+      camposCapturados: {
+        nombre: "Patricio Medina",
+        tipoEvento: "boda",
+        fechaTentativa: { tipo: "dia", fecha: "2026-12-22", flexible: false },
+        aforo: 150,
+        sedeId: "sede-tequesquitengo",
+        sedeNombre: "Tres Cielos Tequesquitengo",
+        intencionCotizar: true,
+      },
+    });
+
+    const res = await orch.handleTurn({
+      canal: "whatsapp",
+      externalThreadId: "t-recotizar-fecha",
+      externalMessageId: "m-fecha-2027",
+      texto: "Para el 22 de Enero de 2027 entonces",
+      recibidoEn: new Date().toISOString(),
+    });
+
+    expect(res.ruta).toBe("catalogo");
+    expect(catalogFake.buscarPaquetes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fecha: "2027-01-22",
+        aforo: 150,
+        tipoEvento: "boda",
+      }),
+    );
+    const after = await store.findById(conv.id);
+    expect(after?.camposCapturados.fechaTentativa).toMatchObject({
+      tipo: "dia",
+      fecha: "2027-01-22",
+    });
+    expect(after?.paqueteTentativoId).toBe("pkg-1");
+    expect(after?.listoParaCotizar).toBe(true);
+    expect(after?.brief).toEqual(
+      expect.objectContaining({
+        consultaCatalogoAlMomento: expect.objectContaining({
+          tool: "buscar_paquetes",
+          ok: true,
+        }),
+      }),
+    );
+    expect(
+      audit
+        .listByConversacion(res.conversacionId)
+        .some((e) => e.tipo === "consulta_catalogo"),
+    ).toBe(true);
+    expect(res.textoRespuesta).toMatch(/Paquete Estándar/);
+    expect(res.textoRespuesta).not.toMatch(/no tengo esa información/i);
+  });
+
+  it("corrige aforo en faq_libre y recotiza en catálogo", async () => {
+    const { orch, store, catalogFake } = buildOrchestrator({
+      tools: {
+        buscarPaquetes: jest.fn(async () => [
+          {
+            id: "pkg-1",
+            sku: "EVT-J1-TC",
+            nombre: "Paquete Estándar",
+            aforoMin: 100,
+            aforoMax: 300,
+            precioMuestra: { monto: 2280, moneda: "MXN", unidad: "persona" },
+          },
+        ]),
+      },
+    });
+    const conv = await store.resolveOrCreate({
+      canal: "whatsapp",
+      externalThreadId: "t-recotizar-aforo",
+    });
+    await store.update(conv.id, {
+      pasoGuion: "faq_libre",
+      camposCapturados: {
+        nombre: "Patricio Medina",
+        tipoEvento: "boda",
+        fechaTentativa: { tipo: "dia", fecha: "2027-12-22", flexible: false },
+        aforo: 150,
+        sedeId: "sede-tequesquitengo",
+        sedeNombre: "Tres Cielos Tequesquitengo",
+        intencionCotizar: true,
+      },
+    });
+
+    const res = await orch.handleTurn({
+      canal: "whatsapp",
+      externalThreadId: "t-recotizar-aforo",
+      externalMessageId: "m-aforo-200",
+      texto: "ahora para 200 invitados",
+      recibidoEn: new Date().toISOString(),
+    });
+
+    expect(res.ruta).toBe("catalogo");
+    expect(catalogFake.buscarPaquetes).toHaveBeenCalledWith(
+      expect.objectContaining({ aforo: 200, fecha: "2027-12-22" }),
+    );
+    const after = await store.findById(conv.id);
+    expect(after?.camposCapturados.aforo).toBe(200);
+  });
+
+  it("pregunta de venue con fecha no recotiza (sigue RAG)", async () => {
+    const { orch, store, catalogFake } = buildOrchestrator();
+    const conv = await store.resolveOrCreate({
+      canal: "whatsapp",
+      externalThreadId: "t-venue-fecha",
+    });
+    await store.update(conv.id, {
+      pasoGuion: "faq_libre",
+      camposCapturados: {
+        nombre: "Patricio Medina",
+        tipoEvento: "boda",
+        fechaTentativa: { tipo: "dia", fecha: "2026-12-22", flexible: false },
+        aforo: 150,
+        sedeId: "sede-tequesquitengo",
+        sedeNombre: "Tres Cielos Tequesquitengo",
+        intencionCotizar: true,
+      },
+    });
+
+    const res = await orch.handleTurn({
+      canal: "whatsapp",
+      externalThreadId: "t-venue-fecha",
+      externalMessageId: "m-ubicacion",
+      texto: "¿Cuál es la ubicación del venue el 22 de enero de 2027?",
+      recibidoEn: new Date().toISOString(),
+    });
+
+    expect(res.ruta).not.toBe("catalogo");
+    const routing = res.reasoningTrace?.steps.find((s) => s.level === "routing");
+    expect(
+      routing && routing.level === "routing" && routing.decision.kind,
+    ).toBe("rag");
+    expect(catalogFake.buscarPaquetes).not.toHaveBeenCalled();
   });
 });

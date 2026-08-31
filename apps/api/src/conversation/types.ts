@@ -124,6 +124,8 @@ export interface ConversacionState {
   brief: Record<string, unknown>;
   calificado: boolean;
   listoParaCotizar: boolean;
+  pedidoCotizacion?: boolean | null;
+  pedidoCotizacionFuente?: string | null;
   mensajes: MensajeRecord[];
   creadoEn: string;
   actualizadoEn: string;

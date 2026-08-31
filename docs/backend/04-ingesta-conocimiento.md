@@ -16,8 +16,8 @@ Cada ítem = un `DocumentoFuente` (o varios si se parte por sede).
 
 | ID | Documento | Tipo | Alcance | Qué debe cubrir | Prioridad go-live |
 |---|---|---|---|---|---|
-| K01 | FAQ general Tres Cielos | FAQ | Global | Horarios comerciales, cómo llegar (alto nivel), qué tipo de venue es, preguntas típicas | Alta |
-| K02 | Ficha Jardín 1 (sede activa) | Ficha de sede | Sede 1 | Nombre comercial, dirección, capacidad orientativa, características, restricciones conocidas | Alta |
+| K01 | FAQ general Tres Cielos | FAQ | Global | Dirección y cómo llegar (alto nivel), qué tipo de venue es, preguntas típicas; visitas las agenda un asesor | Alta |
+| K02 | Ficha Jardín 1 (sede activa) | Ficha de sede | Sede 1 | Nombre comercial, dirección, cómo llegar, características de locación; GPS y restricciones no publicadas | Alta |
 | K03 | Ficha Jardín 2 | Ficha de sede | Sede 2 | Misma estructura; borrador/archivado hasta change order | Media (preparación) |
 | K04 | Tipos de evento | Catálogo narrativo | Global | Boda, XV, corporativo, social, otro — descripción breve | Alta |
 | K05 | Apoyo narrativo de paquetes | Narrativa | Global o por sede | Copy sin montos (o remisión a “consulta paquetes”); **montos viven en catálogo Prisma** | Media |

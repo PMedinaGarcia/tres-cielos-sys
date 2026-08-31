@@ -1,5 +1,6 @@
 import { resolvePaqueteSkuAlias } from "@tres-cielos/shared";
 import { normalizeProspectText } from "../text-normalize";
+import { isLocationQuery } from "./location-intent";
 
 export type CommercialFaqTopic =
   | "overview"
@@ -9,13 +10,13 @@ export type CommercialFaqTopic =
   | "fecha_minima";
 
 const VENUE_RE =
-  /\b(ubicacion|como llegar|estacionamiento|dress code|pirotecnia)\b/;
+  /\b(estacionamiento|dress code|pirotecnia)\b/;
 
 const FECHA_MINIMA_RE =
   /\b(fecha minima|minima de contratacion|contratacion minima|antelacion|con cuanto tiempo (hay que |para )?(reserv\w*|contrat\w*|apart\w*)|cuanto tiempo (de anticipacion |antes )?(hay que )?(reserv\w*|contrat\w*))\b/;
 
 const HORARIO_RE =
-  /\b(horarios?|orarios?|cierre|2:?00|02:?00|11 horas?)\b/;
+  /\b(horarios?|orarios?|cierre|0?2:00|02:00|2\s*a\.?m\.?|11 horas?)\b/;
 
 const PAGO_RE =
   /\b(pago|pagos|anticipo|iva|liquid|vigencia|tramitolog)\b/;
@@ -34,7 +35,7 @@ export function matchCommercialFaqTopic(
 
   if (FECHA_MINIMA_RE.test(n)) return "fecha_minima";
   if (isPackageDetailQuery(texto)) return null;
-  if (VENUE_RE.test(n)) return null;
+  if (isLocationQuery(texto) || VENUE_RE.test(n)) return null;
 
   if (EXCLUSIONES_RE.test(n)) return "exclusiones";
   if (PAGO_RE.test(n)) return "pago";

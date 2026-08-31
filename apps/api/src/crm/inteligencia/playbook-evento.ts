@@ -50,6 +50,7 @@ export type InteligenciaInput = {
   pasoGuion?: string | null;
   perfilCompleto?: boolean;
   intencionCotizar?: boolean | null;
+  pedidoCotizacion?: boolean | null;
   ultimoContactoEn: Date | string;
   estadoAtencion?: string | null;
   now?: Date;
@@ -138,29 +139,30 @@ function derivarEtapaCotizacion(
   if (input.listoParaCotizar) return "listo_para_cotizar";
 
   const catalogo = tieneTarifaPublicada(input.tipoEvento);
-  const sinTarifaSenal =
-    input.motivoHandoff === "sin_catalogo" ||
-    input.calificacion === "calificado" ||
-    input.intencionCotizar === true ||
-    (input.perfilCompleto &&
-      (input.pasoGuion === "faq_libre" || input.pasoGuion === "intencion"));
-
-  if (!catalogo && input.tipoEvento && sinTarifaSenal) {
-    return "sin_tarifa";
-  }
+  const pidio =
+    input.pedidoCotizacion === true ||
+    (Boolean(input.perfilCompleto) && input.intencionCotizar === true);
+  const rechazo =
+    input.pedidoCotizacion === false || input.intencionCotizar === false;
 
   if (
-    catalogo &&
-    (input.ultimaRuta === "catalogo" || input.pasoGuion === "faq_libre")
+    !catalogo &&
+    input.tipoEvento &&
+    (pidio || input.motivoHandoff === "sin_catalogo")
   ) {
-    return "explorando";
+    return "sin_tarifa";
   }
 
   if (input.perfilCompleto === false || !input.tipoEvento) {
     return "perfilando";
   }
 
+  if (rechazo && !pidio) return "perfilando";
+
+  if (catalogo && pidio) return "explorando";
+
   if (!catalogo) return "sin_tarifa";
+  if (!pidio) return "perfilando";
   return "explorando";
 }
 

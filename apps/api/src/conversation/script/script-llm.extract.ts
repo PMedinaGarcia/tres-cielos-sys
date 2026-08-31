@@ -120,7 +120,7 @@ export async function extractScriptPasoWithLlm(input: {
         {
           role: "system",
           content: [
-            "Extrae SOLO el campo del paso actual del guion de captura de Tres Cielos (venue de eventos, México).",
+            "Extrae TODOS los campos de captura presentes en el texto del prospecto para Tres Cielos (venue de eventos, México). No te limites al paso actual si el mensaje trae más datos.",
             "El usuario puede escribir mal, en jerga o con frases incompletas.",
             "No inventes datos que no estén anclados en el texto.",
             `Hoy (America/Mexico_City) es ${hoy}.`,

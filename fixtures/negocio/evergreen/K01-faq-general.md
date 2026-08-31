@@ -29,7 +29,9 @@ Las tarifas publicadas 2027 del paquete de bodas son por tramos de invitados. El
 
 ## Visitas y cómo llegar
 
-Horarios de visita, dirección y cómo llegar **no** están en este corpus comercial (salieron de plantillas de cotización, no de ficha de sede). Un asesor agenda la visita y confirma ubicación.
+La sede operativa es **Tres Cielos Tequesquitengo**. Dirección: Lago de Teques Lote 36, 4ª sección, CP 62915, Tequesquitengo, Jojutla, Morelos. Referencia vial: Bajada 6 hasta el fondo. El jardín está a orilla del lago de Tequesquitengo, a unos 90 minutos de la Ciudad de México.
+
+Los horarios de visita al venue los agenda un asesor; no hay horario de visita publicado en este canal.
 
 ## Cotización y fecha
 

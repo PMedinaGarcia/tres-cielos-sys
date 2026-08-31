@@ -18,6 +18,8 @@ describe("commercial-faq.matcher", () => {
     expect(matchCommercialFaqTopic("anticipo")).toBe("pago");
     expect(matchCommercialFaqTopic("exclusiones")).toBe("exclusiones");
     expect(matchCommercialFaqTopic("que no incluye")).toBe("exclusiones");
+    expect(matchCommercialFaqTopic("cierre 2:00")).toBe("horario");
+    expect(matchCommercialFaqTopic("ahora para 200 invitados")).toBeNull();
   });
 
   it("fecha mínima de contratación no se inventa", () => {
@@ -32,6 +34,10 @@ describe("commercial-faq.matcher", () => {
   it("no trata venue (ubicación/estacionamiento) como FAQ comercial", () => {
     expect(matchCommercialFaqTopic("política de estacionamiento")).toBeNull();
     expect(matchCommercialFaqTopic("cuál es la ubicación del venue")).toBeNull();
+    expect(matchCommercialFaqTopic("dónde queda")).toBeNull();
+    expect(matchCommercialFaqTopic("cuál es la dirección")).toBeNull();
+    expect(matchCommercialFaqTopic("cómo llego")).toBeNull();
+    expect(matchCommercialFaqTopic("waze")).toBeNull();
   });
 
   it("detecta detalle de paquete con texto mal formado", () => {

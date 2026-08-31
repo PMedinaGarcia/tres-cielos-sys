@@ -15,7 +15,7 @@ Venue tipo **jardín** para eventos sociales. Las cotizaciones de paquete y de r
 - Hospedaje satélite: habitaciones, villas y Villa Sol, con ocupación mínima de adultos (ver cortesías, no tarifas aquí).
 - Prueba de menú **en Cuernavaca** (paquetes con banquete).
 
-El nombre comercial de la sede operativa es **Tres Cielos Tequesquitengo**. La dirección y el aforo físico del recinto **no** vienen en estas plantillas. No se afirma capacidad 200 ni horarios de visita desde este corpus.
+El nombre comercial de la sede operativa es **Tres Cielos Tequesquitengo**. Dirección: Lago de Teques Lote 36, 4ª sección, CP 62915, Tequesquitengo, Jojutla, Morelos (Bajada 6 hasta el fondo). A orilla del lago de Tequesquitengo, a unos 90 minutos de la CDMX. El aforo físico del recinto más allá de los tramos de paquete **no** está publicado. Horarios de visita y GPS: no se afirman desde este corpus.
 
 ## 2. Tres líneas comerciales
 

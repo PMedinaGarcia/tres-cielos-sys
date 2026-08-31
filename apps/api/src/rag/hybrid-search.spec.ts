@@ -57,15 +57,21 @@ describe("HybridSearchService (D1)", () => {
   });
 
   it("sede: globales + sede lead; sin sede solo globales", async () => {
-    const withSede = await hybrid.search("capacidad jardín invitados", {
+    const withSede = await hybrid.search("dirección Tequesquitengo Lote 36", {
       sedeId: FIXTURE_SEDE_TEQUESQUITENGO,
     });
     expect(withSede.some((h) => h.fragmento.inventarioId === "K02")).toBe(true);
+    expect(withSede.some((h) => h.fragmento.id === "frag-k01-ubicacion")).toBe(
+      true,
+    );
 
-    const globalOnly = await hybrid.search("venue jardín Tres Cielos", {
+    const globalOnly = await hybrid.search("dirección Bajada 6 Tequesquitengo", {
       sedeId: null,
     });
     expect(globalOnly.every((h) => h.fragmento.sedeId == null)).toBe(true);
+    expect(globalOnly.some((h) => h.fragmento.id === "frag-k01-ubicacion")).toBe(
+      true,
+    );
     expect(globalOnly.some((h) => h.fragmento.inventarioId === "K02")).toBe(
       false,
     );

@@ -79,7 +79,11 @@ describe("ScriptService (B2)", () => {
       const r = await script.handleTurn(
         baseConv({
           pasoGuion: "aforo",
-          camposCapturados: { nombre: "Ana", tipoEvento: "boda" },
+          camposCapturados: {
+            nombre: "Ana",
+            tipoEvento: "boda",
+            fechaTentativa: { tipo: "dia", fecha: "2027-12-22", flexible: false },
+          },
         }),
         texto,
       );
@@ -153,7 +157,12 @@ describe("ScriptService (B2)", () => {
     const r = await script.handleTurn(
       baseConv({
         pasoGuion: "presupuesto",
-        camposCapturados: { nombre: "Paty", tipoEvento: "boda" },
+        camposCapturados: {
+          nombre: "Paty",
+          tipoEvento: "boda",
+          fechaTentativa: { tipo: "dia", fecha: "2027-12-22", flexible: false },
+          aforo: 120,
+        },
       }),
       "sí",
     );
@@ -171,6 +180,8 @@ describe("ScriptService (B2)", () => {
     );
     expect(r.pasoGuion).toBe("fecha");
     expect(r.textoRespuesta).toMatch(/año/i);
+    expect(r.textoRespuesta).toMatch(/22 de diciembre de 2027/);
+    expect(r.textoRespuesta).not.toMatch(/2026/);
     expect(r.camposCapturados.fechaTentativa).toBeUndefined();
   });
 
@@ -268,5 +279,47 @@ describe("ScriptService (B2)", () => {
     );
     expect(aforo.pasoGuion).toBe("aforo");
     expect(aforo.camposCapturados.aforo).toBeUndefined();
+  });
+
+  it("primer mensaje rico salta ocasión/fecha/aforo y pide nombre", async () => {
+    const r = await script.handleTurn(
+      baseConv(),
+      "Necesito que me ayudes con una cotización para una boda el 22 de diciembre del 2027 para 150 invitados",
+    );
+    expect(r.pasoGuion).toBe("nombre");
+    expect(r.camposCapturados.tipoEvento).toBe("boda");
+    expect(r.camposCapturados.fechaTentativa?.fecha).toBe("2027-12-22");
+    expect(r.camposCapturados.aforo).toBe(150);
+    expect(r.camposCapturados.intencionCotizar).toBe(true);
+    expect(r.textoRespuesta).toMatch(/registré/i);
+    expect(r.textoRespuesta).toMatch(/nombre/i);
+    expect(r.textoRespuesta).not.toMatch(/tipo de evento/i);
+  });
+
+  it("saludo con nombre de perfil y boda+fecha+aforo no pregunta ocasión", async () => {
+    const r = await script.handleTurn(
+      baseConv({ camposCapturados: { nombre: "Ana" } }),
+      "boda el 22 de diciembre del 2027 para 150 invitados",
+    );
+    expect(r.camposCapturados.tipoEvento).toBe("boda");
+    expect(r.camposCapturados.aforo).toBe(150);
+    expect(r.pasoGuion).not.toBe("ocasion");
+    expect(r.textoRespuesta).not.toMatch(/tipo de evento/i);
+  });
+
+  it("Si estoy interesado en saludo no se guarda como nombre", async () => {
+    const r = await script.handleTurn(baseConv(), "Si estoy interesado");
+    expect(r.camposCapturados.nombre).toBeFalsy();
+    expect(r.camposCapturados.intencionCotizar).toBe(true);
+    expect(r.textoRespuesta).not.toMatch(/Gracias, Si estoy interesado/i);
+    expect(r.pasoGuion).toBe("nombre");
+  });
+
+  it("Quiero reservar en saludo pide nombre y no lo registra como persona", async () => {
+    const r = await script.handleTurn(baseConv(), "Quiero reservar");
+    expect(r.camposCapturados.nombre).toBeFalsy();
+    expect(r.pasoGuion).toBe("nombre");
+    expect(r.textoRespuesta).toMatch(/nombre/i);
+    expect(r.textoRespuesta).not.toMatch(/Gracias, Quiero reservar/i);
   });
 });

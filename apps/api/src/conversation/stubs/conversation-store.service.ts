@@ -49,7 +49,7 @@ export class ConversationStoreService {
 
     const now = new Date().toISOString();
     const campos: CamposCapturados = {
-      nombre: input.perfilNombre ?? null,
+      nombre: null,
       telefono,
     };
     const state: ConversacionState = {
@@ -67,6 +67,8 @@ export class ConversationStoreService {
       brief: { version: 1, actualizadoPor: "bot" },
       calificado: false,
       listoParaCotizar: false,
+      pedidoCotizacion: null,
+      pedidoCotizacionFuente: null,
       mensajes: [],
       creadoEn: now,
       actualizadoEn: now,
@@ -106,6 +108,8 @@ export class ConversationStoreService {
     brief: Record<string, unknown>;
     calificado: boolean;
     listoParaCotizar: boolean;
+    pedidoCotizacion: boolean | null;
+    pedidoCotizacionFuente: string | null;
   }>): Promise<ConversacionState> {
     const conv = this.byId.get(conversacionId);
     if (!conv) throw new Error(`conversacion ${conversacionId} no encontrada`);

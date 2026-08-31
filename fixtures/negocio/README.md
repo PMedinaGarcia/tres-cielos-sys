@@ -17,7 +17,7 @@ fixtures/negocio/
     lineas/                          ← K05 (composición)
     modulos/                         ← K11 (atómicos)
     cortesias/                       ← K12
-    sede/                            ← K02 evidencia (borrador)
+    sede/                            ← K02 ficha de sede
     catalog/                         ← datos duros (YAML)
 ```
 

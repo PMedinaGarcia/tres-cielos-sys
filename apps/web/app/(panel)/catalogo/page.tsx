@@ -1,6 +1,7 @@
 import { GlassPanel } from "@/components/glass-panel";
+import { publicApiUrl } from "@/lib/api-url";
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3011";
+const apiUrl = publicApiUrl();
 
 export default function CatalogoPage() {
   return (

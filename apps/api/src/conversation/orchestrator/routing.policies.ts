@@ -6,6 +6,7 @@ import {
 } from "./commercial-faq.matcher";
 import { DATOS_DUROS_RE, MONTO_RIESGO_RE } from "./monetary-intent";
 import { isIntencionVisita } from "./visit-intent";
+import { isLocationQuery } from "./location-intent";
 
 const HUMAN_RE =
   /\b(hablar con (un |una )?(humano|asesor|persona|agente)|quiero (un )?asesor|pasame (con|a) (un )?humano|atenci[oó]n humana)\b/i;
@@ -18,7 +19,7 @@ const CONFLICTO_RE =
 
 /** Venue / ficha de sede. Políticas comerciales y horario de evento van a faq_comercial. */
 const DOCUMENTAL_RE =
-  /\b(ubicaci[oó]n|c[oó]mo llegar|estacionamiento|dress code|faq|venue|jard[ií]n|descripci[oó]n)\b/i;
+  /\b(ubicaci[oó]n|c[oó]mo lleg(?:ar|o)|direcci[oó]n|estacionamiento|dress code|faq|venue|jard[ií]n|descripci[oó]n|waze|maps|gps)\b/i;
 
 export function detectForcedHandoff(
   texto: string,
@@ -53,7 +54,9 @@ export function classifyIntentLexical(
   if (isPackageDetailQuery(texto) || DATOS_DUROS_RE.test(texto)) {
     return "datos_duros";
   }
-  if (DOCUMENTAL_RE.test(texto)) return "pregunta_documental";
+  if (DOCUMENTAL_RE.test(texto) || isLocationQuery(texto)) {
+    return "pregunta_documental";
+  }
 
   if (pasoGuion !== "faq_libre") return "guion_captura";
 
@@ -85,6 +88,10 @@ export function decideRoute(input: {
   adjuntoInvalido: boolean;
   intent: IntentClasificado;
   buttonPayload?: string | null;
+  pedidoCotizacion?: boolean;
+  perfilListo?: boolean;
+  /** Harvest de este turno corrigió fecha/aforo con perfil listo e intención de cotizar. */
+  recotizarPorSlots?: boolean;
 }): RoutingDecision {
   if (input.estadoBot !== "activo") return { kind: "silencio" };
   if (input.hardQuota) return { kind: "quota_hard" };
@@ -106,24 +113,33 @@ export function decideRoute(input: {
     return { kind: "handoff", motivo: "otro" };
   }
 
-  if (input.capturaPendiente && input.intent !== "datos_duros") {
-    // Precio / ficha de paquete interrumpen; FAQ comercial solo en faq_libre
-    if (comercial && input.pasoGuion === "faq_libre") {
-      return { kind: "faq_comercial" };
-    }
-    if (isIntencionVisita(input.texto) && input.pasoGuion === "faq_libre") {
-      return { kind: "faq_comercial" };
-    }
-    if (input.intent === "pregunta_documental" && input.pasoGuion === "faq_libre") {
+  // D-BOT-1: captura de guion gana a precio/paquete hasta nombre + ocasión + fecha + aforo.
+  // Excepción: pregunta de ubicación (no visita) sí va a RAG.
+  if (input.capturaPendiente) {
+    if (isLocationQuery(input.texto) && !isIntencionVisita(input.texto)) {
       return { kind: "rag" };
     }
-    if (input.capturaPendiente) return { kind: "guion" };
+    return { kind: "guion" };
   }
 
   if (comercial) return { kind: "faq_comercial" };
   if (isIntencionVisita(input.texto)) return { kind: "faq_comercial" };
   if (input.intent === "datos_duros") return { kind: "catalogo" };
   if (input.intent === "pregunta_documental") return { kind: "rag" };
+  if (
+    input.recotizarPorSlots &&
+    input.pasoGuion === "faq_libre" &&
+    input.perfilListo
+  ) {
+    return { kind: "catalogo" };
+  }
+  if (
+    input.intent === "guion_captura" &&
+    input.pedidoCotizacion &&
+    input.perfilListo
+  ) {
+    return { kind: "catalogo" };
+  }
   if (input.intent === "guion_captura") return { kind: "guion" };
   if (input.intent === "ambiguo" && MONTO_RIESGO_RE.test(input.texto)) {
     return { kind: "catalogo" };

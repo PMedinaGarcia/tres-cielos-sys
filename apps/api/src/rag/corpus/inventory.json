@@ -6,13 +6,13 @@
       "id": "K01",
       "archivo": "K01-faq-general.pdf",
       "alcance": "global",
-      "temas": ["horarios comerciales", "cómo llegar", "tipo de venue"]
+      "temas": ["dirección", "cómo llegar", "tipo de venue"]
     },
     {
       "id": "K02",
       "archivo": "K02-ficha-tequesquitengo.docx",
       "alcance": "sede-tequesquitengo",
-      "temas": ["ficha sede", "capacidad orientativa", "horario visitas", "restricciones"]
+      "temas": ["ficha sede", "dirección", "cómo llegar", "visitas con asesor"]
     },
     {
       "id": "K08",

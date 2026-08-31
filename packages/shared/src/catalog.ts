@@ -116,6 +116,24 @@ export type AforoTramoBoda = (typeof AFORO_TRAMOS_BODA)[number];
 /** Fecha de evento por defecto al cotizar la ficha 2027 (no la fecha de consulta). */
 export const FECHA_EVENTO_DEFAULT_CATALOGO = "2027-06-15";
 
+/** Año de la ficha de tarifas publicada. Deriva de `FECHA_EVENTO_DEFAULT_CATALOGO`. */
+export function anioTarifaPublicada(
+  fechaDefault: string = FECHA_EVENTO_DEFAULT_CATALOGO,
+): number {
+  const y = Number(/^(\d{4})/.exec(fechaDefault)?.[1]);
+  return Number.isFinite(y) && y >= 2000 ? y : 2027;
+}
+
+/** Ejemplos de fecha alineados a la ficha de tarifas (no al año civil actual). */
+export function ejemploFechaTarifaPublicada(
+  anio: number = anioTarifaPublicada(),
+): { humana: string; dmy: string } {
+  return {
+    humana: `22 de diciembre de ${anio}`,
+    dmy: `15/03/${anio}`,
+  };
+}
+
 export const SKU_PAQUETE_ESTANDAR = "EVT-J1-TC";
 export const SKU_PAQUETE_PREMIUM = "EVT-J1-PREMIUM";
 export const SKU_SOLO_RENTA = "RENTA-J1";

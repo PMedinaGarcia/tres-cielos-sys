@@ -24,6 +24,21 @@ describe("Knowledge fixtures K01/K02/K08/K09 (D5)", () => {
     expect(k02.every((f) => f.sedeId === FIXTURE_SEDE_TEQUESQUITENGO)).toBe(true);
   });
 
+  it("K01 global publica dirección; K02 no usa copy sintético de visitas", () => {
+    const k01 = fixtures.find((f) => f.id === "frag-k01-ubicacion")!;
+    expect(k01.sedeId).toBeNull();
+    expect(k01.texto).toMatch(/Lote 36/);
+    expect(k01.texto).toMatch(/62915/);
+    expect(k01.texto).toMatch(/Bajada 6/);
+
+    const corpus = fixtures
+      .filter((f) => f.activo && f.documentoEstado === "publicado")
+      .map((f) => f.texto)
+      .join("\n");
+    expect(corpus).not.toMatch(/11:00 a 18:00/);
+    expect(corpus).not.toMatch(/polo de eventos/);
+  });
+
   it("K09 aporta copy safe institucional", () => {
     const k09 = fixtures.find((f) => f.id === "frag-k09-safe")!;
     expect(k09.texto.toLowerCase()).toContain("asesor");

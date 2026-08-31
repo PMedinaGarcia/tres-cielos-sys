@@ -107,6 +107,7 @@ function mockPrisma() {
     adjuntoMensaje: { create: jest.fn() },
     sede: { findUnique: jest.fn(async () => null) },
     paquete: { findUnique: jest.fn(async () => null) },
+    eventoOperativo: { create: jest.fn() },
     asignacion: {
       updateMany: jest.fn(),
       create: jest.fn(),
@@ -198,6 +199,31 @@ describe("ExpedientePersistService", () => {
     );
   });
 
+  it("no persiste una frase de intención como Cliente.nombre", async () => {
+    process.env.DATABASE_URL = "postgresql://test";
+    const prisma = mockPrisma();
+    const svc = new ExpedientePersistService(prisma as never);
+    await svc.persistAfterTurn(
+      baseConv({
+        camposCapturados: {
+          ...baseConv().camposCapturados,
+          nombre: "Quiero reservar",
+        },
+      }),
+    );
+    expect(prisma.cliente.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        nombre: null,
+        nombrePerfilCanal: null,
+      }),
+    });
+    expect(prisma.conversacion.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        camposCapturados: expect.objectContaining({ nombre: null }),
+      }),
+    });
+  });
+
   it("escalado actualiza estadoAtencion y no asigna si no hay asesor real", async () => {
     process.env.DATABASE_URL = "postgresql://test";
     const prisma = mockPrisma();
@@ -220,16 +246,71 @@ describe("ExpedientePersistService", () => {
     expect(prisma.asignacion.create).not.toHaveBeenCalled();
   });
 
-  it("emite intencion_cotizar cuando listoParaCotizar pasa a true", async () => {
+  it("emite intencion_cotizar cuando el perfil queda listo y pidió cotizar", async () => {
+    process.env.DATABASE_URL = "postgresql://test";
+    const prisma = mockPrisma();
+    const svc = new ExpedientePersistService(prisma as never);
+    await svc.persistAfterTurn(
+      baseConv({
+        pedidoCotizacion: true,
+        pedidoCotizacionFuente: "texto_monetario",
+        camposCapturados: {
+          ...baseConv().camposCapturados,
+          sedeId: "sede-tequesquitengo",
+          sedeNombre: "Tres Cielos Tequesquitengo",
+          intencionCotizar: true,
+        },
+      }),
+    );
+    expect(prisma.interaccion.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          tipo: "intencion_cotizar",
+          resumen: "Lead pidió cotizar",
+          payload: expect.objectContaining({ pedido: true }),
+        }),
+      }),
+    );
+  });
+
+  it("emite intencion_cotizar con pedido false cuando rechaza", async () => {
+    process.env.DATABASE_URL = "postgresql://test";
+    const prisma = mockPrisma();
+    const svc = new ExpedientePersistService(prisma as never);
+    await svc.persistAfterTurn(
+      baseConv({
+        pedidoCotizacion: false,
+        pedidoCotizacionFuente: "rechazo",
+        camposCapturados: {
+          ...baseConv().camposCapturados,
+          sedeId: "sede-tequesquitengo",
+          sedeNombre: "Tres Cielos Tequesquitengo",
+          intencionCotizar: false,
+        },
+      }),
+    );
+    expect(prisma.interaccion.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          tipo: "intencion_cotizar",
+          resumen: "Lead no pidió cotizar",
+          payload: expect.objectContaining({ pedido: false }),
+        }),
+      }),
+    );
+  });
+
+  it("no emite intencion_cotizar solo porque listoParaCotizar pasa a true", async () => {
     process.env.DATABASE_URL = "postgresql://test";
     const prisma = mockPrisma();
     const svc = new ExpedientePersistService(prisma as never);
     await svc.persistAfterTurn(baseConv({ listoParaCotizar: true }));
-    expect(prisma.interaccion.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ tipo: "intencion_cotizar" }),
-      }),
+    const tipos = (
+      prisma.interaccion.create as jest.Mock
+    ).mock.calls.map(
+      (c: [{ data: { tipo: string } }]) => c[0].data.tipo,
     );
+    expect(tipos).not.toContain("intencion_cotizar");
   });
 
   it("quiero visitar deja visitaEstado=solicitada", async () => {
@@ -255,5 +336,33 @@ describe("ExpedientePersistService", () => {
         data: expect.objectContaining({ tipo: "cambio_visita" }),
       }),
     );
+  });
+
+  it("persiste consulta_catalogo como EventoOperativo cuando el brief trae snapshot nuevo", async () => {
+    process.env.DATABASE_URL = "postgresql://test";
+    const prisma = mockPrisma();
+    const svc = new ExpedientePersistService(prisma as never);
+    await svc.persistAfterTurn(
+      baseConv({
+        brief: {
+          version: 2,
+          consultaCatalogoAlMomento: {
+            id: "reg-cat-1",
+            tool: "buscar_paquetes",
+            input: { fecha: "2027-01-22", aforo: 150 },
+            filasSku: ["EVT-J1-TC"],
+            ok: true,
+            creadoEn: "2026-08-30T19:00:00.000Z",
+          },
+        },
+      }),
+    );
+    expect(prisma.eventoOperativo.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        tipo: "consulta_catalogo",
+        actor: "bot",
+        payload: expect.objectContaining({ id: "reg-cat-1" }),
+      }),
+    });
   });
 });

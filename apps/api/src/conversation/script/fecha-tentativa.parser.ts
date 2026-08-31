@@ -198,15 +198,23 @@ function isNumericShortSinAnio(norm: string): boolean {
   return /\b\d{1,2}[/\-.]\d{1,2}\b/.test(norm);
 }
 
+/** `de` o `del` antes del año (`22 de diciembre del 2027`). */
+const DE_DEL_ANIO = String.raw`(?:del?\s+)?`;
+/** `de` opcional entre día y mes (`22 Diciembre del 2026`). */
+const DE_MES_OPCIONAL = String.raw`(?:de\s+)?`;
+
+function dayMonthYearRe(): RegExp {
+  return new RegExp(
+    `\\b(\\d{1,2})\\s+${DE_MES_OPCIONAL}(${MES_ALT})\\s+${DE_DEL_ANIO}(20\\d{2})\\b`,
+  );
+}
+
 function parseDayOfMonthEs(
   norm: string,
   flexible: boolean,
   now: Date,
 ): FechaTentativa | null {
-  const re = new RegExp(
-    `\\b(\\d{1,2})\\s+de\\s+(${MES_ALT})\\s+(?:de\\s+)?(20\\d{2})\\b`,
-  );
-  const m = norm.match(re);
+  const m = norm.match(dayMonthYearRe());
   if (!m) return null;
   const dia = Number(m[1]);
   const mes = MES_NOMBRE[m[2]];
@@ -215,10 +223,10 @@ function parseDayOfMonthEs(
 }
 
 function isDayOfMonthEsSinAnio(norm: string): boolean {
-  const withYear = new RegExp(
-    `\\b\\d{1,2}\\s+de\\s+(${MES_ALT})\\s+(?:de\\s+)?20\\d{2}\\b`,
+  const withYear = dayMonthYearRe();
+  const any = new RegExp(
+    `\\b\\d{1,2}\\s+${DE_MES_OPCIONAL}(${MES_ALT})\\b`,
   );
-  const any = new RegExp(`\\b\\d{1,2}\\s+de\\s+(${MES_ALT})\\b`);
   return any.test(norm) && !withYear.test(norm);
 }
 
@@ -245,7 +253,7 @@ function parseRange(
   now: Date,
 ): FechaTentativa | null {
   const re = new RegExp(
-    `\\bdel?\\s+(\\d{1,2})\\s+al\\s+(\\d{1,2})\\s+de\\s+(${MES_ALT})\\s+(?:de\\s+)?(20\\d{2})\\b`,
+    `\\bdel?\\s+(\\d{1,2})\\s+al\\s+(\\d{1,2})\\s+de\\s+(${MES_ALT})\\s+${DE_DEL_ANIO}(20\\d{2})\\b`,
   );
   const m = norm.match(re);
   if (!m) return null;
@@ -262,7 +270,7 @@ function parseRange(
 
 function isRangeSinAnio(norm: string): boolean {
   const withYear = new RegExp(
-    `\\bdel?\\s+\\d{1,2}\\s+al\\s+\\d{1,2}\\s+de\\s+(${MES_ALT})\\s+(?:de\\s+)?20\\d{2}\\b`,
+    `\\bdel?\\s+\\d{1,2}\\s+al\\s+\\d{1,2}\\s+de\\s+(${MES_ALT})\\s+${DE_DEL_ANIO}20\\d{2}\\b`,
   );
   const any = new RegExp(
     `\\bdel?\\s+\\d{1,2}\\s+al\\s+\\d{1,2}\\s+de\\s+(${MES_ALT})\\b`,
@@ -408,11 +416,7 @@ export function explainFechaTentativa(
   const ranged = parseRange(norm, flexible, now);
   if (ranged) return asFechaResult(ranged, now, flexible);
 
-  if (
-    new RegExp(
-      `\\b\\d{1,2}\\s+de\\s+(${MES_ALT})\\s+(?:de\\s+)?20\\d{2}\\b`,
-    ).test(norm)
-  ) {
+  if (dayMonthYearRe().test(norm)) {
     return asFechaResult(parseDayOfMonthEs(norm, flexible, now), now, flexible);
   }
 
@@ -455,4 +459,15 @@ export function fechaTentativaToIso(
     return toIsoDate(fecha.anio, fecha.mes, 1);
   }
   return undefined;
+}
+
+/** Convierte un ISO YYYY-MM-DD de tools de catálogo a FechaTentativa. */
+export function isoToFechaTentativa(iso: string): FechaTentativa | null {
+  const m = iso.trim().match(/^(20\d{2})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  if (!isValidCalendarDate(y, mo, d)) return null;
+  return { tipo: "dia", fecha: `${m[1]}-${m[2]}-${m[3]}`, flexible: false };
 }

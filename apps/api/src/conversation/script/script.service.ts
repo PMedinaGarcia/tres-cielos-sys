@@ -2,8 +2,9 @@ import { Inject, Injectable, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
   GUION_ADJUNTO_PAQUETE_BODAS,
-  SEDE_ID,
   SEDE_NOMBRE,
+  anioTarifaPublicada,
+  ejemploFechaTarifaPublicada,
   type GuionAdjuntoId,
 } from "@tres-cielos/shared";
 import { isLiveAiProviders } from "../../config";
@@ -14,9 +15,19 @@ import type {
   ConversacionState,
   PasoGuion,
 } from "../types";
-import { stripAccents } from "../text-normalize";
-import { explainFechaTentativa } from "./fecha-tentativa.parser";
 import { extractScriptPasoWithLlm } from "./script-llm.extract";
+import {
+  assignSedeUnica,
+  harvestCamposLexical,
+  isGuionCompleto,
+  mergeLlmExtract,
+  nextPasoGuion,
+  resumenCamposCapturados,
+  shouldCallLlmHarvest,
+  type HarvestFilledKey,
+} from "./harvest-campos";
+
+export type { AforoParseMotivo, AforoParseResult } from "./harvest-campos";
 
 export interface ScriptTurnResult {
   textoRespuesta: string;
@@ -27,29 +38,47 @@ export interface ScriptTurnResult {
   adjuntoGuion?: GuionAdjuntoId;
 }
 
+const { humana: EJEMPLO_FECHA, dmy: EJEMPLO_FECHA_DMY } =
+  ejemploFechaTarifaPublicada();
+const ANIO_TARIFA = anioTarifaPublicada();
+
 const PREGUNTA_FECHA =
-  "¿Qué fecha tentativa tienen? Necesito día, mes y año, por ejemplo 22 de diciembre de 2026 o 15/03/2027.";
+  `¿Qué fecha tentativa tienen? Necesito día, mes y año, por ejemplo ${EJEMPLO_FECHA} o ${EJEMPLO_FECHA_DMY}.`;
 
 const PREGUNTA_OCASION = "¿Qué tipo de evento celebran?";
 
 const PREGUNTA_INTENCION = "¿Desean cotizar o reservar con nosotros?";
 
 const COPY_SEDE_E_INTENCION =
-  `Nuestra sede es ${SEDE_NOMBRE}. Te compartimos la ficha de paquetes 2027. ${PREGUNTA_INTENCION}`;
+  `Nuestra sede es ${SEDE_NOMBRE}. Te compartimos la ficha de paquetes ${ANIO_TARIFA}. ${PREGUNTA_INTENCION}`;
 
 const COPY_INTENCION_RETRY = "¿Confirman que desean cotizar?";
 
 const COPY_FECHA_SIN_ANIO =
-  "Necesito día, mes y año. Por ejemplo: 22 de diciembre de 2026.";
+  `Necesito día, mes y año. Por ejemplo: ${EJEMPLO_FECHA}.`;
 
 const COPY_FECHA_NO_INTERPRETADA =
-  "No alcancé a interpretar la fecha. Indica día, mes y año, por ejemplo 22 de diciembre de 2026 o 15/03/2027.";
+  `No alcancé a interpretar la fecha. Indica día, mes y año, por ejemplo ${EJEMPLO_FECHA} o ${EJEMPLO_FECHA_DMY}.`;
 
 const COPY_FECHA_PASADA =
-  "Esa fecha ya pasó. Indica un día, mes y año vigentes, por ejemplo 22 de diciembre de 2026.";
+  `Esa fecha ya pasó. Indica un día, mes y año vigentes, por ejemplo ${EJEMPLO_FECHA}.`;
 
 const COPY_AFORO =
   "¿Cuántas personas aproximadamente asistirán? (número entero, por ejemplo 120 o 120 personas)";
+
+const COPY_NOMBRE_RETRY = "Para continuar, ¿me indiques tu nombre?";
+
+const COPY_SALUDO_NOMBRE =
+  "¡Hola! Soy el asistente de Tres Cielos. ¿Me compartes tu nombre, por favor?";
+
+const COPY_FAQ_LISTO =
+  "¡Listo! Ya tengo lo esencial para calificarte. Puedes preguntarme por paquetes, precios o políticas del venue.";
+
+const COPY_FAQ_SIN_COTIZAR =
+  "Entendido. Si más adelante quieres cotizar, aquí estaré. ¿Tienes otra pregunta?";
+
+const COPY_FAQ_LIBRE =
+  "¿En qué más te puedo ayudar? Puedo consultar paquetes/precios del catálogo o políticas del venue.";
 
 @Injectable()
 export class ScriptService {
@@ -64,191 +93,101 @@ export class ScriptService {
   }
 
   isCompleto(campos: CamposCapturados): boolean {
-    return Boolean(
-      campos.nombre &&
-        campos.tipoEvento &&
-        campos.fechaTentativa &&
-        campos.aforo != null &&
-        (campos.sedeId || campos.sedeNombre) &&
-        campos.intencionCotizar === true,
-    );
+    return isGuionCompleto(campos);
   }
 
   async handleTurn(
     conv: ConversacionState,
     texto: string,
   ): Promise<ScriptTurnResult> {
-    const campos = { ...conv.camposCapturados };
-    let paso = conv.pasoGuion;
+    const focused: PasoGuion =
+      conv.pasoGuion === "presupuesto" ? "intencion" : conv.pasoGuion;
     const trimmed = texto.trim();
-    if (paso === "presupuesto") {
-      paso = "intencion";
+    const aforoAntes = conv.camposCapturados.aforo;
+
+    let harvest = harvestCamposLexical(trimmed, conv.camposCapturados, {
+      focusedPaso: focused,
+    });
+    let campos = harvest.campos;
+    const filled = [...harvest.filled];
+
+    if (
+      this.llm &&
+      isLiveAiProviders(this.config) &&
+      shouldCallLlmHarvest(trimmed, harvest, focused)
+    ) {
+      const llm = await this.llmExtract(focused, trimmed, campos);
+      if (llm) {
+        const merged = mergeLlmExtract(campos, llm, trimmed, {
+          focusedPaso: focused,
+        });
+        campos = merged.campos;
+        for (const key of merged.filled) {
+          if (!filled.includes(key)) filled.push(key);
+        }
+        harvest = { ...harvest, campos };
+      }
     }
 
-    if (paso === "saludo") {
-      const nombre = extractNombre(trimmed);
-      if (nombre) {
-        campos.nombre = nombre;
-        const tipo = extractTipoEvento(trimmed);
-        if (tipo) {
-          campos.tipoEvento = tipo;
-          return reply(
-            `Gracias, ${nombre}. ${PREGUNTA_FECHA}`,
-            "fecha",
-            campos,
-          );
-        }
-        return reply(
-          `Gracias, ${nombre}. ${PREGUNTA_OCASION}`,
-          "ocasion",
-          campos,
-        );
+    if (campos.aforo != null) assignSedeUnica(campos);
+
+    const focusedError = focusedSlotError(focused, campos, harvest);
+    if (focusedError) return focusedError;
+
+    if (focused === "sede") {
+      assignSedeUnica(campos);
+      if (campos.intencionCotizar == null) {
+        return replySedeEIntencion(campos);
       }
-      if (campos.nombre) {
-        paso = "ocasion";
-        return {
-          textoRespuesta: `¡Hola ${campos.nombre}! Soy el asistente de Tres Cielos. ${PREGUNTA_OCASION}`,
-          pasoGuion: paso,
-          camposCapturados: campos,
-          avanzado: true,
-          guionCompleto: false,
-        };
-      }
-      return {
-        textoRespuesta:
-          "¡Hola! Soy el asistente de Tres Cielos. ¿Me compartes tu nombre, por favor?",
-        pasoGuion: "nombre",
-        camposCapturados: campos,
-        avanzado: true,
-        guionCompleto: false,
-      };
     }
 
-    switch (paso) {
-      case "nombre": {
-        const nombre =
-          extractNombre(trimmed) ??
-          (await this.llmExtract(paso, trimmed, campos))?.nombre ??
-          null;
-        if (!nombre) {
-          return reply(
-            "Para continuar, ¿me indiques tu nombre?",
-            paso,
-            campos,
-          );
-        }
-        campos.nombre = nombre;
+    const next = nextPasoGuion(campos);
+    const aforoNuevo = aforoAntes == null && campos.aforo != null;
+
+    if (next === "faq_libre") {
+      if (campos.intencionCotizar === false) {
+        return reply(COPY_FAQ_SIN_COTIZAR, "faq_libre", campos, false);
+      }
+      if (this.isCompleto(campos)) {
         return reply(
-          `Gracias, ${nombre}. ${PREGUNTA_OCASION}`,
-          "ocasion",
-          campos,
-        );
-      }
-      case "ocasion": {
-        const tipo =
-          extractTipoEvento(trimmed) ??
-          (await this.llmExtract(paso, trimmed, campos))?.tipoEvento ??
-          null;
-        if (!tipo) {
-          return reply(PREGUNTA_OCASION, paso, campos);
-        }
-        campos.tipoEvento = tipo;
-        return reply(
-          `Perfecto. ${PREGUNTA_FECHA}`,
-          "fecha",
-          campos,
-        );
-      }
-      case "fecha": {
-        const parsed = explainFechaTentativa(trimmed, { paso: "fecha" });
-        if (parsed.ok) {
-          campos.fechaTentativa = parsed.fecha;
-          return reply(COPY_AFORO, "aforo", campos);
-        }
-        if (parsed.motivo === "sin_anio") {
-          return reply(COPY_FECHA_SIN_ANIO, paso, campos);
-        }
-        if (parsed.motivo === "pasada") {
-          return reply(COPY_FECHA_PASADA, paso, campos);
-        }
-        const llmFecha =
-          (await this.llmExtract(paso, trimmed, campos))?.fechaTentativa ??
-          null;
-        if (!llmFecha) {
-          return reply(COPY_FECHA_NO_INTERPRETADA, paso, campos);
-        }
-        campos.fechaTentativa = llmFecha;
-        return reply(COPY_AFORO, "aforo", campos);
-      }
-      case "aforo": {
-        const parsed = parseAforo(trimmed);
-        if (parsed.ok) {
-          campos.aforo = parsed.aforo;
-          return replySedeEIntencion(campos);
-        }
-        if (parsed.motivo === "unidad_invalida") {
-          const frag = parsed.fragmento ?? trimmed;
-          return reply(
-            `No puedo procesar '${frag}'. Indica un número entero, por ejemplo 120 o 120 personas.`,
-            paso,
-            campos,
-          );
-        }
-        if (parsed.motivo === "fuera_rango") {
-          return reply(
-            "El aforo debe ser un entero entre 1 y 5000.",
-            paso,
-            campos,
-          );
-        }
-        const llmAforo =
-          (await this.llmExtract(paso, trimmed, campos))?.aforo ?? null;
-        if (llmAforo == null) {
-          return reply(
-            "Necesito el aforo como número entero (por ejemplo 120 o 120 personas).",
-            paso,
-            campos,
-          );
-        }
-        campos.aforo = llmAforo;
-        return replySedeEIntencion(campos);
-      }
-      case "sede": {
-        return replySedeEIntencion(campos);
-      }
-      case "intencion": {
-        const intent =
-          extractSiNo(trimmed) ??
-          (await this.llmExtract(paso, trimmed, campos))?.intencionCotizar ??
-          null;
-        if (intent == null) {
-          return reply(COPY_INTENCION_RETRY, paso, campos);
-        }
-        campos.intencionCotizar = intent;
-        if (!intent) {
-          return reply(
-            "Entendido. Si más adelante quieres cotizar, aquí estaré. ¿Tienes otra pregunta?",
-            "faq_libre",
-            campos,
-            true,
-          );
-        }
-        return reply(
-          "¡Listo! Ya tengo lo esencial para calificarte. Puedes preguntarme por paquetes, precios o políticas del venue.",
+          COPY_FAQ_LISTO,
           "faq_libre",
           campos,
           true,
+          aforoNuevo ? GUION_ADJUNTO_PAQUETE_BODAS : undefined,
         );
       }
-      case "faq_libre":
-      default:
-        return reply(
-          "¿En qué más te puedo ayudar? Puedo consultar paquetes/precios del catálogo o políticas del venue.",
-          "faq_libre",
-          campos,
-          this.isCompleto(campos),
-        );
+      return reply(
+        COPY_FAQ_LIBRE,
+        "faq_libre",
+        campos,
+        this.isCompleto(campos),
+      );
     }
+
+    if (conv.pasoGuion === "saludo" && filled.length === 0) {
+      if (campos.nombre) {
+        return reply(
+          `¡Hola ${campos.nombre}! Soy el asistente de Tres Cielos. ${preguntaParaPaso(next)}`,
+          next,
+          campos,
+        );
+      }
+      return reply(COPY_SALUDO_NOMBRE, "nombre", campos);
+    }
+
+    if ((aforoNuevo || focused === "sede") && next === "intencion") {
+      return replySedeEIntencion(campos);
+    }
+
+    const textoRespuesta = composeCapturaCopy(campos, filled, next);
+    return reply(
+      textoRespuesta,
+      next,
+      campos,
+      false,
+      aforoNuevo ? GUION_ADJUNTO_PAQUETE_BODAS : undefined,
+    );
   }
 
   private async llmExtract(
@@ -266,9 +205,96 @@ export class ScriptService {
   }
 }
 
-function assignSedeUnica(campos: CamposCapturados): void {
-  campos.sedeNombre = SEDE_NOMBRE;
-  campos.sedeId = SEDE_ID;
+function focusedSlotError(
+  focused: PasoGuion,
+  campos: CamposCapturados,
+  harvest: ReturnType<typeof harvestCamposLexical>,
+): ScriptTurnResult | null {
+  if (focused === "fecha" && !campos.fechaTentativa) {
+    if (harvest.fechaMotivo === "sin_anio") {
+      return reply(COPY_FECHA_SIN_ANIO, "fecha", campos);
+    }
+    if (harvest.fechaMotivo === "pasada") {
+      return reply(COPY_FECHA_PASADA, "fecha", campos);
+    }
+    return reply(COPY_FECHA_NO_INTERPRETADA, "fecha", campos);
+  }
+  if (focused === "aforo" && campos.aforo == null) {
+    if (harvest.aforoMotivo === "unidad_invalida") {
+      const shown = harvest.aforoFragmento ?? "el valor indicado";
+      return reply(
+        `No puedo procesar '${shown}'. Indica un número entero, por ejemplo 120 o 120 personas.`,
+        "aforo",
+        campos,
+      );
+    }
+    if (harvest.aforoMotivo === "fuera_rango") {
+      return reply("El aforo debe ser un entero entre 1 y 5000.", "aforo", campos);
+    }
+    return reply(
+      "Necesito el aforo como número entero (por ejemplo 120 o 120 personas).",
+      "aforo",
+      campos,
+    );
+  }
+  if (focused === "nombre" && !campos.nombre) {
+    return reply(COPY_NOMBRE_RETRY, "nombre", campos);
+  }
+  if (focused === "ocasion" && !campos.tipoEvento) {
+    return reply(PREGUNTA_OCASION, "ocasion", campos);
+  }
+  if (focused === "intencion" && campos.intencionCotizar == null) {
+    return reply(COPY_INTENCION_RETRY, "intencion", campos);
+  }
+  return null;
+}
+
+function composeCapturaCopy(
+  campos: CamposCapturados,
+  filled: HarvestFilledKey[],
+  next: PasoGuion,
+): string {
+  const pregunta = preguntaParaPaso(next);
+  if (filled.includes("nombre") && campos.nombre && next === "ocasion") {
+    return `Gracias, ${campos.nombre}. ${PREGUNTA_OCASION}`;
+  }
+  if (filled.length === 1 && filled[0] === "tipoEvento" && next === "fecha") {
+    return `Perfecto. ${PREGUNTA_FECHA}`;
+  }
+  const eventFilled = filled.filter((k) =>
+    k === "tipoEvento" || k === "fechaTentativa" || k === "aforo",
+  );
+  const resumen = resumenCamposCapturados(campos);
+  if (
+    resumen &&
+    (eventFilled.length >= 2 ||
+      (eventFilled.length >= 1 && (next === "nombre" || next === "intencion")))
+  ) {
+    return `Registré ${resumen}. ${pregunta}`;
+  }
+  if (filled.includes("nombre") && campos.nombre) {
+    return `Gracias, ${campos.nombre}. ${pregunta}`;
+  }
+  return pregunta;
+}
+
+function preguntaParaPaso(paso: PasoGuion): string {
+  switch (paso) {
+    case "nombre":
+    case "saludo":
+      return "¿Me compartes tu nombre, por favor?";
+    case "ocasion":
+      return PREGUNTA_OCASION;
+    case "fecha":
+      return PREGUNTA_FECHA;
+    case "aforo":
+      return COPY_AFORO;
+    case "intencion":
+    case "presupuesto":
+      return PREGUNTA_INTENCION;
+    default:
+      return COPY_FAQ_LIBRE;
+  }
 }
 
 function replySedeEIntencion(campos: CamposCapturados): ScriptTurnResult {
@@ -284,6 +310,7 @@ function reply(
   pasoGuion: PasoGuion,
   camposCapturados: CamposCapturados,
   guionCompleto = false,
+  adjuntoGuion?: GuionAdjuntoId,
 ): ScriptTurnResult {
   return {
     textoRespuesta,
@@ -291,73 +318,6 @@ function reply(
     camposCapturados,
     avanzado: true,
     guionCompleto,
+    adjuntoGuion,
   };
-}
-
-function extractNombre(texto: string): string | null {
-  const looksLikeEvent = Boolean(extractTipoEvento(texto));
-  const hasNameCue = /me llamo|soy|mi nombre es/i.test(texto);
-  if (looksLikeEvent && !hasNameCue) return null;
-
-  let cleaned = texto.trim();
-  for (let i = 0; i < 3; i += 1) {
-    const next = cleaned.replace(
-      /^(hola|ola|hey|buenas?|qu[eé] tal|que tal|k tal)[\s,!.]*/i,
-      "",
-    );
-    if (next === cleaned) break;
-    cleaned = next;
-  }
-  const soy = cleaned.match(/(?:me llamo|soy|mi nombre es)\s+(.+)$/i);
-  if (soy) cleaned = soy[1];
-  cleaned = cleaned.replace(/[.,!?]+$/g, "").trim().replace(/\s+/g, " ");
-  if (cleaned.length < 2 || cleaned.length > 80) return null;
-  if (/^\d+$/.test(cleaned)) return null;
-  if (/^(hola|ola|hey|buenas|si|sí|no|ok)$/i.test(cleaned)) return null;
-  return cleaned;
-}
-
-function extractTipoEvento(texto: string): string | null {
-  const t = stripAccents(texto.toLowerCase());
-  if (/boda|voda|casamiento|wedding/.test(t)) return "boda";
-  if (/\bxv\b|quinceanera|quince anos|15 anos|quince/.test(t)) return "xv";
-  if (/corporativ/.test(t)) return "corporativo";
-  if (/social/.test(t)) return "social";
-  if (/otro/.test(t)) return "otro";
-  return null;
-}
-
-const AFORO_UNIDADES = /^(pax|personas|invitados|gente)$/i;
-
-export type AforoParseMotivo = "sin_numero" | "unidad_invalida" | "fuera_rango";
-
-export type AforoParseResult =
-  | { ok: true; aforo: number }
-  | { ok: false; motivo: AforoParseMotivo; fragmento?: string };
-
-function parseAforo(texto: string): AforoParseResult {
-  const m = texto.match(/(\d{1,4})(?:\s*([a-záéíóúüñ]+))?/i);
-  if (!m) return { ok: false, motivo: "sin_numero" };
-  const n = Number(m[1]);
-  const unidad = m[2];
-  const fragmento = m[0].replace(/\s+/g, " ").trim();
-  if (unidad && !AFORO_UNIDADES.test(unidad)) {
-    return { ok: false, motivo: "unidad_invalida", fragmento };
-  }
-  if (!Number.isInteger(n) || n < 1 || n > 5000) {
-    return { ok: false, motivo: "fuera_rango", fragmento };
-  }
-  return { ok: true, aforo: n };
-}
-
-function extractSiNo(texto: string): boolean | null {
-  const t = stripAccents(texto.toLowerCase()).trim();
-  if (
-    /^(si|sip|ok|va|dale|yes|sale)\b/.test(t) ||
-    /\b(claro|obvio|por supuesto|quiero cotizar|confirmo)\b/.test(t)
-  ) {
-    return true;
-  }
-  if (/^(no|nel|nop)\b|ahora no|luego/.test(t)) return false;
-  return null;
 }

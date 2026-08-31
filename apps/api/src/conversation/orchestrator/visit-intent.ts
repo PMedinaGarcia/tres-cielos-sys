@@ -7,7 +7,7 @@ const VISITA_RE =
   /\b(visitar|visitas?|tour|recorrido|conocer (el )?(jardin|lugar|venue|salon|espacio)|ir a ver|agendar (una )?(cita|visita)|quiero (una )?visita|cita para visitar)\b/;
 
 const HORARIO_EVENTO_RE =
-  /\b(cierre|2:?00|02:?00|11 horas?|horario(s)? del evento|horario(s)? de (la )?locacion)\b/;
+  /\b(cierre|0?2:00|02:00|2\s*a\.?m\.?|11 horas?|horario(s)? del evento|horario(s)? de (la )?locacion)\b/;
 
 export function isIntencionVisita(texto: string): boolean {
   const n = normalizeProspectText(texto);

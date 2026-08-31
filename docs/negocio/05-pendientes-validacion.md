@@ -26,8 +26,9 @@ Ficha 2027: jardín **11 h** el sábado + **10 h** de meseros y mezcladores. Pla
 ## 4. Sede y marca
 
 - Nombre comercial de la sede activa: **Tres Cielos Tequesquitengo**. Identificadores: `sedeId=sede-tequesquitengo`, slug catálogo `tequesquitengo`. SKUs `EVT-J1-*` / `RENTA-J1` se conservan.
-- Dirección, cómo llegar, horarios de visita detallados: no aparecen en las plantillas Anexo B.
-- “Cuernavaca” = prueba de menú, no dirección del jardín.
+- Dirección y cómo llegar (alto nivel): **cerrados**. Lago de Teques Lote 36, 4ª sección, CP 62915, Tequesquitengo, Jojutla, Morelos. Referencia vial: Bajada 6 hasta el fondo. Orilla del lago de Tequesquitengo, a unos 90 minutos de la CDMX.
+- Horarios de visita detallados y GPS / pin de Maps o Waze: no publicados.
+- “Cuernavaca” = prueba de menú, no dirección del jardín. La oficina de informes en CDMX no es la locación.
 
 ## 5. Hospedaje
 
@@ -47,7 +48,7 @@ Sillas/vajilla sujetas a stock. Negociación solo por escrito.
 ## 8. Qué falta
 
 1. Tarifa oficial de `RENTA-J1` (PDF renta 2027).
-2. Ficha K02 (dirección, visitas, restricciones).
+2. Ficha K02: GPS, horarios de visita detallados y restricciones (pirotecnia, dress code).
 3. Transcripción de *Hospedaje Novios 2027*.
 4. Tabla de descuento exacto de temporada baja (hoy solo piso).
 5. Regla de aforos intermedios si Tres Cielos no quiere siempre handoff.

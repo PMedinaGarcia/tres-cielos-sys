@@ -59,6 +59,40 @@ describe("parseFechaTentativa", () => {
     expect(
       parseFechaTentativa("22 de diciembre de 2026", { now: NOW })?.fecha,
     ).toBe("2026-12-22");
+    expect(
+      parseFechaTentativa("el 22 de diciembre del 2027", { now: NOW }),
+    ).toEqual({
+      tipo: "dia",
+      fecha: "2027-12-22",
+      flexible: false,
+    });
+  });
+
+  it("acepta día + mes sin preposición de", () => {
+    expect(
+      parseFechaTentativa("22 Diciembre del 2026", { now: NOW }),
+    ).toEqual({
+      tipo: "dia",
+      fecha: "2026-12-22",
+      flexible: false,
+    });
+    expect(
+      parseFechaTentativa("para el 22 Diciembre del 2026", { now: NOW }),
+    ).toEqual({
+      tipo: "dia",
+      fecha: "2026-12-22",
+      flexible: false,
+    });
+    expect(
+      parseFechaTentativa("22 diciembre 2027", { now: NOW }),
+    ).toEqual({
+      tipo: "dia",
+      fecha: "2027-12-22",
+      flexible: false,
+    });
+    expect(
+      explainFechaTentativa("22 diciembre", { now: NOW }),
+    ).toEqual({ ok: false, motivo: "sin_anio" });
   });
 
   it("parsea marzo 2027 y noviembre del 2026", () => {

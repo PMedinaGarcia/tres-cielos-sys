@@ -55,11 +55,10 @@ ediciones:
         path: ediciones/2026-07/lineas/renta.md
         tipo: narrativa_paquete
         estado: publicado
-      # K02 evidencia (no sustituye fixture de test)
-      - id: K02-EVIDENCIA-2026-07
-        path: ediciones/2026-07/sede/K02-evidencia-locacion.md
+      - id: K02-FICHA-TEQUESQUITENGO
+        path: ediciones/2026-07/sede/K02-ficha-tequesquitengo.md
         tipo: ficha_sede
-        estado: borrador
+        estado: publicado
       # K12
       - id: K12-HOSPEDAJE-VIE-SAB
         path: ediciones/2026-07/cortesias/hospedaje-viernes-sabado.md

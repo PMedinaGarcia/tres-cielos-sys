@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ACCESS_COOKIE, REFRESH_COOKIE } from "./lib/auth-cookies";
 
-const PUBLIC_PATHS = new Set(["/login"]);
+const PUBLIC_PATHS = new Set(["/login", "/health"]);
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -30,6 +30,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|icon.png|logos/|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon.png|logos/|health|backend(?:/|$)|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)",
   ],
 };

@@ -27,6 +27,14 @@ export class CrmBriefStubService {
       paqueteTentativoId?: string | null;
       precioSnapshot?: Record<string, unknown> | null;
       registroConsultaCatalogoId?: string | null;
+      consultaCatalogo?: {
+        id: string;
+        tool: string;
+        input: Record<string, unknown>;
+        filasSku: string[];
+        ok: boolean;
+        creadoEn: string;
+      } | null;
     },
   ): Promise<{
     calificado: boolean;
@@ -67,6 +75,9 @@ export class CrmBriefStubService {
         : {}),
       ...(extras?.precioSnapshot
         ? { precioCatalogoAlMomento: extras.precioSnapshot }
+        : {}),
+      ...(extras?.consultaCatalogo
+        ? { consultaCatalogoAlMomento: extras.consultaCatalogo }
         : {}),
       fuentes: {
         registroConsultaCatalogoIds: extras?.registroConsultaCatalogoId
