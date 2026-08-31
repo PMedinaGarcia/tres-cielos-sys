@@ -114,10 +114,10 @@ export function decideRoute(input: {
   }
 
   // D-BOT-1: captura de guion gana a precio/paquete hasta nombre + ocasión + fecha + aforo.
-  // Excepción: pregunta de ubicación (no visita) sí va a RAG.
+  // Excepción: pregunta de ubicación (no visita) es hecho cerrado, no RAG.
   if (input.capturaPendiente) {
     if (isLocationQuery(input.texto) && !isIntencionVisita(input.texto)) {
-      return { kind: "rag" };
+      return { kind: "faq_comercial" };
     }
     return { kind: "guion" };
   }

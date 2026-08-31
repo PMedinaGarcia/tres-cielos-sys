@@ -134,7 +134,7 @@ describe("routing.policies (D-BOT-1)", () => {
     ).toBe("guion");
   });
 
-  it("captura pendiente + ubicación → rag (no guion)", () => {
+  it("captura pendiente + ubicación → faq_comercial (no rag ni guion)", () => {
     expect(
       decideRoute({
         estadoBot: "activo",
@@ -145,7 +145,7 @@ describe("routing.policies (D-BOT-1)", () => {
         adjuntoInvalido: false,
         intent: "pregunta_documental",
       }).kind,
-    ).toBe("rag");
+    ).toBe("faq_comercial");
     expect(
       decideRoute({
         estadoBot: "activo",
@@ -156,7 +156,7 @@ describe("routing.policies (D-BOT-1)", () => {
         adjuntoInvalido: false,
         intent: "guion_captura",
       }).kind,
-    ).toBe("rag");
+    ).toBe("faq_comercial");
   });
 
   it("captura pendiente + visita sigue en guion", () => {
@@ -210,7 +210,32 @@ describe("routing.policies (D-BOT-1)", () => {
     );
   });
 
-  it("documental → rag", () => {
+  it("ubicación en faq_libre → faq_comercial, no rag", () => {
+    expect(
+      decideRoute({
+        estadoBot: "activo",
+        hardQuota: false,
+        texto: "cuál es la ubicación del venue",
+        pasoGuion: "faq_libre",
+        capturaPendiente: false,
+        adjuntoInvalido: false,
+        intent: "pregunta_documental",
+      }).kind,
+    ).toBe("faq_comercial");
+    expect(
+      decideRoute({
+        estadoBot: "activo",
+        hardQuota: false,
+        texto: "dónde queda",
+        pasoGuion: "faq_libre",
+        capturaPendiente: false,
+        adjuntoInvalido: false,
+        intent: "pregunta_documental",
+      }).kind,
+    ).toBe("faq_comercial");
+  });
+
+  it("documental de venue (estacionamiento) → rag", () => {
     expect(
       decideRoute({
         estadoBot: "activo",
@@ -356,12 +381,28 @@ describe("routing.policies (D-BOT-1)", () => {
     ).toBe("catalogo");
   });
 
-  it("documental gana a recotizarPorSlots", () => {
+  it("ubicación gana a recotizarPorSlots", () => {
     expect(
       decideRoute({
         estadoBot: "activo",
         hardQuota: false,
         texto: "cómo llego el 22 de enero de 2027",
+        pasoGuion: "faq_libre",
+        capturaPendiente: false,
+        adjuntoInvalido: false,
+        intent: "pregunta_documental",
+        perfilListo: true,
+        recotizarPorSlots: true,
+      }).kind,
+    ).toBe("faq_comercial");
+  });
+
+  it("documental de venue gana a recotizarPorSlots", () => {
+    expect(
+      decideRoute({
+        estadoBot: "activo",
+        hardQuota: false,
+        texto: "política de estacionamiento el 22 de enero de 2027",
         pasoGuion: "faq_libre",
         capturaPendiente: false,
         adjuntoInvalido: false,

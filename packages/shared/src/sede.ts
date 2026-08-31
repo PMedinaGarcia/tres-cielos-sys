@@ -5,6 +5,16 @@ export const SEDE_NOMBRE = "Tres Cielos Tequesquitengo";
 /** Slug de `Paquete.sede` en catálogo (no el display name). */
 export const SEDE_SLUG = "tequesquitengo";
 
+/** Dirección postal autorizada (K02). Sin pin GPS ni Maps/Waze. */
+export const SEDE_DIRECCION =
+  "Lago de Teques Lote 36, 4ª sección, CP 62915, Tequesquitengo, Jojutla, Morelos";
+export const SEDE_REFERENCIA_VIAL = "Bajada 6 hasta el fondo";
+
+/** Una línea para el guion de cotización y copy de catálogo. */
+export function copySedeUbicacionCorta(): string {
+  return `${SEDE_NOMBRE}, en ${SEDE_DIRECCION} (${SEDE_REFERENCIA_VIAL})`;
+}
+
 /** Normaliza nombre humano o slug a la clave de `Paquete.sede`. */
 export function sedeToCatalogSlug(
   value: string | null | undefined,

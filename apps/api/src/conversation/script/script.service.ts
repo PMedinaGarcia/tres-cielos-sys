@@ -2,8 +2,8 @@ import { Inject, Injectable, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
   GUION_ADJUNTO_PAQUETE_BODAS,
-  SEDE_NOMBRE,
   anioTarifaPublicada,
+  copySedeUbicacionCorta,
   ejemploFechaTarifaPublicada,
   type GuionAdjuntoId,
 } from "@tres-cielos/shared";
@@ -50,7 +50,7 @@ const PREGUNTA_OCASION = "¿Qué tipo de evento celebran?";
 const PREGUNTA_INTENCION = "¿Desean cotizar o reservar con nosotros?";
 
 const COPY_SEDE_E_INTENCION =
-  `Nuestra sede es ${SEDE_NOMBRE}. Te compartimos la ficha de paquetes ${ANIO_TARIFA}. ${PREGUNTA_INTENCION}`;
+  `Nuestra sede es ${copySedeUbicacionCorta()}. Te compartimos la ficha de paquetes ${ANIO_TARIFA}. ${PREGUNTA_INTENCION}`;
 
 const COPY_INTENCION_RETRY = "¿Confirman que desean cotizar?";
 

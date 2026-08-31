@@ -93,6 +93,8 @@ describe("ScriptService (B2)", () => {
       expect(r.camposCapturados.sedeId).toBe("sede-tequesquitengo");
       expect(r.adjuntoGuion).toBe("paquete-bodas-2027");
       expect(r.textoRespuesta).toMatch(/Tres Cielos Tequesquitengo/);
+      expect(r.textoRespuesta).toMatch(/Lote 36/);
+      expect(r.textoRespuesta).toMatch(/Bajada 6/);
       expect(r.textoRespuesta).toMatch(/cotizar/i);
     }
   });
@@ -148,6 +150,7 @@ describe("ScriptService (B2)", () => {
     expect(r.camposCapturados.sedeId).toBe("sede-tequesquitengo");
     expect(r.adjuntoGuion).toBe("paquete-bodas-2027");
     expect(r.textoRespuesta).toMatch(/Tequesquitengo/);
+    expect(r.textoRespuesta).toMatch(/Lote 36/);
     expect(r.textoRespuesta).toMatch(/cotizar/i);
     expect(r.textoRespuesta).not.toMatch(/presupuesto/i);
     expect(r.textoRespuesta).not.toMatch(/sí \/ no/i);

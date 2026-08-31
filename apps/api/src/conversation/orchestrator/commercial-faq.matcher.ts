@@ -7,6 +7,7 @@ export type CommercialFaqTopic =
   | "horario"
   | "pago"
   | "exclusiones"
+  | "ubicacion"
   | "fecha_minima";
 
 const VENUE_RE =
@@ -35,7 +36,8 @@ export function matchCommercialFaqTopic(
 
   if (FECHA_MINIMA_RE.test(n)) return "fecha_minima";
   if (isPackageDetailQuery(texto)) return null;
-  if (isLocationQuery(texto) || VENUE_RE.test(n)) return null;
+  if (isLocationQuery(texto)) return "ubicacion";
+  if (VENUE_RE.test(n)) return null;
 
   if (EXCLUSIONES_RE.test(n)) return "exclusiones";
   if (PAGO_RE.test(n)) return "pago";

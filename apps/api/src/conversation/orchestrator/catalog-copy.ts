@@ -4,6 +4,7 @@ import {
   AFORO_TRAMOS_BODA,
   SEDE_NOMBRE,
   anioTarifaPublicada,
+  copySedeUbicacionCorta,
   ejemploFechaTarifaPublicada,
 } from "@tres-cielos/shared";
 import type {
@@ -197,7 +198,7 @@ export function redactBusquedaVacia(diag: DiagnosticoBusquedaVacia): {
         : "";
     motivo = `Con ${diag.aforoLead} personas no hay un paquete publicado que cubra ese aforo.${rangoCat}`;
   } else if (diag.motivo === "sede") {
-    motivo = `Nuestra sede es ${SEDE_NOMBRE}. Si buscabas otra locación, un asesor te orienta.`;
+    motivo = `Nuestra sede es ${copySedeUbicacionCorta()}. Si buscabas otra locación, un asesor te orienta.`;
   } else if (diag.motivo === "tipo") {
     motivo = `Aún no hay paquetes publicados para ${labelTipo(diag.tipoEvento)} en ${SEDE_NOMBRE}.`;
   } else {

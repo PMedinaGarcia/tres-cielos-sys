@@ -9,6 +9,9 @@ describe("isLocationQuery", () => {
     expect(isLocationQuery("pásame el waze")).toBe(true);
     expect(isLocationQuery("tienen pin de maps")).toBe(true);
     expect(isLocationQuery("dónde están en Tequesquitengo")).toBe(true);
+    expect(isLocationQuery("dónde es el jardín")).toBe(true);
+    expect(isLocationQuery("en qué parte queda")).toBe(true);
+    expect(isLocationQuery("dónde se encuentran")).toBe(true);
   });
 
   it("no trata visita ni paquetes como ubicación", () => {

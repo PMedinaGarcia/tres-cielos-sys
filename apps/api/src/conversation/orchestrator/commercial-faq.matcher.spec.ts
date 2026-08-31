@@ -31,13 +31,17 @@ describe("commercial-faq.matcher", () => {
     ).toBe("fecha_minima");
   });
 
-  it("no trata venue (ubicación/estacionamiento) como FAQ comercial", () => {
+  it("ubicación es FAQ comercial; estacionamiento/dress code siguen a RAG", () => {
     expect(matchCommercialFaqTopic("política de estacionamiento")).toBeNull();
-    expect(matchCommercialFaqTopic("cuál es la ubicación del venue")).toBeNull();
-    expect(matchCommercialFaqTopic("dónde queda")).toBeNull();
-    expect(matchCommercialFaqTopic("cuál es la dirección")).toBeNull();
-    expect(matchCommercialFaqTopic("cómo llego")).toBeNull();
-    expect(matchCommercialFaqTopic("waze")).toBeNull();
+    expect(matchCommercialFaqTopic("cuál es la ubicación del venue")).toBe(
+      "ubicacion",
+    );
+    expect(matchCommercialFaqTopic("dónde queda")).toBe("ubicacion");
+    expect(matchCommercialFaqTopic("cuál es la dirección")).toBe("ubicacion");
+    expect(matchCommercialFaqTopic("cómo llego")).toBe("ubicacion");
+    expect(matchCommercialFaqTopic("waze")).toBe("ubicacion");
+    expect(matchCommercialFaqTopic("dónde es el jardín")).toBe("ubicacion");
+    expect(matchCommercialFaqTopic("dress code")).toBeNull();
   });
 
   it("detecta detalle de paquete con texto mal formado", () => {

@@ -163,7 +163,7 @@ describe("OrchestratorService.handleTurn (B1/B6)", () => {
       canal: "whatsapp",
       externalThreadId: "t-rag",
       externalMessageId: "m-rag",
-      texto: "¿Cuál es la ubicación del venue?",
+      texto: "política de estacionamiento",
       recibidoEn: new Date().toISOString(),
     });
 
@@ -223,7 +223,7 @@ describe("OrchestratorService.handleTurn (B1/B6)", () => {
       canal: "whatsapp",
       externalThreadId: "t-rag-ok",
       externalMessageId: "m-rag-ok",
-      texto: "¿Cuál es la ubicación del venue?",
+      texto: "política de estacionamiento",
       recibidoEn: new Date().toISOString(),
     });
 
@@ -261,6 +261,7 @@ describe("OrchestratorService.handleTurn (B1/B6)", () => {
     expect(res.ruta).toBe("guion");
     expect(res.pasoGuion).toBe("intencion");
     expect(res.textoRespuesta).toMatch(/Tequesquitengo/);
+    expect(res.textoRespuesta).toMatch(/Lote 36/);
     expect(res.waContent?.templateId).toBe("guion.intencion");
     expect(res.waContent?.document?.mime).toBe("application/pdf");
     expect(res.waContent?.document?.url).toMatch(/paquete-bodas-2027\.pdf$/);
@@ -937,7 +938,7 @@ describe("OrchestratorService.handleTurn (B1/B6)", () => {
     expect(after?.camposCapturados.aforo).toBe(200);
   });
 
-  it("pregunta de venue con fecha no recotiza (sigue RAG)", async () => {
+  it("pregunta de ubicación en cotización entrega dirección, no recotiza", async () => {
     const { orch, store, catalogFake } = buildOrchestrator();
     const conv = await store.resolveOrCreate({
       canal: "whatsapp",
@@ -964,11 +965,12 @@ describe("OrchestratorService.handleTurn (B1/B6)", () => {
       recibidoEn: new Date().toISOString(),
     });
 
-    expect(res.ruta).not.toBe("catalogo");
+    expect(res.textoRespuesta).toMatch(/Lote 36/);
+    expect(res.textoRespuesta).toMatch(/Bajada 6/);
     const routing = res.reasoningTrace?.steps.find((s) => s.level === "routing");
     expect(
       routing && routing.level === "routing" && routing.decision.kind,
-    ).toBe("rag");
+    ).toBe("faq_comercial");
     expect(catalogFake.buscarPaquetes).not.toHaveBeenCalled();
   });
 });

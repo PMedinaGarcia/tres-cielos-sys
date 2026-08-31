@@ -3,6 +3,9 @@
  * Editable: alargar o precisar aquí sin tocar el orquestador.
  */
 import {
+  SEDE_DIRECCION,
+  SEDE_NOMBRE,
+  SEDE_REFERENCIA_VIAL,
   SKU_PAQUETE_ESTANDAR,
   SKU_PAQUETE_PREMIUM,
   SKU_SOLO_RENTA,
@@ -10,7 +13,14 @@ import {
 import type { CommercialFaqTopic } from "./commercial-faq.matcher";
 
 export const COPY_VISITA =
-  "Puedo registrar tu interés en visitar Tres Cielos Tequesquitengo. Los horarios de visita al venue los agenda un asesor; no los confirmo por este canal. Un ejecutivo te contacta para coordinar la cita.";
+  `Puedo registrar tu interés en visitar ${SEDE_NOMBRE}. Dirección: ${SEDE_DIRECCION} (${SEDE_REFERENCIA_VIAL}). Los horarios de visita al venue los agenda un asesor; no los confirmo por este canal. Un ejecutivo te contacta para coordinar la cita.`;
+
+export const COPY_UBICACION = `La sede operativa es ${SEDE_NOMBRE}.
+Dirección: ${SEDE_DIRECCION}.
+Referencia vial: ${SEDE_REFERENCIA_VIAL}.
+El jardín está a orilla del lago de Tequesquitengo, a unos 90 minutos de la Ciudad de México.
+La prueba de menú se realiza en Cuernavaca; eso no es la dirección del jardín. La oficina de informes en CDMX no es la locación.
+No publicamos pin de Maps, Waze ni coordenadas GPS en este canal. Las visitas las agenda un asesor.`;
 
 export const FAQ_CTA =
   "También puedes preguntarme por paquetes, precios o el detalle de cada uno.";
@@ -91,7 +101,9 @@ export function composeCommercialFaq(topic: Exclude<CommercialFaqTopic, "fecha_m
         ? COPY_PAGO
         : topic === "exclusiones"
           ? COPY_EXCLUSIONES
-          : COPY_OVERVIEW;
+          : topic === "ubicacion"
+            ? COPY_UBICACION
+            : COPY_OVERVIEW;
   return `${body}\n\n${FAQ_CTA}`;
 }
 
