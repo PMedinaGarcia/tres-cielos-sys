@@ -12,6 +12,7 @@ import { AssignmentService } from "../assignment/assignment.service";
 import type { InboundMessage, TurnResult } from "./types/inbound-message";
 import { attachWaContent } from "./wa-content.composer";
 import { resolveInteractiveInbound } from "./wa-templates.catalog";
+import { SAFE_COPY_BOT_SILENCIADO } from "../conversation/handoff/safe-copy";
 
 /**
  * Pipeline post-ACK: idempotencia → cupo → estado_bot → adjuntos async → turn → outbound.
@@ -50,7 +51,7 @@ export class InboundPipelineService {
       return { duplicate: true };
     }
 
-    const conv = this.conversations.getOrCreate(
+    const conv = await this.conversations.overlayFromPrisma(
       message.canal,
       message.externalThreadId,
     );
@@ -84,19 +85,21 @@ export class InboundPipelineService {
 
     // D-BOT-6: humano → silencio (sin LLM / sin reply bot)
     if (conv.estadoBot === "humano") {
+      const safe = {
+        conversacionId: conv.id,
+        textoRespuesta: SAFE_COPY_BOT_SILENCIADO,
+        ruta: "silencio" as const,
+        estadoBot: "humano" as const,
+        silencio: true,
+      };
+      await this.sendOutbound(message, safe);
       await this.audit.record({
         tipo: "bot_decision",
         actor: "bot",
         conversacionId: conv.id,
         payload: { ruta: "silencio", estadoBot: "humano" },
       });
-      return {
-        conversacionId: conv.id,
-        textoRespuesta: "",
-        ruta: "silencio",
-        estadoBot: "humano",
-        silencio: true,
-      };
+      return safe;
     }
 
     // Adjuntos: storage + job; no bloquea ACK (ya hecho); no publica K
@@ -165,6 +168,7 @@ export class InboundPipelineService {
       const assigned = this.assignment.assign({
         sedeId: conv.sedeId ?? "sede-default",
         oportunidadId: cal.oportunidadId,
+        cola: conv.cola === "atencion_general" ? "atencion_general" : "comercial",
       });
       conv.asesorId = assigned.asesorId;
       await this.notifications.notifyCalificado({
@@ -202,6 +206,7 @@ export class InboundPipelineService {
       sedeId: conv?.sedeId ?? "sede-default",
       oportunidadId: conv?.oportunidadId,
       motivoEscalacion: motivo,
+      cola: conv?.cola === "atencion_general" ? "atencion_general" : "comercial",
     });
     if (conv) conv.asesorId = assigned.asesorId;
 

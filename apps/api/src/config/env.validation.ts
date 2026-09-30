@@ -29,6 +29,11 @@ export const envSchema = z
     /** `fake` = fakes CI/smoke; `live` = adapters OpenAI/Cohere/S3 reales. */
     AI_PROVIDERS_MODE: z.enum(["fake", "live"]).default("fake"),
 
+    /** Guion v1 secuencial, v2 (máx. 3 mensajes + piso) o v3 (conversión visita). */
+    CONVERSATION_FLOW: z.enum(["v1", "v2", "v3"]).default("v2"),
+    /** Con CONVERSATION_FLOW=v2, % de hilos nuevos que entran a v3 (hash de sede/hilo). */
+    CONVERSATION_FLOW_CANARY_PCT: z.coerce.number().int().min(0).max(100).default(0),
+
     OPENAI_API_KEY: z.string().optional(),
     OPENAI_BASE_URL: z.string().url().optional().or(z.literal("")),
     OPENAI_ORG_ID: z.string().optional(),

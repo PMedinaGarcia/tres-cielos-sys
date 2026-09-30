@@ -79,7 +79,7 @@ describe("OrchestratorService.handleTurn (B1/B6)", () => {
     expect(res.textoRespuesta).toMatch(/nombre/i);
     expect(res.estadoBot).toBe("activo");
     expect(res.waContent?.templateId).toBe("guion.nombre");
-    expect(res.waContent?.kind).toBe("quick-reply");
+    expect(res.waContent?.kind).toBe("text");
     expect(res.eventoOperativoId).toBeTruthy();
     expect(res.reasoningTraceId).toBeTruthy();
     expect(res.reasoningTrace?.steps.some((s) => s.level === "intent")).toBe(
@@ -148,7 +148,7 @@ describe("OrchestratorService.handleTurn (B1/B6)", () => {
     });
 
     expect(res.ruta).toBe("silencio");
-    expect(res.textoRespuesta).toBe("");
+    expect(res.textoRespuesta).toMatch(/asesor/);
   });
 
   it("RAG stub no implementado → safe/handoff", async () => {

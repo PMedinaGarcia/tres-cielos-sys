@@ -31,7 +31,43 @@ export type PasoGuion =
   | "sede"
   | "presupuesto"
   | "intencion"
+  | "nombre_fecha"
+  | "aforo_inversion"
+  | "aclaracion_piso"
+  | "accion"
   | "faq_libre";
+
+export type EncajeEconomico =
+  | "confirmado"
+  | "probable"
+  | "no_confirmado"
+  | "no";
+
+export type IntencionNivel = "alta" | "media" | "baja";
+
+export type RangoInversion =
+  | "r250_349"
+  | "r350_499"
+  | "r500_mas"
+  | "por_definir"
+  | "menor_250";
+
+export type FechaEstado = "definida" | "ventana" | "tentativa" | "sin_definir";
+
+export type FechaTipo = "sabado" | "viernes" | "otro";
+
+export type AforoBanda = 100 | 150 | 200 | 250 | 300;
+
+export type ColaAsesor = "comercial" | "atencion_general";
+
+export type GuionVersion = "v1" | "v2" | "v3";
+
+export type RutaComercial =
+  | "handoff"
+  | "atencion_general"
+  | "seguimiento"
+  | "nutricion"
+  | "cierre";
 
 export type IntentClasificado =
   | "guion_captura"
@@ -68,6 +104,22 @@ export interface CamposCapturados {
   presupuestoOrientativo?: PresupuestoOrientativo | null;
   intencionCotizar?: boolean | null;
   intencionVisita?: boolean | null;
+  encajeEconomico?: EncajeEconomico | null;
+  intencionNivel?: IntencionNivel | null;
+  rangoInversion?: RangoInversion | null;
+  aceptaPiso250k?: boolean | null;
+  fechaEstado?: FechaEstado | null;
+  rutaComercial?: RutaComercial | null;
+  consentimientoSeguimiento?: boolean | null;
+  numeroAclaracionesPiso?: number | null;
+  numeroMensajesCaptura?: number | null;
+  fechaTipo?: FechaTipo | null;
+  ventanaVisita?: string | null;
+  aforoBanda?: AforoBanda | null;
+  origenZona?: string | null;
+  email?: string | null;
+  pdfEnviado?: boolean | null;
+  adjuntoReintentos?: number | null;
 }
 
 export interface AdjuntoInbound {
@@ -129,6 +181,10 @@ export interface ConversacionState {
   mensajes: MensajeRecord[];
   creadoEn: string;
   actualizadoEn: string;
+  guionVersion?: GuionVersion | null;
+  asesorLockId?: string | null;
+  slaVenceEn?: string | null;
+  cola?: ColaAsesor | null;
 }
 
 export interface MensajeRecord {

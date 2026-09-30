@@ -11,7 +11,13 @@ import { LLM_PORT, OBJECT_STORAGE_PORT } from "../../ports/tokens";
 import type { LlmPort } from "../../ports/llm.port";
 import { ScriptService } from "../script/script.service";
 import { HandoffService } from "../handoff/handoff.service";
-import { SAFE_COPY_K09 } from "../handoff/safe-copy";
+import {
+  SAFE_COPY_BOT_SILENCIADO,
+  SAFE_COPY_K09,
+  SAFE_COPY_HANDOFF_HUMANO,
+} from "../handoff/safe-copy";
+import { CatalogToolsService } from "../../tools-catalog/catalog-tools.service";
+import { NurtureWorkerService } from "../nurture/nurture.worker";
 import { ConversationStoreService } from "../stubs/conversation-store.service";
 import { AuditEventoService } from "../stubs/audit-evento.service";
 import { CrmBriefStubService } from "../stubs/crm-brief.stub";
@@ -40,13 +46,53 @@ import {
   isRecotizarPorSlots,
   nextPasoGuion,
 } from "../script/harvest-campos";
+import {
+  applyDefaultBoda,
+  decideRutaComercial,
+  decideRutaComercialV3,
+  deriveEncaje,
+  deriveEncajeV3,
+  effectiveConversationFlow,
+  isV2Plus,
+  nextPasoGuionV2,
+  nextPasoGuionV3,
+  resolveConversationFlow,
+  slaMinutos,
+  syncCamposV2,
+  syncCamposV3,
+} from "../conversation-flow";
+import {
+  COPY_NUTRICION_T24_INMEDIATO,
+  COPY_PISO_VISITA,
+  COPY_V2_MENOR_PISO,
+  COPY_V2_NUTRICION_EVASION,
+  COPY_V2_NUTRICION_HOLD,
+  COPY_V2_SEGUIMIENTO,
+  copyMenorPisoConAlternativa,
+  copyMenorPisoConPisoPublicado,
+  COPY_V3_ADJUNTO_RETRY,
+  COPY_V3_CIERRE_VISITA,
+  COPY_V3_HUMANO_TEMPRANO,
+  COPY_V3_RAG_SAFE_FAQ,
+  COPY_V3_RAG_SAFE_VISITA,
+  COPY_V3_VALOR_INLINE,
+  copyV2Handoff,
+} from "../script/script-v2.copy";
 import { IntentClassifierService } from "./intent-classifier.service";
 import {
   decideRoute,
   isAdjuntoSoportado,
 } from "./routing.policies";
-import { composeCommercialFaq, COPY_VISITA } from "./commercial-faq.copy";
-import { matchCommercialFaqTopic } from "./commercial-faq.matcher";
+import {
+  composeCommercialFaq,
+  COPY_VISITA,
+  fichaPaquetePorSku,
+} from "./commercial-faq.copy";
+import {
+  isPackageDetailQuery,
+  isPedidoFichaMasEconomico,
+  matchCommercialFaqTopic,
+} from "./commercial-faq.matcher";
 import { isIntencionVisita } from "./visit-intent";
 import {
   applyNoRecuperablePrecioGate,
@@ -72,7 +118,9 @@ import {
   canonicalizeSku,
   GUION_ADJUNTO_PAQUETE_BODAS,
   GUION_PDF_FILENAME,
+  resolvePaqueteSkuAlias,
   SEDE_SLUG,
+  SKU_PAQUETE_ESTANDAR,
   sedeToCatalogSlug,
 } from "@tres-cielos/shared";
 import { ConfigService } from "@nestjs/config";
@@ -105,6 +153,8 @@ export class OrchestratorService {
     @Optional() private readonly config?: ConfigService,
     @Optional() @Inject(OBJECT_STORAGE_PORT)
     private readonly storage?: ObjectStoragePort,
+    @Optional() private readonly catalogTools?: CatalogToolsService,
+    @Optional() private readonly nurture?: NurtureWorkerService,
   ) {}
 
   async handleTurn(inbound: InboundMessage): Promise<TurnResponse> {
@@ -211,14 +261,28 @@ export class OrchestratorService {
       value: intent,
     });
 
+    if (!conv.guionVersion) {
+      const assigned = resolveConversationFlow(this.config, {
+        threadId: inbound.externalThreadId,
+        sedeId: conv.camposCapturados.sedeId,
+      });
+      conv.guionVersion = assigned;
+      await this.store.update(conv.id, { guionVersion: assigned });
+    }
+    const flow = this.flowOf(conv);
     const textoIn = inbound.texto ?? "";
     const pasoFrom = conv.pasoGuion;
     const harvested = harvestCamposLexical(textoIn, conv.camposCapturados, {
       focusedPaso: conv.pasoGuion,
     });
-    const camposRuta =
+    let camposRuta =
       harvested.filled.length > 0 ? harvested.campos : conv.camposCapturados;
-
+    if (flow === "v3") {
+      camposRuta = syncCamposV3(applyDefaultBoda(camposRuta));
+      this.nurture?.cancel(conv.id);
+    } else if (flow === "v2") {
+      camposRuta = syncCamposV2(applyDefaultBoda(camposRuta));
+    }
     const capturaPendiente = this.script.isCapturaPendiente({
       ...conv,
       camposCapturados: camposRuta,
@@ -241,12 +305,10 @@ export class OrchestratorService {
       pedidoCotizacionFuente: pedidoEval.fuente,
     });
     if (isIntencionVisita(textoIn)) {
-      conv.camposCapturados = {
-        ...conv.camposCapturados,
-        intencionVisita: true,
-      };
+      camposRuta = { ...camposRuta, intencionVisita: true };
+      conv.camposCapturados = camposRuta;
       await this.store.update(conv.id, {
-        camposCapturados: conv.camposCapturados,
+        camposCapturados: camposRuta,
       });
     }
     const route = decideRoute({
@@ -261,13 +323,26 @@ export class OrchestratorService {
       pedidoCotizacion: pedidoEval.pedido === true,
       perfilListo,
       recotizarPorSlots,
+      flow,
+      campos: camposRuta,
+      adjuntoReintentos: camposRuta.adjuntoReintentos ?? 0,
     });
-    if (harvested.filled.length > 0 && route.kind !== "guion") {
-      const nextPaso = nextPasoGuion(harvested.campos);
-      conv.camposCapturados = harvested.campos;
+    if (
+      (harvested.filled.length > 0 || isV2Plus(flow)) &&
+      route.kind !== "guion" &&
+      route.kind !== "answer_inline" &&
+      route.kind !== "degrade_script"
+    ) {
+      const nextPaso =
+        flow === "v3"
+          ? nextPasoGuionV3(camposRuta)
+          : flow === "v2"
+            ? nextPasoGuionV2(camposRuta)
+            : nextPasoGuion(harvested.campos);
+      conv.camposCapturados = camposRuta;
       conv.pasoGuion = nextPaso;
       await this.store.update(conv.id, {
-        camposCapturados: harvested.campos,
+        camposCapturados: camposRuta,
         pasoGuion: nextPaso,
       });
       this.reasoning.append({
@@ -316,7 +391,8 @@ export class OrchestratorService {
       return await this.attachTrace({
         conversacionId: conv.id,
         mensajeSalienteId: null,
-        textoRespuesta: "",
+        textoRespuesta:
+          conv.estadoBot === "humano" ? SAFE_COPY_BOT_SILENCIADO : "",
         ruta: "silencio",
         estadoBot: conv.estadoBot,
         eventoOperativoId: ev.id,
@@ -327,10 +403,75 @@ export class OrchestratorService {
       });
     }
 
+    if (route.kind === "degrade_script") {
+      return this.runGuion(conv.id, inbound.texto ?? "", msgIn.id);
+    }
+
+    if (route.kind === "adjunto_retry") {
+      const nextCampos = {
+        ...camposRuta,
+        adjuntoReintentos: (camposRuta.adjuntoReintentos ?? 0) + 1,
+      };
+      await this.store.update(conv.id, { camposCapturados: nextCampos });
+      return this.finishReply({
+        conversacionId: conv.id,
+        oportunidadId: conv.oportunidadId,
+        texto: COPY_V3_ADJUNTO_RETRY,
+        ruta: "safe",
+        mensajeEntranteId: msgIn.id,
+        pasoGuion: conv.pasoGuion,
+      });
+    }
+
+    if (route.kind === "answer_inline") {
+      return this.runAnswerInline(conv.id, inbound.texto ?? "", msgIn.id);
+    }
+
+    if (route.kind === "jump_visita") {
+      const visitaCampos = {
+        ...camposRuta,
+        intencionVisita: true,
+        rutaComercial: "handoff" as const,
+      };
+      await this.store.update(conv.id, { camposCapturados: visitaCampos });
+      return this.finishHandoff(
+        conv.id,
+        conv.oportunidadId,
+        "solicitud_usuario",
+        msgIn.id,
+        null,
+        null,
+        { cola: "comercial", rutaComercial: "handoff", visita: true },
+      );
+    }
+
     if (route.kind === "quota_hard" || route.kind === "handoff") {
       const motivo: MotivoHandoff =
         route.kind === "quota_hard" ? "cupo_ia" : route.motivo;
-      return this.finishHandoff(conv.id, conv.oportunidadId, motivo, msgIn.id);
+      const cola = route.kind === "handoff" ? route.cola : undefined;
+      const rutaComercial =
+        route.kind === "handoff" ? route.rutaComercial : undefined;
+      const humanoTemprano =
+        flow === "v3" &&
+        cola === "atencion_general" &&
+        motivo === "solicitud_usuario";
+      return this.finishHandoff(
+        conv.id,
+        conv.oportunidadId,
+        motivo,
+        msgIn.id,
+        null,
+        null,
+        { cola, rutaComercial, humanoTemprano },
+      );
+    }
+
+    if (route.kind === "nutricion") {
+      return this.runNutricion(conv.id, msgIn.id, route.motivo, textoIn);
+    }
+
+    if (route.kind === "seguimiento") {
+      return this.runSeguimiento(conv.id, msgIn.id);
     }
 
     if (route.kind === "guion") {
@@ -353,6 +494,44 @@ export class OrchestratorService {
     return this.finishSafe(conv.id, conv.oportunidadId, msgIn.id, null);
   }
 
+  private async runAnswerInline(
+    conversacionId: string,
+    texto: string,
+    mensajeEntranteId: string,
+  ): Promise<TurnResponse> {
+    const conv = (await this.store.findById(conversacionId))!;
+    const result = await this.script.handleTurn(conv, texto);
+    await this.store.update(conversacionId, {
+      pasoGuion: result.pasoGuion,
+      camposCapturados: result.camposCapturados,
+      ultimaRuta: "catalogo",
+    });
+    const crm = await this.crm.applyAfterTurn({
+      ...conv,
+      camposCapturados: result.camposCapturados,
+      pasoGuion: result.pasoGuion,
+    });
+    await this.store.update(conversacionId, {
+      brief: crm.brief,
+      calificado: crm.calificado,
+      listoParaCotizar: crm.listoParaCotizar,
+    });
+    const pregunta = result.textoRespuesta.trim();
+    const textoOut = pregunta
+      ? `${COPY_V3_VALOR_INLINE}\n\n${pregunta}`
+      : COPY_V3_VALOR_INLINE;
+    return this.finishReply({
+      conversacionId,
+      oportunidadId: conv.oportunidadId,
+      texto: textoOut,
+      ruta: "catalogo",
+      mensajeEntranteId,
+      pasoGuion: result.pasoGuion,
+      calificacionResultado: crm.calificado ? "calificado" : "parcial",
+      listoParaCotizar: crm.listoParaCotizar,
+    });
+  }
+
   private async runGuion(
     conversacionId: string,
     texto: string,
@@ -361,6 +540,51 @@ export class OrchestratorService {
     const conv = (await this.store.findById(conversacionId))!;
     const pasoFrom = conv.pasoGuion;
     const result = await this.script.handleTurn(conv, texto);
+
+    if (!result.textoRespuesta.trim()) {
+      const campos = result.camposCapturados;
+      await this.store.update(conversacionId, {
+        pasoGuion: result.pasoGuion,
+        camposCapturados: campos,
+      });
+      const flow = this.flowOf(conv);
+      const ruta =
+        flow === "v3" ? decideRutaComercialV3(campos) : decideRutaComercial(campos);
+      if (ruta === "seguimiento") {
+        return this.runSeguimiento(conversacionId, mensajeEntranteId);
+      }
+      if (ruta === "nutricion") {
+        return this.runNutricion(
+          conversacionId,
+          mensajeEntranteId,
+          "evasion",
+          texto,
+        );
+      }
+      if (
+        ruta === "handoff" ||
+        (flow === "v3"
+          ? deriveEncajeV3(campos) === "confirmado" ||
+            deriveEncajeV3(campos) === "probable"
+          : deriveEncaje(campos) === "confirmado")
+      ) {
+        return this.finishHandoff(
+          conversacionId,
+          conv.oportunidadId,
+          "solicitud_usuario",
+          mensajeEntranteId,
+          null,
+          null,
+          { cola: "comercial", rutaComercial: "handoff" },
+        );
+      }
+      return this.runNutricion(
+        conversacionId,
+        mensajeEntranteId,
+        "evasion",
+        texto,
+      );
+    }
 
     const camposDelta = Object.keys(result.camposCapturados).filter((k) => {
       const key = k as keyof typeof result.camposCapturados;
@@ -372,6 +596,22 @@ export class OrchestratorService {
       pasoTo: result.pasoGuion,
       camposDelta,
     });
+
+    if (
+      deriveEncaje(result.camposCapturados) === "confirmado" &&
+      deriveEncaje(conv.camposCapturados) !== "confirmado"
+    ) {
+      await this.audit.emit({
+        tipo: "bot_rango_aceptado",
+        conversacionId,
+        oportunidadId: conv.oportunidadId,
+        mensajeId: mensajeEntranteId,
+        payload: {
+          rangoInversion: result.camposCapturados.rangoInversion ?? null,
+          encajeEconomico: result.camposCapturados.encajeEconomico ?? null,
+        },
+      });
+    }
 
     await this.store.update(conversacionId, {
       pasoGuion: result.pasoGuion,
@@ -413,7 +653,7 @@ export class OrchestratorService {
     const topic = visita ? null : matchCommercialFaqTopic(texto);
     const body = visita
       ? COPY_VISITA
-      : topic && topic !== "fecha_minima"
+      : topic
         ? composeCommercialFaq(topic)
         : composeCommercialFaq("overview");
     this.reasoning.append({
@@ -422,7 +662,7 @@ export class OrchestratorService {
         {
           nombre: "faq_comercial",
           ok: true,
-          filasSku: [visita ? "visita" : topic && topic !== "fecha_minima" ? topic : "overview"],
+          filasSku: [visita ? "visita" : topic ?? "overview"],
         },
       ],
     });
@@ -640,7 +880,11 @@ export class OrchestratorService {
     );
     const pasoGuion = isGuionCompleto(campos)
       ? "faq_libre"
-      : nextPasoGuion(campos);
+      : this.flowOf(conv) === "v3"
+        ? nextPasoGuionV3(campos)
+        : this.flowOf(conv) === "v2"
+          ? nextPasoGuionV2(campos)
+          : nextPasoGuion(campos);
 
     await this.store.update(conversacionId, {
       paqueteTentativoId: paqueteId,
@@ -691,6 +935,7 @@ export class OrchestratorService {
 
     this.emitCatalogTools(toolPayloads, "pass");
 
+    const encajeOk = deriveEncaje(campos) === "confirmado";
     return this.finishReply({
       conversacionId,
       oportunidadId: conv.oportunidadId,
@@ -702,6 +947,10 @@ export class OrchestratorService {
       registroConsultaCatalogoId: registroId,
       calificacionResultado: crm.calificado ? "calificado" : "parcial",
       listoParaCotizar: crm.listoParaCotizar,
+      adjuntoGuion:
+        encajeOk && this.flowOf(conv) === "v2"
+          ? GUION_ADJUNTO_PAQUETE_BODAS
+          : undefined,
     });
   }
 
@@ -750,6 +999,23 @@ export class OrchestratorService {
     });
 
     if (!result.ok) {
+      if (this.flowOf(conv) === "v3") {
+        const encaje = deriveEncajeV3(conv.camposCapturados);
+        const texto =
+          encaje === "confirmado" || encaje === "probable"
+            ? COPY_V3_RAG_SAFE_VISITA
+            : COPY_V3_RAG_SAFE_FAQ;
+        await this.store.update(conversacionId, { ultimaRuta: "safe" });
+        return this.finishReply({
+          conversacionId,
+          oportunidadId: conv.oportunidadId,
+          texto,
+          ruta: "safe",
+          mensajeEntranteId,
+          pasoGuion: conv.pasoGuion,
+          registroRecuperacionId: result.registroRecuperacionId ?? null,
+        });
+      }
       const motivo: MotivoHandoff =
         result.motivoFallo === "rerank_bajo"
           ? "rerank_bajo"
@@ -803,6 +1069,171 @@ export class OrchestratorService {
     });
   }
 
+  private async runNutricion(
+    conversacionId: string,
+    mensajeEntranteId: string,
+    motivo: "menor_piso" | "evasion",
+    textoProspecto: string,
+  ): Promise<TurnResponse> {
+    const conv = (await this.store.findById(conversacionId))!;
+    const yaNutricion = conv.camposCapturados.rutaComercial === "nutricion";
+
+    if (yaNutricion) {
+      const ficha = await this.fichaNutricionSiAplica(textoProspecto);
+      if (ficha) {
+        return this.finishReply({
+          conversacionId,
+          oportunidadId: conv.oportunidadId,
+          texto: ficha,
+          ruta: "catalogo",
+          mensajeEntranteId,
+          pasoGuion: "faq_libre",
+        });
+      }
+      return this.finishReply({
+        conversacionId,
+        oportunidadId: conv.oportunidadId,
+        texto: COPY_V2_NUTRICION_HOLD,
+        ruta: "safe",
+        mensajeEntranteId,
+        pasoGuion: "faq_libre",
+      });
+    }
+
+    const campos = {
+      ...conv.camposCapturados,
+      rutaComercial: "nutricion" as const,
+      consentimientoSeguimiento: true,
+    };
+    await this.store.update(conversacionId, {
+      camposCapturados: campos,
+      pasoGuion: "faq_libre",
+      ultimaRuta: "safe",
+    });
+    await this.audit.emit({
+      tipo: "bot_nutricion",
+      conversacionId,
+      oportunidadId: conv.oportunidadId,
+      mensajeId: mensajeEntranteId,
+      payload: {
+        motivo,
+        encajeEconomico: campos.encajeEconomico ?? null,
+        rutaComercial: "nutricion",
+        pasoAbandonado: conv.pasoGuion,
+      },
+    });
+    if (motivo === "evasion") {
+      await this.audit.emit({
+        tipo: "bot_abandono_paso",
+        conversacionId,
+        oportunidadId: conv.oportunidadId,
+        mensajeId: mensajeEntranteId,
+        payload: {
+          paso: conv.pasoGuion,
+          numeroMensajesCaptura: campos.numeroMensajesCaptura ?? 0,
+          numeroAclaracionesPiso: campos.numeroAclaracionesPiso ?? 0,
+        },
+      });
+    }
+    let texto =
+      motivo === "menor_piso" ? COPY_V2_MENOR_PISO : COPY_V2_NUTRICION_EVASION;
+    const pisoSinRespuesta =
+      campos.rangoInversion === "por_definir" &&
+      campos.aceptaPiso250k == null &&
+      (campos.numeroAclaracionesPiso ?? 0) >= 1;
+    if (
+      motivo === "evasion" &&
+      (conv.pasoGuion === "aclaracion_piso" || pisoSinRespuesta)
+    ) {
+      texto = COPY_NUTRICION_T24_INMEDIATO;
+    }
+    if (motivo === "menor_piso" && this.catalogTools) {
+      try {
+        const alt = await this.catalogTools.findSkuBajoPiso();
+        if (alt) {
+          texto = copyMenorPisoConAlternativa(alt.nombre);
+        } else {
+          const piso = await this.catalogTools.findSkuPisoVigente();
+          if (piso) {
+            texto = copyMenorPisoConPisoPublicado(piso.nombre);
+          }
+        }
+      } catch {
+        /* copy honesto sin SKU */
+      }
+    }
+    this.nurture?.schedule({
+      conversacionId,
+      nombre: campos.nombre,
+      consentimiento: Boolean(campos.consentimientoSeguimiento),
+    });
+    return this.finishReply({
+      conversacionId,
+      oportunidadId: conv.oportunidadId,
+      texto,
+      ruta: "safe",
+      mensajeEntranteId,
+      pasoGuion: "faq_libre",
+    });
+  }
+
+  private async fichaNutricionSiAplica(
+    texto: string,
+  ): Promise<string | null> {
+    if (!isPedidoFichaMasEconomico(texto) && !isPackageDetailQuery(texto)) {
+      return null;
+    }
+    const named = resolvePaqueteSkuAlias(texto);
+    if (named) {
+      return fichaPaquetePorSku(named);
+    }
+    let sku = SKU_PAQUETE_ESTANDAR;
+    if (this.catalogTools) {
+      try {
+        const piso = await this.catalogTools.findSkuPisoVigente();
+        if (piso?.sku) sku = piso.sku;
+      } catch {
+        /* ficha evergreen */
+      }
+    }
+    return fichaPaquetePorSku(sku);
+  }
+
+  private async runSeguimiento(
+    conversacionId: string,
+    mensajeEntranteId: string,
+  ): Promise<TurnResponse> {
+    const conv = (await this.store.findById(conversacionId))!;
+    const campos = {
+      ...conv.camposCapturados,
+      rutaComercial: "seguimiento" as const,
+      consentimientoSeguimiento: true,
+    };
+    await this.store.update(conversacionId, {
+      camposCapturados: campos,
+      pasoGuion: "faq_libre",
+      ultimaRuta: "guion",
+    });
+    await this.audit.emit({
+      tipo: "bot_seguimiento",
+      conversacionId,
+      oportunidadId: conv.oportunidadId,
+      mensajeId: mensajeEntranteId,
+      payload: {
+        encajeEconomico: campos.encajeEconomico ?? null,
+        rutaComercial: "seguimiento",
+      },
+    });
+    return this.finishReply({
+      conversacionId,
+      oportunidadId: conv.oportunidadId,
+      texto: COPY_V2_SEGUIMIENTO,
+      ruta: "guion",
+      mensajeEntranteId,
+      pasoGuion: "faq_libre",
+    });
+  }
+
   private async finishHandoff(
     conversacionId: string,
     oportunidadId: string,
@@ -810,16 +1241,82 @@ export class OrchestratorService {
     mensajeEntranteId: string,
     registroConsultaCatalogoId: string | null = null,
     registroRecuperacionId: string | null = null,
+    opts?: {
+      cola?: "comercial" | "atencion_general";
+      rutaComercial?: import("../types").RutaComercial;
+      visita?: boolean;
+      humanoTemprano?: boolean;
+    },
   ): Promise<TurnResponse> {
     this.reasoning.append({
       level: "handoff",
       motivo,
     });
+    const conv = (await this.store.findById(conversacionId))!;
+    const rutaComercial =
+      opts?.rutaComercial ??
+      (opts?.cola === "atencion_general" ? "atencion_general" : "handoff");
+    const campos = {
+      ...conv.camposCapturados,
+      rutaComercial,
+      encajeEconomico:
+        conv.camposCapturados.encajeEconomico ??
+        (opts?.cola === "atencion_general" ? ("no_confirmado" as const) : conv.camposCapturados.encajeEconomico),
+    };
+    await this.store.update(conversacionId, { camposCapturados: campos });
+
+    const flow = this.flowOf(conv);
+    const encajeV3 = deriveEncajeV3(campos);
+    const comercial =
+      (flow === "v2" &&
+        opts?.cola !== "atencion_general" &&
+        deriveEncaje(campos) === "confirmado") ||
+      (flow === "v3" &&
+        opts?.cola !== "atencion_general" &&
+        (encajeV3 === "confirmado" || encajeV3 === "probable"));
+    const sla = slaMinutos(opts?.cola);
+    await this.store.update(conversacionId, {
+      cola: opts?.cola ?? "comercial",
+      slaVenceEn: new Date(Date.now() + sla * 60_000).toISOString(),
+    });
+    if (comercial) {
+      await this.audit.emit({
+        tipo: "bot_rango_aceptado",
+        conversacionId,
+        oportunidadId,
+        mensajeId: mensajeEntranteId,
+        payload: {
+          rangoInversion: campos.rangoInversion ?? null,
+          encajeEconomico: campos.encajeEconomico ?? null,
+          cola: "comercial",
+        },
+      });
+    }
+    const safeCopy =
+      flow === "v3" && opts?.humanoTemprano
+        ? COPY_V3_HUMANO_TEMPRANO
+        : flow === "v3" && (opts?.visita || comercial)
+          ? COPY_V3_CIERRE_VISITA(campos.nombre)
+          : flow === "v2" && (opts?.visita || comercial)
+            ? opts?.visita
+              ? COPY_PISO_VISITA
+              : copyV2Handoff(campos)
+            : flow === "v3" && opts?.cola === "atencion_general"
+              ? SAFE_COPY_HANDOFF_HUMANO
+              : undefined;
+
     const hand = await this.handoff.escalate({
       conversacionId,
       motivo,
       oportunidadId,
       mensajeId: mensajeEntranteId,
+      safeCopy,
+      extraPayload: {
+        cola: opts?.cola ?? "comercial",
+        rutaComercial,
+        encajeEconomico: campos.encajeEconomico ?? null,
+        intencionNivel: campos.intencionNivel ?? null,
+      },
     });
 
     return this.finishReply({
@@ -832,6 +1329,8 @@ export class OrchestratorService {
       registroConsultaCatalogoId,
       registroRecuperacionId,
       estadoBot: "escalado",
+      adjuntoGuion:
+        comercial && encajeV3 !== "no" ? GUION_ADJUNTO_PAQUETE_BODAS : undefined,
     });
   }
 
@@ -903,11 +1402,34 @@ export class OrchestratorService {
         perfilListo: isPerfilListo(conv.camposCapturados),
         pedidoCotizacion: conv.pedidoCotizacion ?? null,
         pedidoCotizacionFuente: conv.pedidoCotizacionFuente ?? null,
+        encajeEconomico: conv.camposCapturados.encajeEconomico ?? null,
+        intencionNivel: conv.camposCapturados.intencionNivel ?? null,
+        rutaComercial: conv.camposCapturados.rutaComercial ?? null,
         registroConsultaCatalogoId: input.registroConsultaCatalogoId ?? null,
         registroRecuperacionId: input.registroRecuperacionId ?? null,
         mensajeEntranteId: input.mensajeEntranteId,
       },
     });
+
+    if (this.flowOf(conv) === "v3") {
+      await this.audit.emit({
+        tipo: "conversation_turn_v3",
+        conversacionId: input.conversacionId,
+        oportunidadId: input.oportunidadId,
+        mensajeId: msgOut.id,
+        payload: {
+          pasoGuion: input.pasoGuion ?? conv.pasoGuion,
+          ruta: input.ruta,
+          encaje: conv.camposCapturados.encajeEconomico ?? null,
+          intencion: conv.camposCapturados.intencionNivel ?? null,
+          intent: conv.pedidoCotizacionFuente ?? null,
+          interrupcion: input.ruta !== "guion",
+          slots: Object.keys(conv.camposCapturados).filter(
+            (k) => conv.camposCapturados[k as keyof CamposCapturados] != null,
+          ),
+        },
+      });
+    }
 
     const response = await this.attachTrace(
       {
@@ -966,10 +1488,26 @@ export class OrchestratorService {
       registroConsultaCatalogoId: res.registroConsultaCatalogoId,
       registroRecuperacionId: res.registroRecuperacionId ?? null,
     });
+    const convForPdf = await this.store.findById(res.conversacionId);
+    const flow = this.flowOf(convForPdf);
+    const encaje = deriveEncaje(convForPdf?.camposCapturados ?? {});
+    const encaje3 = deriveEncajeV3(convForPdf?.camposCapturados ?? {});
+    const allowPdf =
+      flow === "v1" ||
+      encaje === "confirmado" ||
+      (flow === "v3" && (encaje3 === "confirmado" || encaje3 === "probable"));
     const document =
-      adjuntoGuion === GUION_ADJUNTO_PAQUETE_BODAS
+      adjuntoGuion === GUION_ADJUNTO_PAQUETE_BODAS && allowPdf
         ? await this.resolveGuionDocument()
         : undefined;
+    if (document && convForPdf) {
+      await this.store.update(res.conversacionId, {
+        camposCapturados: {
+          ...convForPdf.camposCapturados,
+          pdfEnviado: true,
+        },
+      });
+    }
     return attachWaContent({
       ...res,
       reasoningTraceId: finished?.id ?? this.reasoning.currentId() ?? null,
@@ -995,6 +1533,12 @@ export class OrchestratorService {
       }
     }
     return paqueteBodas2027Document();
+  }
+
+  private flowOf(
+    conv?: Pick<ConversacionState, "guionVersion"> | null,
+  ) {
+    return effectiveConversationFlow(conv ?? {}, this.config);
   }
 }
 

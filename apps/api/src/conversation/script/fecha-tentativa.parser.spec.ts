@@ -116,6 +116,34 @@ describe("parseFechaTentativa", () => {
     });
   });
 
+  it("febrero 27 es febrero de 2027, no el día 27 sin año", () => {
+    expect(parseFechaTentativa("febrero 27", { now: NOW })).toEqual({
+      tipo: "mes",
+      mes: 2,
+      anio: 2027,
+      flexible: true,
+    });
+    expect(parseFechaTentativa("febrero del 27", { now: NOW })).toMatchObject({
+      tipo: "mes",
+      mes: 2,
+      anio: 2027,
+    });
+    expect(parseFechaTentativa("Es en febrero 27", { now: NOW })).toMatchObject({
+      tipo: "mes",
+      mes: 2,
+      anio: 2027,
+    });
+    expect(parseFechaTentativa("feb '27", { now: NOW })).toMatchObject({
+      tipo: "mes",
+      mes: 2,
+      anio: 2027,
+    });
+    expect(explainFechaTentativa("febrero 15", { now: NOW })).toEqual({
+      ok: false,
+      motivo: "sin_anio",
+    });
+  });
+
   it("rechaza mes suelto sin año", () => {
     expect(explainFechaTentativa("en diciembre", { now: NOW })).toEqual({
       ok: false,

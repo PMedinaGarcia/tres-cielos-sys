@@ -1,4 +1,6 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { mapCanalCrm } from "../crm/cliente-identity";
 import type { Canal, EstadoBot } from "./types/inbound-message";
 
 export interface ConversacionState {
@@ -9,6 +11,8 @@ export interface ConversacionState {
   oportunidadId?: string;
   sedeId?: string;
   asesorId?: string;
+  asesorLockId?: string | null;
+  cola?: "comercial" | "atencion_general" | null;
 }
 
 /**
@@ -19,6 +23,8 @@ export interface ConversacionState {
 @Injectable()
 export class ConversationStateStore {
   private readonly byThread = new Map<string, ConversacionState>();
+
+  constructor(@Optional() private readonly prisma?: PrismaService) {}
 
   private key(canal: Canal, externalThreadId: string): string {
     return `${canal}::${externalThreadId}`;
@@ -37,6 +43,35 @@ export class ConversationStateStore {
       this.byThread.set(k, c);
     }
     return c;
+  }
+
+  async overlayFromPrisma(
+    canal: Canal,
+    externalThreadId: string,
+  ): Promise<ConversacionState> {
+    const mem = this.getOrCreate(canal, externalThreadId);
+    if (!this.prisma || !process.env.DATABASE_URL) return mem;
+    try {
+      const row = await this.prisma.conversacion.findUnique({
+        where: {
+          canal_externalThreadId: {
+            canal: mapCanalCrm(canal),
+            externalThreadId,
+          },
+        },
+      });
+      if (!row) return mem;
+      mem.id = row.id;
+      mem.estadoBot = row.estadoBot;
+      mem.asesorLockId =
+        (row as { asesorLockId?: string | null }).asesorLockId ?? null;
+      const cola = (row as { cola?: string | null }).cola;
+      mem.cola =
+        cola === "atencion_general" || cola === "comercial" ? cola : null;
+      return mem;
+    } catch {
+      return mem;
+    }
   }
 
   getById(id: string): ConversacionState | undefined {

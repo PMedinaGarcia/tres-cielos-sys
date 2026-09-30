@@ -1,10 +1,19 @@
 import { SEDE_ID, SEDE_NOMBRE } from "@tres-cielos/shared";
 import {
+  aforoBandaFrom,
+  fechaEstadoFrom,
+  inferProbableFromTexto,
+  isAforoFocusedPaso,
+  isFechaFocusedPaso,
+  isNombreFocusedPaso,
+  presupuestoFromRango,
+} from "../conversation-flow";
+import {
   DATOS_DUROS_RE,
   isIntencionMonetaria,
 } from "../orchestrator/monetary-intent";
 import { stripAccents } from "../text-normalize";
-import type { CamposCapturados, FechaTentativa, PasoGuion } from "../types";
+import type { CamposCapturados, FechaTentativa, FechaTipo, PasoGuion } from "../types";
 import {
   explainFechaTentativa,
   fechaTentativaToIso,
@@ -12,6 +21,11 @@ import {
   tieneAnioExplicito,
   type FechaParseMotivo,
 } from "./fecha-tentativa.parser";
+import {
+  applyRangoHarvest,
+  parseAceptaPiso,
+  parseIntencionNivel,
+} from "./harvest-rango";
 import type { LlmPasoExtract } from "./script-llm.extract";
 
 export type AforoParseMotivo = "sin_numero" | "unidad_invalida" | "fuera_rango";
@@ -100,7 +114,10 @@ export function evaluarPedidoCotizacion(input: {
   }
   const texto = input.texto.trim();
   const pasoIntencion =
-    input.pasoGuion === "intencion" || input.pasoGuion === "presupuesto";
+    input.pasoGuion === "intencion" ||
+    input.pasoGuion === "presupuesto" ||
+    input.pasoGuion === "accion" ||
+    input.pasoGuion === "aclaracion_piso";
   const siNo = extractSiNo(texto);
   if (pasoIntencion && siNo === false) {
     return { evaluable: true, pedido: false, fuente: "rechazo" };
@@ -201,14 +218,16 @@ export function harvestCamposLexical(
   }
 
   const tipo = extractTipoEvento(trimmed);
-  if (tipo && !next.tipoEvento) {
-    next.tipoEvento = tipo;
-    mark("tipoEvento");
+  if (tipo && tipo !== next.tipoEvento) {
+    if (!(tipo === "otro" && next.tipoEvento)) {
+      next.tipoEvento = tipo;
+      mark("tipoEvento");
+    }
   }
 
   const fechaParsed = explainFechaTentativa(trimmed, {
     now: opts?.now,
-    paso: focused === "fecha" ? "fecha" : focused,
+    paso: isFechaFocusedPaso(focused) ? "fecha" : focused,
   });
   let fechaMotivo: FechaParseMotivo | undefined;
   if (fechaParsed.ok) {
@@ -221,7 +240,7 @@ export function harvestCamposLexical(
   }
 
   const aforoParsed = parseAforo(trimmed, {
-    modo: focused === "aforo" ? "paso" : "harvest",
+    modo: isAforoFocusedPaso(focused) ? "paso" : "harvest",
   });
   let aforoMotivo: AforoParseMotivo | undefined;
   if (aforoParsed.ok) {
@@ -244,13 +263,91 @@ export function harvestCamposLexical(
     if (isFraseInteresCotizar(trimmed)) {
       next.intencionCotizar = true;
       mark("intencionCotizar");
-    } else if (focused === "intencion") {
+    } else if (focused === "intencion" || focused === "accion") {
       const siNo = extractSiNo(trimmed);
       if (siNo != null) {
         next.intencionCotizar = siNo;
         mark("intencionCotizar");
       }
     }
+  }
+
+  const rangoPatch = applyRangoHarvest(trimmed, next);
+  if (rangoPatch.rangoInversion && rangoPatch.rangoInversion !== next.rangoInversion) {
+    next.rangoInversion = rangoPatch.rangoInversion;
+    mark("rangoInversion");
+  }
+  if (
+    rangoPatch.encajeEconomico &&
+    rangoPatch.encajeEconomico !== next.encajeEconomico
+  ) {
+    next.encajeEconomico = rangoPatch.encajeEconomico;
+    mark("encajeEconomico");
+  }
+
+  const nivel = parseIntencionNivel(trimmed);
+  if (nivel && !next.intencionNivel) {
+    next.intencionNivel = nivel;
+    mark("intencionNivel");
+  }
+
+  if (focused === "aclaracion_piso" && next.aceptaPiso250k == null) {
+    const acepta = parseAceptaPiso(trimmed);
+    if (acepta != null) {
+      next.aceptaPiso250k = acepta;
+      mark("aceptaPiso250k");
+      if (acepta) {
+        next.encajeEconomico = "confirmado";
+        next.intencionVisita = true;
+        if (!next.intencionNivel) next.intencionNivel = "alta";
+        mark("encajeEconomico");
+      } else {
+        next.encajeEconomico = "no";
+        mark("encajeEconomico");
+      }
+    }
+  }
+
+  const fechaTipo = extractFechaTipo(trimmed);
+  if (fechaTipo && !next.fechaTipo) {
+    next.fechaTipo = fechaTipo;
+    mark("fechaTipo");
+  }
+
+  const email = extractEmail(trimmed);
+  if (email && !next.email) {
+    next.email = email;
+    mark("email");
+  }
+
+  const zona = extractOrigenZona(trimmed);
+  if (zona && !next.origenZona) {
+    next.origenZona = zona;
+    mark("origenZona");
+  }
+
+  if (
+    !next.encajeEconomico &&
+    !next.rangoInversion &&
+    inferProbableFromTexto(trimmed)
+  ) {
+    next.encajeEconomico = "probable";
+    mark("encajeEconomico");
+  }
+
+  if (next.aforo != null) {
+    next.aforoBanda = aforoBandaFrom(next.aforo);
+  }
+
+  next.fechaEstado = fechaEstadoFrom(next);
+  if (next.rangoInversion) {
+    next.presupuestoOrientativo = presupuestoFromRango(next.rangoInversion);
+  }
+  if (next.encajeEconomico === "confirmado" && next.aceptaPiso250k == null) {
+    next.aceptaPiso250k = true;
+  }
+  if (next.intencionNivel === "alta" || next.intencionNivel === "media") {
+    if (next.intencionCotizar == null) next.intencionCotizar = true;
   }
 
   const nombre = extractNombre(trimmed, {
@@ -310,7 +407,7 @@ export function mergeLlmExtract(
       mark("aforo");
     } else {
       const lexical = parseAforo(texto, {
-        modo: opts?.focusedPaso === "aforo" ? "paso" : "harvest",
+        modo: isAforoFocusedPaso(opts?.focusedPaso) ? "paso" : "harvest",
       });
       if (lexical.ok && shouldReplaceAforo(next.aforo, extracted.aforo)) {
         next.aforo = extracted.aforo;
@@ -410,10 +507,7 @@ export function extractNombre(
   const looksLikeEvent = Boolean(extractTipoEvento(texto));
   if (looksLikeEvent && !hasNameCue(texto)) return null;
 
-  const pasoNombre =
-    !opts?.focusedPaso ||
-    opts.focusedPaso === "saludo" ||
-    opts.focusedPaso === "nombre";
+  const pasoNombre = isNombreFocusedPaso(opts?.focusedPaso);
   if (!pasoNombre && !hasNameCue(texto)) return null;
 
   let cleaned = texto.trim();
@@ -445,7 +539,9 @@ export function extractTipoEvento(texto: string): string | null {
   if (/\bxv\b|quinceanera|quince anos|15 anos|quince/.test(t)) return "xv";
   if (/corporativ/.test(t)) return "corporativo";
   if (/social/.test(t)) return "social";
-  if (/otro/.test(t)) return "otro";
+  if (/\botro (tipo|evento|ocasion)\b/.test(t) || /\bocasion\.otro\b/.test(t)) {
+    return "otro";
+  }
   return null;
 }
 
@@ -587,7 +683,39 @@ function parseAforoHarvest(texto: string): AforoParseResult {
   if (para) {
     return validateAforoNumber(Number(para[1]), undefined, para[0]);
   }
+  const unas = new RegExp(
+    `\\b(?:unas?|como|alrededor de|aprox(?:imadamente)?)\\s+(\\d{1,4})\\b`,
+    "i",
+  ).exec(texto);
+  if (unas) {
+    return validateAforoNumber(Number(unas[1]), undefined, unas[0]);
+  }
+  const suelto = texto
+    .trim()
+    .match(/^(?:son |somos |ser[ií]an )?(?:unos |unas )?(\d{2,3})\s*$/i);
+  if (suelto) {
+    return validateAforoNumber(Number(suelto[1]), undefined, suelto[0]);
+  }
   return { ok: false, motivo: "sin_numero" };
+}
+
+export function extractFechaTipo(texto: string): FechaTipo | null {
+  const t = stripAccents(texto.toLowerCase());
+  if (/\bsabado\b/.test(t)) return "sabado";
+  if (/\bviernes\b/.test(t)) return "viernes";
+  return null;
+}
+
+export function extractEmail(texto: string): string | null {
+  const m = texto.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  return m ? m[0].toLowerCase() : null;
+}
+
+export function extractOrigenZona(texto: string): string | null {
+  const t = stripAccents(texto.toLowerCase());
+  if (/\b(cdmx|ciudad de mexico|df)\b/.test(t)) return "CDMX";
+  if (/\b(morelos|cuernavaca|tequesquitengo)\b/.test(t)) return "Morelos";
+  return null;
 }
 
 function validateAforoNumber(
@@ -605,7 +733,7 @@ function validateAforoNumber(
   return { ok: true, aforo: n };
 }
 
-function formatFechaHumana(fecha: FechaTentativa | null): string | null {
+export function formatFechaHumana(fecha: FechaTentativa | null): string | null {
   if (!fecha) return null;
   if (fecha.tipo === "dia" && fecha.fecha) {
     const [y, m, d] = fecha.fecha.split("-").map(Number);

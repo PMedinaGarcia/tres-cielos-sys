@@ -37,6 +37,7 @@ export class HandoffService {
     oportunidadId?: string;
     mensajeId?: string;
     extraPayload?: Record<string, unknown>;
+    safeCopy?: string;
   }): Promise<HandoffResult> {
     const escaladoEn = new Date().toISOString();
     await this.store.update(input.conversacionId, {
@@ -46,7 +47,7 @@ export class HandoffService {
       ultimaRuta: "handoff",
     });
 
-    const safeCopy = this.safeCopyFor(input.motivo);
+    const safeCopy = input.safeCopy ?? this.safeCopyFor(input.motivo);
 
     await this.audit.emit({
       tipo: "bot_handoff",

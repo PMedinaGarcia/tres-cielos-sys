@@ -1,8 +1,10 @@
 import type { WaButton, WaContent, WaDocument } from "@tres-cielos/shared";
 import {
-  HABLAR_ASESOR_BUTTON,
+  ACLARACION_NO_BUTTON,
+  ACLARACION_SI_BUTTON,
   INTENCION_NO_BUTTON,
   INTENCION_SI_BUTTON,
+  INVERSION_ITEMS,
   OCASION_ITEMS,
   WA_LIST_OPEN_BUTTON,
   contentSidFor,
@@ -21,11 +23,14 @@ export function composeWaContent(input: {
   if (input.ruta === "handoff") {
     content = textTemplate("canal.handoff", body);
   } else if (input.ruta === "catalogo") {
-    content = quickReply("canal.catalogo", body, [HABLAR_ASESOR_BUTTON]);
+    content = textTemplate("canal.catalogo", body);
   } else if (input.ruta === "rag") {
-    content = quickReply("canal.rag", body, [HABLAR_ASESOR_BUTTON]);
+    content = textTemplate("canal.rag", body);
   } else if (input.ruta === "safe") {
-    content = quickReply("canal.safe", body, [HABLAR_ASESOR_BUTTON]);
+    content = textTemplate(
+      input.pasoGuion === "faq_libre" ? "canal.nutricion" : "canal.safe",
+      body,
+    );
   } else {
     content = composeGuionPaso(body, input.pasoGuion);
   }
@@ -50,26 +55,42 @@ function composeGuionPaso(
         list: { button: WA_LIST_OPEN_BUTTON, items: OCASION_ITEMS },
         contentSid: contentSidFor("guion.ocasion"),
       };
+    case "aforo_inversion":
+      return {
+        templateId: "guion.aforo_inversion",
+        kind: "list-picker",
+        body,
+        list: { button: WA_LIST_OPEN_BUTTON, items: INVERSION_ITEMS },
+        contentSid: contentSidFor("guion.aforo_inversion"),
+      };
+    case "aclaracion_piso":
+      return quickReply("guion.aclaracion_piso", body, [
+        ACLARACION_SI_BUTTON,
+        ACLARACION_NO_BUTTON,
+      ]);
+    case "nombre_fecha":
+      return textTemplate("guion.nombre_fecha", body);
+    case "accion":
+      return textTemplate("guion.accion", body);
     case "sede":
-      return quickReply("guion.sede", body, [HABLAR_ASESOR_BUTTON]);
+      return textTemplate("guion.sede", body);
     case "intencion":
     case "presupuesto":
       return quickReply("guion.intencion", body, [
         INTENCION_SI_BUTTON,
         INTENCION_NO_BUTTON,
-        HABLAR_ASESOR_BUTTON,
       ]);
     case "nombre":
     case "saludo":
-      return quickReply("guion.nombre", body, [HABLAR_ASESOR_BUTTON]);
+      return textTemplate("guion.nombre", body);
     case "fecha":
-      return quickReply("guion.fecha", body, [HABLAR_ASESOR_BUTTON]);
+      return textTemplate("guion.fecha", body);
     case "aforo":
-      return quickReply("guion.aforo", body, [HABLAR_ASESOR_BUTTON]);
+      return textTemplate("guion.aforo", body);
     case "faq_libre":
-      return quickReply("guion.faq_libre", body, [HABLAR_ASESOR_BUTTON]);
+      return textTemplate("guion.faq_libre", body);
     default:
-      return quickReply("canal.generic", body, [HABLAR_ASESOR_BUTTON]);
+      return textTemplate("canal.generic", body);
   }
 }
 

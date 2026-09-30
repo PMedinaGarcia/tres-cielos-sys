@@ -22,9 +22,62 @@ export const PasoGuionSchema = z.enum([
   "sede",
   "presupuesto",
   "intencion",
+  "nombre_fecha",
+  "aforo_inversion",
+  "aclaracion_piso",
+  "accion",
   "faq_libre",
 ]);
 export type PasoGuion = z.infer<typeof PasoGuionSchema>;
+
+export const EncajeEconomicoSchema = z.enum([
+  "confirmado",
+  "probable",
+  "no_confirmado",
+  "no",
+]);
+export type EncajeEconomico = z.infer<typeof EncajeEconomicoSchema>;
+
+export const IntencionNivelSchema = z.enum(["alta", "media", "baja"]);
+export type IntencionNivel = z.infer<typeof IntencionNivelSchema>;
+
+export const RangoInversionSchema = z.enum([
+  "r250_349",
+  "r350_499",
+  "r500_mas",
+  "por_definir",
+  "menor_250",
+]);
+export type RangoInversion = z.infer<typeof RangoInversionSchema>;
+
+export const FechaTipoSchema = z.enum(["sabado", "viernes", "otro"]);
+export type FechaTipo = z.infer<typeof FechaTipoSchema>;
+
+export const AforoBandaSchema = z.union([
+  z.literal(100),
+  z.literal(150),
+  z.literal(200),
+  z.literal(250),
+  z.literal(300),
+]);
+export type AforoBanda = z.infer<typeof AforoBandaSchema>;
+
+export const FechaEstadoSchema = z.enum([
+  "definida",
+  "ventana",
+  "tentativa",
+  "sin_definir",
+]);
+export type FechaEstado = z.infer<typeof FechaEstadoSchema>;
+
+export const RutaComercialSchema = z.enum([
+  "handoff",
+  "atencion_general",
+  "seguimiento",
+  "nutricion",
+  "cierre",
+]);
+export type RutaComercial = z.infer<typeof RutaComercialSchema>;
 
 export const CamposCapturadosSchema = z.object({
   nombre: z.string().nullish(),
@@ -36,6 +89,23 @@ export const CamposCapturadosSchema = z.object({
   sedeNombre: z.string().nullish(),
   presupuestoOrientativo: z.unknown().nullish(),
   intencionCotizar: z.boolean().nullish(),
+  intencionVisita: z.boolean().nullish(),
+  encajeEconomico: EncajeEconomicoSchema.nullish(),
+  intencionNivel: IntencionNivelSchema.nullish(),
+  rangoInversion: RangoInversionSchema.nullish(),
+  aceptaPiso250k: z.boolean().nullish(),
+  fechaEstado: FechaEstadoSchema.nullish(),
+  rutaComercial: RutaComercialSchema.nullish(),
+  consentimientoSeguimiento: z.boolean().nullish(),
+  numeroAclaracionesPiso: z.number().int().min(0).max(1).nullish(),
+  numeroMensajesCaptura: z.number().int().min(0).nullish(),
+  fechaTipo: FechaTipoSchema.nullish(),
+  ventanaVisita: z.string().nullish(),
+  aforoBanda: AforoBandaSchema.nullish(),
+  origenZona: z.string().nullish(),
+  email: z.string().nullish(),
+  pdfEnviado: z.boolean().nullish(),
+  adjuntoReintentos: z.number().int().min(0).nullish(),
 });
 export type CamposCapturados = z.infer<typeof CamposCapturadosSchema>;
 

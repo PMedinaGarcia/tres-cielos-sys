@@ -7,6 +7,8 @@ describe("validateEnv (A4)", () => {
       RERANK_THRESHOLD: "0.85",
     });
     expect(env.AI_PROVIDERS_MODE).toBe("fake");
+    expect(env.CONVERSATION_FLOW).toBe("v2");
+    expect(env.CONVERSATION_FLOW_CANARY_PCT).toBe(0);
     expect(env.RERANK_THRESHOLD).toBe(0.85);
     expect(env.AI_REQUEST_TIMEOUT_MS).toBe(45_000);
     expect(env.AI_MAX_RETRIES).toBe(2);
@@ -69,6 +71,11 @@ describe("validateEnv (A4)", () => {
     });
     expect(env.S3_BUCKET).toBe("tres-cielos-staging");
     expect(env.S3_ACCESS_KEY_ID).toBeUndefined();
+  });
+
+  it("acepta CONVERSATION_FLOW v3", () => {
+    const env = validateEnv({ CONVERSATION_FLOW: "v3" });
+    expect(env.CONVERSATION_FLOW).toBe("v3");
   });
 
   it("acepta RAG_STORE prisma", () => {

@@ -32,6 +32,65 @@ describe("harvestCamposLexical", () => {
     expect(nextPasoGuion(r.campos)).toBe("nombre");
   });
 
+  it("diciembre 2027 es ventana y unas 150 llena aforo", () => {
+    const r = harvestCamposLexical("Soy Ana, diciembre 2027, unas 150", {}, { now: NOW });
+    expect(r.campos.fechaTentativa?.tipo).toBe("mes");
+    expect(r.campos.fechaEstado).toBe("ventana");
+    expect(r.campos.aforo).toBe(150);
+  });
+
+  it("Es en Febrero 2027 con foco nombre_fecha llena ventana sin nombre", () => {
+    const r = harvestCamposLexical("Es en Febrero 2027", {}, {
+      now: NOW,
+      focusedPaso: "nombre_fecha",
+    });
+    expect(r.campos.fechaTentativa).toEqual({
+      tipo: "mes",
+      mes: 2,
+      anio: 2027,
+      flexible: true,
+    });
+    expect(r.campos.fechaEstado).toBe("ventana");
+    expect(r.filled).toContain("fechaTentativa");
+    expect(r.campos.nombre).toBeFalsy();
+  });
+
+  it("febrero 27 con foco nombre_fecha es ventana 2027", () => {
+    const r = harvestCamposLexical("febrero 27", {}, {
+      now: NOW,
+      focusedPaso: "nombre_fecha",
+    });
+    expect(r.campos.fechaTentativa).toEqual({
+      tipo: "mes",
+      mes: 2,
+      anio: 2027,
+      flexible: true,
+    });
+    expect(r.campos.fechaEstado).toBe("ventana");
+    expect(r.filled).toContain("fechaTentativa");
+  });
+
+  it("un mensaje puede llenar nombre, fecha, aforo y rango", () => {
+    const r = harvestCamposLexical(
+      "Soy Ana Ruiz, cotización para una boda el 22 de diciembre del 2027 para 150 invitados, presupuesto 350 mil",
+      {},
+      { now: NOW },
+    );
+    expect(r.campos.nombre?.toLowerCase()).toContain("ana");
+    expect(r.campos.aforo).toBe(150);
+    expect(r.campos.rangoInversion).toBe("r350_499");
+    expect(r.campos.encajeEconomico).toBe("confirmado");
+    expect(r.campos.intencionNivel).toBe("alta");
+  });
+
+  it("otro día no infiere tipo de evento otro", () => {
+    const r = harvestCamposLexical("el otro día vimos el jardín", {
+      tipoEvento: "boda",
+    });
+    expect(r.campos.tipoEvento).toBe("boda");
+    expect(harvestCamposLexical("el otro día", {}).campos.tipoEvento).toBeUndefined();
+  });
+
   it("Si estoy interesado marca intención y no es un nombre", () => {
     const r = harvestCamposLexical("Si estoy interesado", {});
     expect(r.campos.intencionCotizar).toBe(true);

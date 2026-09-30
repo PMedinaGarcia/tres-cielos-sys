@@ -16,6 +16,7 @@ describe("resolveInteractiveInbound", () => {
       "Tres Cielos Tequesquitengo",
     );
     expect(WA_PAYLOAD_TEXTO["intencion.si"]).toBe("sí");
+    expect(WA_PAYLOAD_TEXTO["aclaracion.no"]).toBe("Buscamos algo menor");
   });
 
   it("hablar_asesor usa el texto que matchea el regex humano", () => {

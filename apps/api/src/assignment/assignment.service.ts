@@ -12,6 +12,7 @@ export interface AssignmentResult {
   asesorId: string;
   regla: "sede_disponibilidad_round_robin";
   sedeId: string;
+  cola: "comercial" | "atencion_general";
 }
 
 export interface PersistibleAssignment {
@@ -55,6 +56,7 @@ export class AssignmentService {
     sedeId: string;
     oportunidadId?: string;
     motivoEscalacion?: string;
+    cola?: "comercial" | "atencion_general";
   }): AssignmentResult {
     const pool = this.asesores.filter(
       (a) => a.sedeId === input.sedeId && a.disponible,
@@ -72,15 +74,19 @@ export class AssignmentService {
               nombre: "Cola",
             },
           ];
+    const routed =
+      input.cola === "atencion_general" ? [...fallback].reverse() : fallback;
 
-    const idx = this.rrIndex.get(input.sedeId) ?? 0;
-    const pick = fallback[idx % fallback.length]!;
-    this.rrIndex.set(input.sedeId, idx + 1);
+    const key = `${input.sedeId}:${input.cola ?? "comercial"}`;
+    const idx = this.rrIndex.get(key) ?? 0;
+    const pick = routed[idx % routed.length]!;
+    this.rrIndex.set(key, idx + 1);
 
     return {
       asesorId: pick.id,
       regla: "sede_disponibilidad_round_robin",
       sedeId: input.sedeId,
+      cola: input.cola ?? "comercial",
     };
   }
 

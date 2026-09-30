@@ -51,6 +51,7 @@ export default defineRailway(() => {
       LOG_LEVEL: "info",
       QUEUE_DRIVER: "inline",
       AI_PROVIDERS_MODE: "live",
+      CONVERSATION_FLOW: "v2",
       RAG_STORE: "prisma",
       STORAGE_PROVIDER: "s3",
       FETCH_CHANNEL_MEDIA: "1",

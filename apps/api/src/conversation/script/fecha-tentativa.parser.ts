@@ -202,10 +202,17 @@ function isNumericShortSinAnio(norm: string): boolean {
 const DE_DEL_ANIO = String.raw`(?:del?\s+)?`;
 /** `de` opcional entre día y mes (`22 Diciembre del 2026`). */
 const DE_MES_OPCIONAL = String.raw`(?:de\s+)?`;
+/** Año de 4 dígitos o corto (`2027`, `27`, `'27`). */
+const ANIO_COMPLETO_O_CORTO = String.raw`'?((?:20)?\d{2})`;
+
+function expandAnioCorto(raw: string): number {
+  const n = Number(raw);
+  return raw.length === 2 ? 2000 + n : n;
+}
 
 function dayMonthYearRe(): RegExp {
   return new RegExp(
-    `\\b(\\d{1,2})\\s+${DE_MES_OPCIONAL}(${MES_ALT})\\s+${DE_DEL_ANIO}(20\\d{2})\\b`,
+    `\\b(\\d{1,2})\\s+${DE_MES_OPCIONAL}(${MES_ALT})\\s+${DE_DEL_ANIO}${ANIO_COMPLETO_O_CORTO}\\b`,
   );
 }
 
@@ -219,7 +226,7 @@ function parseDayOfMonthEs(
   const dia = Number(m[1]);
   const mes = MES_NOMBRE[m[2]];
   if (!mes) return null;
-  return diaResult(Number(m[3]), mes, dia, flexible, now);
+  return diaResult(expandAnioCorto(m[3]), mes, dia, flexible, now);
 }
 
 function isDayOfMonthEsSinAnio(norm: string): boolean {
@@ -234,11 +241,13 @@ function parseMonthYear(
   norm: string,
   now: Date,
 ): FechaTentativa | null {
-  const re = new RegExp(`\\b(${MES_ALT})\\s+(?:del?\\s+)?(20\\d{2})\\b`);
+  const re = new RegExp(
+    `\\b(${MES_ALT})\\s+(?:del?\\s+)?${ANIO_COMPLETO_O_CORTO}\\b`,
+  );
   const m = norm.match(re);
   if (!m) return null;
   const mes = MES_NOMBRE[m[1]];
-  return mesResult(Number(m[2]), mes, true, now);
+  return mesResult(expandAnioCorto(m[2]), mes, true, now);
 }
 
 function isBareMonthSinAnio(norm: string): boolean {
@@ -299,9 +308,13 @@ function parseWeekday(norm: string, now: Date): FechaTentativa | null {
   return null;
 }
 
+function isFechaPaso(paso: PasoGuion | undefined): boolean {
+  return paso === "fecha" || paso === "nombre_fecha";
+}
+
 function isBareDaySinAnio(norm: string, paso: PasoGuion | undefined): boolean {
-  if (paso && paso !== "fecha") return false;
-  if (paso === "fecha" && /\bel quince\b/.test(norm) && !/anos|anios|xv/.test(norm)) {
+  if (paso && !isFechaPaso(paso)) return false;
+  if (isFechaPaso(paso) && /\bel quince\b/.test(norm) && !/anos|anios|xv/.test(norm)) {
     return true;
   }
   return Boolean(norm.match(/\b(?:para el|el|dia|para)\s+(\d{1,2})\b/));
@@ -416,9 +429,8 @@ export function explainFechaTentativa(
   const ranged = parseRange(norm, flexible, now);
   if (ranged) return asFechaResult(ranged, now, flexible);
 
-  if (dayMonthYearRe().test(norm)) {
-    return asFechaResult(parseDayOfMonthEs(norm, flexible, now), now, flexible);
-  }
+  const dmy = parseDayOfMonthEs(norm, flexible, now);
+  if (dmy) return asFechaResult(dmy, now, flexible);
 
   const withYear: Array<() => FechaTentativa | null> = [
     () => parseMonthYear(norm, now),

@@ -67,6 +67,7 @@ export const COLA_LABEL: Record<string, string> = {
   listos_sin_propuesta: "Listos sin propuesta",
   sin_tarifa: "Sin tarifa",
   escalados: "Escalados",
+  atencion_general: "Atención general",
   estancados: "Estancados",
 };
 

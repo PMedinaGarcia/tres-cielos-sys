@@ -70,6 +70,7 @@ export class ClienteService {
         include: {
           tags: { include: { tag: true } },
           oportunidades: { orderBy: { actualizadoEn: "desc" as const }, take: 1 },
+          conversaciones: { orderBy: { actualizadoEn: "desc" as const }, take: 1 },
         },
         orderBy: { ultimoContactoEn: "desc" },
         skip: (page - 1) * pageSize,
@@ -508,7 +509,17 @@ function colaWhere(cola: ColaCrm): Prisma.ClienteWhereInput {
     case "sin_tarifa":
       return { oportunidades: { some: { etapaCotizacion: "sin_tarifa" } } };
     case "escalados":
-      return { estadoAtencion: "escalado" };
+      return {
+        estadoAtencion: "escalado",
+        NOT: {
+          conversaciones: { some: { rutaComercial: "atencion_general" } },
+        },
+      };
+    case "atencion_general":
+      return {
+        estadoAtencion: "escalado",
+        conversaciones: { some: { rutaComercial: "atencion_general" } },
+      };
     case "estancados":
       return {
         ultimoContactoEn: { lt: cutoff },

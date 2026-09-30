@@ -77,6 +77,13 @@ export default () => {
       cookieDomain: env.AUTH_COOKIE_DOMAIN || undefined,
     },
     publicApiUrl: env.PUBLIC_API_URL || undefined,
+    queue: {
+      driver: (env.QUEUE_DRIVER ?? "inline") as "inline" | "bullmq",
+    },
+    conversation: {
+      flow: (env.CONVERSATION_FLOW ?? "v2") as "v1" | "v2" | "v3",
+      canaryPct: Number(env.CONVERSATION_FLOW_CANARY_PCT ?? 0),
+    },
   };
 };
 

@@ -101,7 +101,7 @@ export class ExpedientePersistService {
       const prev = conv.estadoBot;
       await prisma.conversacion.update({
         where: { id: conv.id },
-        data: { estadoBot: "humano" },
+        data: { estadoBot: "humano", asesorLockId: input.usuarioId },
       });
       await this.syncEstadoAtencion(conv.clienteId, "en_atencion", {
         conversacionId: conv.id,
@@ -131,6 +131,38 @@ export class ExpedientePersistService {
     } catch (err) {
       this.logger.warn(
         `No se pudo persistir toma de control ${input.conversacionId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+
+  async findLock(conversacionId: string): Promise<string | null> {
+    if (!this.canWrite()) return null;
+    const row = await this.prisma!.conversacion.findUnique({
+      where: { id: conversacionId },
+      select: { asesorLockId: true },
+    });
+    return row?.asesorLockId ?? null;
+  }
+
+  async persistDevolverABot(input: {
+    conversacionId: string;
+    motivo: string;
+  }): Promise<void> {
+    if (!this.canWrite()) return;
+    try {
+      await this.prisma!.conversacion.update({
+        where: { id: input.conversacionId },
+        data: {
+          estadoBot: "activo",
+          asesorLockId: null,
+          slaVenceEn: null,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(
+        `No se pudo devolver a bot ${input.conversacionId}: ${
           err instanceof Error ? err.message : String(err)
         }`,
       );
@@ -253,6 +285,12 @@ export class ExpedientePersistService {
           ultimaRuta: conv.ultimaRuta,
           motivoHandoff: conv.motivoHandoff,
           escaladoEn: conv.escaladoEn ? new Date(conv.escaladoEn) : undefined,
+          encajeEconomico: campos.encajeEconomico ?? null,
+          rutaComercial: campos.rutaComercial ?? null,
+          guionVersion: conv.guionVersion ?? null,
+          asesorLockId: conv.asesorLockId ?? null,
+          slaVenceEn: conv.slaVenceEn ? new Date(conv.slaVenceEn) : null,
+          cola: conv.cola ?? null,
         },
       });
     } else {
@@ -278,6 +316,12 @@ export class ExpedientePersistService {
           ultimaRuta: conv.ultimaRuta,
           motivoHandoff: conv.motivoHandoff,
           escaladoEn: conv.escaladoEn ? new Date(conv.escaladoEn) : undefined,
+          encajeEconomico: campos.encajeEconomico ?? null,
+          rutaComercial: campos.rutaComercial ?? null,
+          guionVersion: conv.guionVersion ?? null,
+          asesorLockId: conv.asesorLockId ?? null,
+          slaVenceEn: conv.slaVenceEn ? new Date(conv.slaVenceEn) : null,
+          cola: conv.cola ?? null,
         },
       });
       conversacionId = created.id;
@@ -329,6 +373,11 @@ export class ExpedientePersistService {
         conversacionId,
         sedeId: campos.sedeId ?? null,
         motivo: conv.motivoHandoff,
+        cola:
+          campos.rutaComercial === "atencion_general"
+            ? "atencion_general"
+            : "comercial",
+        rutaComercial: campos.rutaComercial ?? null,
       });
     }
   }
@@ -857,6 +906,8 @@ export class ExpedientePersistService {
     conversacionId: string;
     sedeId: string | null;
     motivo: string | null;
+    cola?: "comercial" | "atencion_general";
+    rutaComercial?: string | null;
   }): Promise<void> {
     const prisma = this.prisma!;
     const cliente = await prisma.cliente.findUnique({
@@ -889,6 +940,8 @@ export class ExpedientePersistService {
           asesorId: pick.asesorId,
           regla: pick.regla,
           motivo: input.motivo,
+          cola: input.cola ?? "comercial",
+          rutaComercial: input.rutaComercial ?? null,
         },
       },
     });
@@ -1055,6 +1108,22 @@ function camposToJson(campos: CamposCapturados): Prisma.InputJsonValue {
     presupuestoOrientativo: campos.presupuestoOrientativo ?? null,
     intencionCotizar: campos.intencionCotizar ?? null,
     intencionVisita: campos.intencionVisita ?? null,
+    encajeEconomico: campos.encajeEconomico ?? null,
+    intencionNivel: campos.intencionNivel ?? null,
+    rangoInversion: campos.rangoInversion ?? null,
+    aceptaPiso250k: campos.aceptaPiso250k ?? null,
+    fechaEstado: campos.fechaEstado ?? null,
+    rutaComercial: campos.rutaComercial ?? null,
+    consentimientoSeguimiento: campos.consentimientoSeguimiento ?? null,
+    numeroAclaracionesPiso: campos.numeroAclaracionesPiso ?? null,
+    numeroMensajesCaptura: campos.numeroMensajesCaptura ?? null,
+    fechaTipo: campos.fechaTipo ?? null,
+    ventanaVisita: campos.ventanaVisita ?? null,
+    aforoBanda: campos.aforoBanda ?? null,
+    origenZona: campos.origenZona ?? null,
+    email: campos.email ?? null,
+    pdfEnviado: campos.pdfEnviado ?? null,
+    adjuntoReintentos: campos.adjuntoReintentos ?? null,
   } as Prisma.InputJsonValue;
 }
 

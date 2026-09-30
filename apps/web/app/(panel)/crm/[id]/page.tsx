@@ -1,5 +1,6 @@
 "use client";
 
+import { BriefCard } from "@/components/ops/brief-card";
 import { ConfirmDeleteDialog } from "@/components/crm/confirm-delete";
 import { FichaPanel } from "@/components/crm/ficha-panel";
 import { HistorialFeed } from "@/components/crm/historial-feed";
@@ -158,6 +159,23 @@ export default function CrmExpedientePage() {
             onSaveTags={(tags) =>
               wrap(() => replaceTagsCliente(id, { tags }).then(() => undefined))
             }
+          />
+        </GlassPanel>
+        <GlassPanel className="px-6 py-6">
+          <h2 className="mb-4 font-display text-lg text-teal">Brief</h2>
+          <BriefCard
+            brief={{
+              nombre: cliente.nombre,
+              ocasion: cliente.tipoEvento,
+              fechaEstado: null,
+              aforo: cliente.oportunidades[0]?.aforo ?? null,
+              rango: null,
+              encaje: cliente.conversaciones[0]?.encajeEconomico ?? null,
+              intencion: cliente.conversaciones[0]?.intencionNivel ?? null,
+              ruta: cliente.conversaciones[0]?.rutaComercial ?? null,
+              ultimaPregunta: null,
+              pdfEnviado: false,
+            }}
           />
         </GlassPanel>
         <GlassPanel className="px-6 py-6">

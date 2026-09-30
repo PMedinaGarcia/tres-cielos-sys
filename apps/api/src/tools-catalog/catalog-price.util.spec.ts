@@ -7,6 +7,9 @@ import {
 import {
   fechaConsultaDate,
   matchPrecioPorAforo,
+  pickSkuBajoPiso,
+  pickSkuPisoVigente,
+  totalEventoFromPrecio,
   type PrecioRowLike,
 } from "./catalog-price.util";
 
@@ -48,6 +51,82 @@ describe("catalog-price.util", () => {
       expect(m.aforoTramo).toBe(100);
       expect(m.totalEvento).toBe(298000);
     }
+  });
+
+  it("bajo piso compara total de evento, no precio por persona", () => {
+    expect(
+      totalEventoFromPrecio({
+        monto: 3590,
+        moneda: "MXN",
+        unidad: "persona",
+        rangoMin: 100,
+        rangoMax: 100,
+      }),
+    ).toBe(359_000);
+    const golden = [
+      {
+        sku: "EVT-J1-PREMIUM",
+        nombre: "Upgrade Premium",
+        monto: 3590,
+        moneda: "MXN",
+        unidad: "persona",
+        rangoMin: 100,
+        rangoMax: 100,
+      },
+      {
+        sku: "EVT-J1-TC",
+        nombre: "Paquete Estándar",
+        monto: 2980,
+        moneda: "MXN",
+        unidad: "persona",
+        rangoMin: 100,
+        rangoMax: 100,
+      },
+    ];
+    expect(pickSkuBajoPiso(golden, 250_000)).toBeNull();
+    expect(
+      pickSkuBajoPiso(
+        [
+          ...golden,
+          {
+            sku: "EVT-MINI",
+            nombre: "Paquete Mini",
+            monto: 180_000,
+            moneda: "MXN",
+            unidad: "evento",
+            rangoMin: null,
+            rangoMax: null,
+          },
+        ],
+        250_000,
+      ),
+    ).toEqual({
+      sku: "EVT-MINI",
+      nombre: "Paquete Mini",
+      monto: 180_000,
+    });
+    expect(
+      pickSkuPisoVigente([
+        { sku: "EVT-J1-TC", nombre: "Paquete Estándar", precios: tc },
+        {
+          sku: "EVT-J1-PREMIUM",
+          nombre: "Upgrade Premium",
+          precios: [
+            {
+              monto: 3590,
+              moneda: "MXN",
+              unidad: "persona",
+              rangoMin: 100,
+              rangoMax: 100,
+            },
+          ],
+        },
+      ]),
+    ).toEqual({
+      sku: "EVT-J1-TC",
+      nombre: "Paquete Estándar",
+      monto: 298_000,
+    });
   });
 
   it("alias de sede y SKU de prueba apuntan al catálogo 2027", () => {

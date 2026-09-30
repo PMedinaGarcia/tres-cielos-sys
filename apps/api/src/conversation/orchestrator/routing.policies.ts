@@ -1,5 +1,20 @@
 import { HABLAR_ASESOR_PAYLOAD } from "@tres-cielos/shared";
-import type { IntentClasificado, PasoGuion } from "../types";
+import type { ConversationFlowVersion } from "../conversation-flow";
+import {
+  decideRutaComercial,
+  decideRutaComercialV3,
+  deriveEncaje,
+  deriveEncajeV3,
+  isAclaracionPisoPendiente,
+  isCalificadoV3,
+  isPrequalificadoV2,
+} from "../conversation-flow";
+import type {
+  CamposCapturados,
+  IntentClasificado,
+  PasoGuion,
+  RutaComercial,
+} from "../types";
 import {
   isPackageDetailQuery,
   matchCommercialFaqTopic,
@@ -68,16 +83,35 @@ export function classifyIntentLexical(
 /**
  * Orden duro de routing (D-BOT-1):
  * guion → handoff forzado → catálogo → RAG → safe
+ * v2 añade nutrición, seguimiento y cola de atención general.
  */
 export type RoutingDecision =
   | { kind: "silencio" }
   | { kind: "quota_hard" }
-  | { kind: "handoff"; motivo: "solicitud_usuario" | "queja" | "conflicto" | "adjunto_no_soportado" | "cupo_ia" | "otro" }
+  | {
+      kind: "handoff";
+      motivo:
+        | "solicitud_usuario"
+        | "queja"
+        | "conflicto"
+        | "adjunto_no_soportado"
+        | "cupo_ia"
+        | "otro";
+      cola?: "comercial" | "atencion_general";
+      rutaComercial?: RutaComercial;
+    }
   | { kind: "guion" }
   | { kind: "catalogo" }
   | { kind: "faq_comercial" }
   | { kind: "rag" }
-  | { kind: "safe" };
+  | { kind: "safe" }
+  | { kind: "nutricion"; motivo: "menor_piso" | "evasion" }
+  | { kind: "seguimiento" }
+  | { kind: "jump_visita" }
+  | { kind: "answer_inline" }
+  | { kind: "degrade_script" }
+  | { kind: "adjunto_retry" }
+  | { kind: "safe_sin_escala"; motivo?: "rerank_bajo" | "sin_cita_rag" };
 
 export function decideRoute(input: {
   estadoBot: "activo" | "escalado" | "humano";
@@ -90,12 +124,30 @@ export function decideRoute(input: {
   buttonPayload?: string | null;
   pedidoCotizacion?: boolean;
   perfilListo?: boolean;
-  /** Harvest de este turno corrigió fecha/aforo con perfil listo e intención de cotizar. */
   recotizarPorSlots?: boolean;
+  flow?: ConversationFlowVersion;
+  campos?: CamposCapturados;
+  adjuntoReintentos?: number;
 }): RoutingDecision {
   if (input.estadoBot !== "activo") return { kind: "silencio" };
-  if (input.hardQuota) return { kind: "quota_hard" };
+  if (input.hardQuota) {
+    return input.flow === "v3"
+      ? { kind: "degrade_script" }
+      : { kind: "quota_hard" };
+  }
 
+  if ((input.flow ?? "v1") === "v3") {
+    return decideRouteV3(input);
+  }
+  if ((input.flow ?? "v1") === "v2") {
+    return decideRouteV2(input);
+  }
+  return decideRouteV1(input);
+}
+
+function decideRouteV1(
+  input: Parameters<typeof decideRoute>[0],
+): RoutingDecision {
   const forced = detectForcedHandoff(input.texto, input.buttonPayload);
   if (forced.handoff && forced.motivo) {
     return { kind: "handoff", motivo: forced.motivo };
@@ -113,8 +165,6 @@ export function decideRoute(input: {
     return { kind: "handoff", motivo: "otro" };
   }
 
-  // D-BOT-1: captura de guion gana a precio/paquete hasta nombre + ocasión + fecha + aforo.
-  // Excepción: pregunta de ubicación (no visita) es hecho cerrado, no RAG.
   if (input.capturaPendiente) {
     if (isLocationQuery(input.texto) && !isIntencionVisita(input.texto)) {
       return { kind: "faq_comercial" };
@@ -124,6 +174,259 @@ export function decideRoute(input: {
 
   if (comercial) return { kind: "faq_comercial" };
   if (isIntencionVisita(input.texto)) return { kind: "faq_comercial" };
+  if (input.intent === "datos_duros") return { kind: "catalogo" };
+  if (input.intent === "pregunta_documental") return { kind: "rag" };
+  if (
+    input.recotizarPorSlots &&
+    input.pasoGuion === "faq_libre" &&
+    input.perfilListo
+  ) {
+    return { kind: "catalogo" };
+  }
+  if (
+    input.intent === "guion_captura" &&
+    input.pedidoCotizacion &&
+    input.perfilListo
+  ) {
+    return { kind: "catalogo" };
+  }
+  if (input.intent === "guion_captura") return { kind: "guion" };
+  if (input.intent === "ambiguo" && MONTO_RIESGO_RE.test(input.texto)) {
+    return { kind: "catalogo" };
+  }
+  if (input.intent === "ambiguo") return { kind: "rag" };
+
+  return { kind: "safe" };
+}
+
+function decideRouteV2(
+  input: Parameters<typeof decideRoute>[0],
+): RoutingDecision {
+  const campos = input.campos ?? {};
+  const encaje = deriveEncaje(campos);
+  const forced = detectForcedHandoff(input.texto, input.buttonPayload);
+  const humanAsk =
+    (forced.handoff && forced.motivo === "solicitud_usuario") ||
+    input.intent === "solicitud_humana";
+
+  if (forced.handoff && forced.motivo && forced.motivo !== "solicitud_usuario") {
+    return { kind: "handoff", motivo: forced.motivo };
+  }
+  if (input.adjuntoInvalido) {
+    return { kind: "handoff", motivo: "adjunto_no_soportado" };
+  }
+
+  if (humanAsk) {
+    if (encaje === "confirmado") {
+      return {
+        kind: "handoff",
+        motivo: "solicitud_usuario",
+        cola: "comercial",
+        rutaComercial: "handoff",
+      };
+    }
+    return {
+      kind: "handoff",
+      motivo: "solicitud_usuario",
+      cola: "atencion_general",
+      rutaComercial: "atencion_general",
+    };
+  }
+
+  if (encaje === "no") {
+    return { kind: "nutricion", motivo: "menor_piso" };
+  }
+
+  const comercial = matchCommercialFaqTopic(input.texto);
+  if (comercial === "fecha_minima") {
+    return { kind: "handoff", motivo: "otro" };
+  }
+
+  if (isPrequalificadoV2(campos)) {
+    return { kind: "jump_visita" };
+  }
+
+  if (
+    (campos.numeroMensajesCaptura ?? 0) >= 3 &&
+    encaje !== "confirmado" &&
+    !isAclaracionPisoPendiente(campos, input.pasoGuion)
+  ) {
+    return { kind: "nutricion", motivo: "evasion" };
+  }
+
+  if (input.capturaPendiente) {
+    if (isLocationQuery(input.texto) && !isIntencionVisita(input.texto)) {
+      return { kind: "faq_comercial" };
+    }
+    return { kind: "guion" };
+  }
+
+  const ruta = decideRutaComercial(campos);
+  if (ruta === "seguimiento") return { kind: "seguimiento" };
+  if (ruta === "nutricion") return { kind: "nutricion", motivo: "evasion" };
+  if (ruta === "handoff") {
+    return {
+      kind: "handoff",
+      motivo: "solicitud_usuario",
+      cola: "comercial",
+      rutaComercial: "handoff",
+    };
+  }
+
+  if (comercial) return { kind: "faq_comercial" };
+  if (isIntencionVisita(input.texto)) return { kind: "faq_comercial" };
+  if (input.intent === "datos_duros") return { kind: "catalogo" };
+  if (input.intent === "pregunta_documental") return { kind: "rag" };
+  if (
+    input.recotizarPorSlots &&
+    input.pasoGuion === "faq_libre" &&
+    input.perfilListo
+  ) {
+    return { kind: "catalogo" };
+  }
+  if (
+    input.intent === "guion_captura" &&
+    input.pedidoCotizacion &&
+    input.perfilListo
+  ) {
+    return { kind: "catalogo" };
+  }
+  if (input.intent === "guion_captura") return { kind: "guion" };
+  if (input.intent === "ambiguo" && MONTO_RIESGO_RE.test(input.texto)) {
+    return { kind: "catalogo" };
+  }
+  if (input.intent === "ambiguo") return { kind: "rag" };
+
+  return { kind: "safe" };
+}
+
+function decideRouteV3(
+  input: Parameters<typeof decideRoute>[0],
+): RoutingDecision {
+  const campos = input.campos ?? {};
+  const encaje = deriveEncajeV3(campos);
+  const forced = detectForcedHandoff(input.texto, input.buttonPayload);
+  const humanAsk =
+    (forced.handoff && forced.motivo === "solicitud_usuario") ||
+    input.intent === "solicitud_humana";
+
+  if (forced.handoff && forced.motivo && forced.motivo !== "solicitud_usuario") {
+    return {
+      kind: "handoff",
+      motivo: forced.motivo,
+      cola: "atencion_general",
+      rutaComercial: "atencion_general",
+    };
+  }
+
+  if (input.adjuntoInvalido) {
+    if ((input.adjuntoReintentos ?? 0) >= 1) {
+      return {
+        kind: "handoff",
+        motivo: "adjunto_no_soportado",
+        cola: "atencion_general",
+        rutaComercial: "atencion_general",
+      };
+    }
+    return { kind: "adjunto_retry" };
+  }
+
+  if (humanAsk) {
+    if (encaje === "confirmado") {
+      return {
+        kind: "handoff",
+        motivo: "solicitud_usuario",
+        cola: "comercial",
+        rutaComercial: "handoff",
+      };
+    }
+    return {
+      kind: "handoff",
+      motivo: "solicitud_usuario",
+      cola: "atencion_general",
+      rutaComercial: "atencion_general",
+    };
+  }
+
+  if (encaje === "no") {
+    return { kind: "nutricion", motivo: "menor_piso" };
+  }
+
+  const comercial = matchCommercialFaqTopic(input.texto);
+  if (comercial === "fecha_minima") {
+    return { kind: "faq_comercial" };
+  }
+
+  if (
+    /\ba futuro\b/.test(input.texto.toLowerCase()) &&
+    encaje !== "confirmado" &&
+    encaje !== "probable"
+  ) {
+    return { kind: "nutricion", motivo: "evasion" };
+  }
+
+  const visita = isIntencionVisita(input.texto);
+  if (visita && (encaje === "confirmado" || encaje === "probable")) {
+    return { kind: "jump_visita" };
+  }
+
+  if (isCalificadoV3(campos) && (visita || campos.intencionVisita)) {
+    return { kind: "jump_visita" };
+  }
+
+  if (isCalificadoV3(campos) && (encaje === "confirmado" || encaje === "probable")) {
+    if (campos.intencionNivel === "alta" || campos.intencionNivel === "media") {
+      return { kind: "jump_visita" };
+    }
+  }
+
+  if (
+    (campos.numeroMensajesCaptura ?? 0) >= 3 &&
+    encaje !== "confirmado" &&
+    encaje !== "probable" &&
+    !isAclaracionPisoPendiente(campos, input.pasoGuion)
+  ) {
+    return { kind: "nutricion", motivo: "evasion" };
+  }
+
+  if (input.capturaPendiente) {
+    if (isLocationQuery(input.texto) && !visita) {
+      return { kind: "faq_comercial" };
+    }
+    if (comercial) {
+      return { kind: "faq_comercial" };
+    }
+    if (input.intent === "datos_duros" || isPackageDetailQuery(input.texto)) {
+      return { kind: "answer_inline" };
+    }
+    if (visita && encaje !== "confirmado" && encaje !== "probable") {
+      return { kind: "guion" };
+    }
+    return { kind: "guion" };
+  }
+
+  if (
+    campos.rutaComercial === "nutricion" &&
+    encaje !== "confirmado" &&
+    encaje !== "probable"
+  ) {
+    return { kind: "nutricion", motivo: "evasion" };
+  }
+
+  const ruta = decideRutaComercialV3(campos);
+  if (ruta === "seguimiento") return { kind: "seguimiento" };
+  if (ruta === "nutricion") return { kind: "nutricion", motivo: "evasion" };
+  if (ruta === "handoff") {
+    return {
+      kind: "handoff",
+      motivo: "solicitud_usuario",
+      cola: "comercial",
+      rutaComercial: "handoff",
+    };
+  }
+
+  if (comercial) return { kind: "faq_comercial" };
+  if (visita) return { kind: "faq_comercial" };
   if (input.intent === "datos_duros") return { kind: "catalogo" };
   if (input.intent === "pregunta_documental") return { kind: "rag" };
   if (

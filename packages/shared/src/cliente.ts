@@ -132,6 +132,7 @@ export const COLA_CRM = [
   "listos_sin_propuesta",
   "sin_tarifa",
   "escalados",
+  "atencion_general",
   "estancados",
 ] as const;
 export type ColaCrm = (typeof COLA_CRM)[number];
@@ -169,6 +170,9 @@ export const ClienteListItemSchema = z.object({
   siguienteAccion: z.string(),
   estancado: z.boolean(),
   oportunidadId: z.string().nullable(),
+  encajeEconomico: z.string().nullable().optional(),
+  intencionNivel: z.string().nullable().optional(),
+  rutaComercial: z.string().nullable().optional(),
 });
 export type ClienteListItem = z.infer<typeof ClienteListItemSchema>;
 
@@ -201,10 +205,39 @@ export const ConversacionResumenDtoSchema = z.object({
   canal: CanalCrmSchema,
   externalThreadId: z.string().nullable(),
   estadoBot: z.string(),
+  encajeEconomico: z.string().nullable().optional(),
+  intencionNivel: z.string().nullable().optional(),
+  rutaComercial: z.string().nullable().optional(),
 });
 export type ConversacionResumenDto = z.infer<
   typeof ConversacionResumenDtoSchema
 >;
+
+export const BriefCardDtoSchema = z.object({
+  nombre: z.string().nullable(),
+  ocasion: z.string().nullable(),
+  fechaEstado: z.string().nullable(),
+  aforo: z.number().nullable(),
+  rango: z.string().nullable(),
+  encaje: z.string().nullable(),
+  intencion: z.string().nullable(),
+  ruta: z.string().nullable(),
+  ultimaPregunta: z.string().nullable(),
+  pdfEnviado: z.boolean(),
+});
+export type BriefCardDto = z.infer<typeof BriefCardDtoSchema>;
+
+export const BandejaItemSchema = z.object({
+  id: z.string(),
+  clienteId: z.string().nullable(),
+  cola: z.enum(["comercial", "atencion_general"]).nullable(),
+  estadoBot: z.string(),
+  slaVenceEn: z.string().nullable(),
+  asesorLockId: z.string().nullable(),
+  urgenciaSla: z.enum(["dentro", "fuera"]).nullable(),
+  brief: BriefCardDtoSchema,
+});
+export type BandejaItem = z.infer<typeof BandejaItemSchema>;
 
 export const NotaClienteDtoSchema = z.object({
   id: z.string(),

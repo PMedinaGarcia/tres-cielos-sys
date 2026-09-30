@@ -12,6 +12,7 @@ import type {
   OportunidadResumenDto,
   VinculoClienteDto,
 } from "@tres-cielos/shared";
+import type { CamposCapturados } from "../conversation/types";
 import {
   derivarInteligencia,
   perfilDesdeOportunidad,
@@ -20,6 +21,7 @@ import {
 type ClienteListRow = Cliente & {
   tags: Array<{ tag: { nombre: string } }>;
   oportunidades?: Oportunidad[];
+  conversaciones?: Conversacion[];
 };
 
 type ClienteDetailRow = Cliente & {
@@ -35,7 +37,9 @@ export function toClienteListItem(
   tieneDuplicado = false,
 ): ClienteListItem {
   const opp = row.oportunidades?.[0];
-  const intel = intelDe(opp, row);
+  const conv = row.conversaciones?.[0];
+  const intel = intelDe(opp, row, conv);
+  const campos = camposFromJson(conv?.camposCapturados);
   return {
     id: row.id,
     nombre: row.nombre,
@@ -57,6 +61,9 @@ export function toClienteListItem(
     siguienteAccion: intel.siguienteAccion,
     estancado: intel.estancado,
     oportunidadId: opp?.id ?? null,
+    encajeEconomico: conv?.encajeEconomico ?? campos.encajeEconomico ?? null,
+    intencionNivel: campos.intencionNivel ?? null,
+    rutaComercial: conv?.rutaComercial ?? campos.rutaComercial ?? null,
   };
 }
 
@@ -129,6 +136,9 @@ export function toClienteDetail(
       canal: c.canal,
       externalThreadId: c.externalThreadId,
       estadoBot: c.estadoBot,
+      encajeEconomico: c.encajeEconomico ?? null,
+      intencionNivel: camposFromJson(c.camposCapturados).intencionNivel ?? null,
+      rutaComercial: c.rutaComercial ?? null,
     })),
     vinculos: extras.vinculos ?? [],
     creadoEn: row.creadoEn.toISOString(),
@@ -207,4 +217,9 @@ function intelDe(
     ultimoContactoEn: ctx.ultimoContactoEn,
     estadoAtencion: ctx.estadoAtencion,
   });
+}
+
+function camposFromJson(json: unknown): CamposCapturados {
+  if (!json || typeof json !== "object" || Array.isArray(json)) return {};
+  return json as CamposCapturados;
 }

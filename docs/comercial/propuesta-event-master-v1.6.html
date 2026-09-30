@@ -1,0 +1,388 @@
+﻿<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8" />
+  <title>Medina Systems — Propuesta Tres Cielos v1.6</title>
+  <style>
+    :root {
+      --navy: #1a2744;
+      --gold: #c4a15a;
+      --gold-2: #e8d5a3;
+      --ink: #2a3142;
+      --muted: #5a6274;
+      --line: #e6e0d2;
+      --cream: #f7f4ec;
+      --white: #fffdf8;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      color: var(--ink);
+      background: var(--white);
+      font: 10.2pt/1.42 "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    }
+    @page { size: A4; margin: 13mm 14mm 16mm; }
+    h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; margin: 0 0 6px; color: var(--navy); }
+    h1 { font-size: 20pt; color: var(--gold); letter-spacing: 0.02em; }
+    h2 { font-size: 12.5pt; margin: 14px 0 7px; padding-bottom: 3px; border-bottom: 1.5px solid var(--gold); }
+    h3 { font-size: 10.5pt; margin: 10px 0 5px; }
+    p { margin: 0 0 7px; }
+    ul, ol { margin: 0 0 8px; padding-left: 18px; }
+    li { margin: 0 0 2px; }
+    .brand { text-align: center; padding: 4px 0 8px; border-bottom: 2px solid var(--gold); margin-bottom: 12px; }
+    .brand .name { font-family: Georgia, serif; font-size: 17pt; color: var(--gold); letter-spacing: 0.06em; }
+    .brand .tag { font-size: 8pt; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px; }
+    .hero { text-align: center; margin: 8px 0 12px; }
+    .hero .kicker { color: var(--gold); font-size: 8.5pt; letter-spacing: 0.14em; text-transform: uppercase; }
+    .hero h1 { margin: 4px 0 4px; font-size: 18pt; }
+    .hero .sub { color: var(--navy); font-size: 11.5pt; }
+    .meta { width: 100%; border-collapse: collapse; margin: 8px 0 12px; }
+    .meta th, .meta td { border: 1px solid var(--line); padding: 5px 9px; vertical-align: top; }
+    .meta th { width: 22%; text-align: left; background: var(--navy); color: var(--gold-2); font-weight: 600; font-size: 8.5pt; }
+    .meta td { background: var(--cream); }
+    table.data { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 9.2pt; }
+    table.data th, table.data td { border: 1px solid #d8d2c4; padding: 4px 7px; }
+    table.data th { background: var(--navy); color: var(--gold-2); text-align: left; font-weight: 600; }
+    table.data td.num, table.data th.num { text-align: right; white-space: nowrap; }
+    table.data tr.total td { background: var(--navy); color: #fff; font-weight: 700; border-color: var(--navy); }
+    table.data tr.accent td { background: #f3ead4; font-weight: 700; }
+    table.data tr.discount td { color: #8a3b12; }
+    table.data tr.alt td { background: var(--cream); }
+    .callout { border: 1.5px solid var(--gold); background: var(--cream); padding: 8px 11px; margin: 8px 0 12px; }
+    .note { font-size: 8.5pt; color: var(--muted); }
+    .sign { width: 100%; margin-top: 14px; border-collapse: collapse; }
+    .sign th, .sign td { width: 50%; border: 1px solid var(--line); padding: 7px 9px; vertical-align: top; }
+    .sign th { background: var(--navy); color: var(--gold-2); }
+    .sign .blank { height: 40px; }
+    .idx { column-count: 2; column-gap: 24px; }
+    .idx ol { margin: 0; padding-left: 18px; }
+    .small { font-size: 9pt; }
+    table.data, .callout, .meta, .sign { break-inside: avoid; }
+  </style>
+</head>
+<body>
+
+  <div class="brand">
+    <div class="name">Medina Systems</div>
+    <div class="tag">Propuesta comercial formal</div>
+  </div>
+  <div class="hero">
+    <div class="kicker">Cliente: Tres Cielos</div>
+    <h1>Sistema integrado de gestión de leads</h1>
+    <div class="sub">Event Master System — CRM, chatbot y mensajería</div>
+  </div>
+  <table class="meta">
+    <tr><th>Documento</th><td>Propuesta comercial y alcance contractual</td></tr>
+    <tr><th>Versión</th><td>1.6 — 02 de septiembre de 2026</td></tr>
+    <tr><th>Vigencia</th><td>Hasta el 02 de octubre de 2026 (prorrogable por escrito)</td></tr>
+    <tr><th>Cliente</th><td>Tres Cielos</td></tr>
+    <tr><th>Proveedor</th><td>Medina Systems</td></tr>
+    <tr><th>Moneda</th><td>Pesos mexicanos (MXN)</td></tr>
+    <tr><th>Impuestos</th><td>Precios antes de IVA; IVA 16% se adiciona en facturación</td></tr>
+    <tr><th>Pago</th><td><strong>Anticipo 50% a la firma / kick-off</strong>; 50% restante al go-live aceptado</td></tr>
+    <tr><th>Referencia</th><td>Propuesta comercial Medina Systems · plataforma Event Master System</td></tr>
+    <tr><th>Plataforma</th><td>Event Master System es el nombre comercial del sistema de gestión de leads (CRM, chatbot y mensajería) provisto por Medina Systems.</td></tr>
+  </table>
+  <h2>Índice</h2>
+  <div class="idx">
+    <ol>
+      <li>Objetivo del proyecto</li>
+      <li>Explicación de la solución</li>
+      <li>Alcance de la implementación (detalle)</li>
+      <li>Alcance de la membresía mensual (detalle)</li>
+      <li>Costos detallados</li>
+      <li>Condiciones comerciales y de pago</li>
+      <li>Responsabilidades del cliente</li>
+      <li>Supuestos y limitaciones</li>
+      <li>Lo que NO incluye esta propuesta</li>
+      <li>Add-ons y fases futuras</li>
+      <li>Aceptación</li>
+      <li>Anexos</li>
+    </ol>
+  </div>
+
+  <h2>1. Objetivo del proyecto</h2>
+  <p>Implementar un sistema integrado de gestión de leads para Tres Cielos que permita:</p>
+  <ul>
+    <li>Automatizar la primera interacción con prospectos que llegan por campañas digitales.</li>
+    <li>Perfilar y calificar leads con información estructurada (ocasión, fecha, aforo, presupuesto orientativo, etc.).</li>
+    <li>Registrar y asignar oportunidades en un CRM personalizado al equipo comercial correcto.</li>
+    <li>Reducir tiempos de respuesta de horas a segundos/minutos en el canal contratado.</li>
+    <li>Dejar trazabilidad para que ventas retome el contacto en ventana recomendada de 15–30 minutos cuando el bot derive a humano.</li>
+  </ul>
+  <p>El sistema se diseña para adaptaciones futuras, pero cada canal o automatización nueva requiere configuración, validación y cotización propias.</p>
+
+  <h2>2. Explicación de la solución</h2>
+  <h3>2.1 Componentes</h3>
+  <table class="data">
+    <tr><th>Componente</th><th>Función</th></tr>
+    <tr><td>Chatbot conversacional (Meta)</td><td>Atiende primer contacto en Facebook e Instagram (mensajes, formularios vinculados según configuración acordada).</td></tr>
+    <tr class="alt"><td>Chatbot WhatsApp Business</td><td>Atiende primer contacto y precalificación por WhatsApp (Twilio), integrado al mismo CRM y reglas de asignación.</td></tr>
+    <tr><td>CRM personalizado</td><td>Expediente del lead, etapa comercial, historial de interacción y asignación a asesores.</td></tr>
+    <tr class="alt"><td>Motor de asignación</td><td>Reglas para distribuir leads por disponibilidad, sede o criterio comercial definido en implementación.</td></tr>
+    <tr><td>Notificaciones operativas</td><td>Alertas al equipo cuando hay lead nuevo, lead calificado o escalación a humano.</td></tr>
+    <tr class="alt"><td>Panel de operación</td><td>Superficie para que el equipo comercial vea conversaciones y datos capturados (según perfil de usuario acordado).</td></tr>
+  </table>
+  <h3>2.2 Flujo resumido</h3>
+  <p class="small"><strong>Captación (Meta Ads: FB / IG / WA)</strong> → Chatbot Meta / WhatsApp → CRM personalizado → Asignación → Asesor comercial.</p>
+  <h3>2.3 Canales en esta propuesta</h3>
+  <table class="data">
+    <tr><th>Canal</th><th>¿Incluido en implementación y membresía base?</th></tr>
+    <tr><td>Facebook (Messenger / mensajes)</td><td>Sí</td></tr>
+    <tr class="alt"><td>Instagram (DM)</td><td>Sí</td></tr>
+    <tr><td>WhatsApp Business (Twilio)</td><td>Sí — incluido en implementación y membresía (cupo §4)</td></tr>
+    <tr class="alt"><td>Sitio web / widget</td><td>No — add-on</td></tr>
+    <tr><td>Google Ads (chat o formularios fuera de Meta)</td><td>No — add-on</td></tr>
+    <tr class="alt"><td>Email masivo / SMS masivo / campañas FXP</td><td>No — add-on</td></tr>
+  </table>
+  <p>Cupo de mensajería: la membresía incluye hasta 1,000 unidades/mes repartidas entre Meta, WhatsApp y email transaccional (Anexo A). Campañas masivas o plantillas marketing WA consumen el cupo más rápido; el excedente se factura según §5.4.</p>
+
+  <h2>3. Alcance de la implementación (detalle)</h2>
+  <p>La implementación es un proyecto por entregables, con las etapas y horas siguientes. Tarifa de referencia: <strong>$350 MXN/hora</strong> (integración, configuración y validación).</p>
+  <table class="data">
+    <tr>
+      <th>#</th>
+      <th>Etapa / entregable</th>
+      <th class="num">Horas</th>
+      <th class="num">Tarifa/h</th>
+      <th class="num">Subtotal MXN</th>
+    </tr>
+    <tr><td>1</td><td>Diseño estratégico y definición del embudo comercial</td><td class="num">12</td><td class="num">$350</td><td class="num">$4,200</td></tr>
+    <tr class="alt"><td>2</td><td>Configuración del chatbot y flujo conversacional (Meta)</td><td class="num">22</td><td class="num">$350</td><td class="num">$7,700</td></tr>
+    <tr><td>3</td><td>Perfilado y calificación de leads (preguntas, reglas, campos CRM)</td><td class="num">10</td><td class="num">$350</td><td class="num">$3,500</td></tr>
+    <tr class="alt"><td>4</td><td>Integración CRM y registro automático de leads</td><td class="num">21</td><td class="num">$350</td><td class="num">$7,350</td></tr>
+    <tr><td>5</td><td>Asignación inteligente de leads al equipo</td><td class="num">6</td><td class="num">$350</td><td class="num">$2,100</td></tr>
+    <tr class="alt"><td>6</td><td>Notificaciones y alertas comerciales</td><td class="num">6</td><td class="num">$350</td><td class="num">$2,100</td></tr>
+    <tr><td>7</td><td>Pruebas y validación operativa (UAT)</td><td class="num">8</td><td class="num">$350</td><td class="num">$2,800</td></tr>
+    <tr class="alt"><td>8</td><td>Capacitación del equipo y adopción inicial</td><td class="num">8</td><td class="num">$350</td><td class="num">$2,800</td></tr>
+    <tr><td>9</td><td>Integración WhatsApp Business (Twilio): webhooks, flujo bot, plantillas utility, pruebas</td><td class="num">12</td><td class="num">$350</td><td class="num">$4,200</td></tr>
+    <tr class="accent"><td></td><td>Total horas</td><td class="num">105</td><td class="num"></td><td class="num"></td></tr>
+    <tr class="accent"><td></td><td>Valor total de implementación</td><td class="num"></td><td class="num"></td><td class="num">$36,750</td></tr>
+    <tr class="discount"><td></td><td>Ajuste comercial acordado</td><td class="num"></td><td class="num"></td><td class="num">−$6,750</td></tr>
+    <tr class="total"><td></td><td>Total implementación (precio cerrado)</td><td class="num"></td><td class="num"></td><td class="num">$30,000</td></tr>
+  </table>
+
+  <h3>3.1 Entregables por etapa</h3>
+  <p><strong>Etapa 1 — Diseño estratégico.</strong> Mapa del embudo: origen del lead → bot → CRM → asesor. Definición de datos mínimos a capturar (campos obligatorios y opcionales). Criterios de “lead calificado” vs “lead en exploración”.</p>
+  <p><strong>Etapa 2 — Chatbot Meta.</strong> Flujo conversacional en Facebook e Instagram acorde a guiones aprobados por Tres Cielos. Respuestas a preguntas frecuentes acordadas (ubicación, tipos de evento, rangos generales, etc.). Escalación a humano cuando el bot no pueda resolver o el lead lo solicite. No incluye rediseños ilimitados post go-live (ver §10).</p>
+  <p><strong>Etapa 3 — Perfilado.</strong> Preguntas y lógica para ocasión, fecha tentativa, número de invitados, presupuesto orientativo, sede de interés, etc. Validaciones básicas (formato, rangos).</p>
+  <p><strong>Etapa 4 — CRM.</strong> Alta automática del lead en CRM con datos del chat. Vista de oportunidad / expediente vinculada a la conversación. Estados iniciales del pipeline acordados.</p>
+  <p><strong>Etapa 5 — Asignación.</strong> Reglas de asignación (por sede, turno, round-robin o criterio documentado). Reasignación manual desde panel (según permisos).</p>
+  <p><strong>Etapa 6 — Notificaciones.</strong> Alertas a asesores o coordinador (canal acordado: email y/o notificación en panel; no incluye SMS masivo).</p>
+  <p><strong>Etapa 7 — Pruebas.</strong> Casos de prueba documentados. Corrección de defectos dentro del alcance antes del go-live. Checklist de liberación operativa.</p>
+  <p><strong>Etapa 8 — Capacitación.</strong> Hasta 8 horas de capacitación en línea en ventana de go-live. Material de referencia operativo (guía breve). Hasta 5 usuarios por sesión salvo pacto distinto.</p>
+  <p><strong>Etapa 9 — WhatsApp Business (Twilio).</strong> Configuración de número WhatsApp y webhooks con la plataforma Event Master System. Flujo conversacional alineado al de Meta (misma lógica de precalificación, tono acordado). Plantillas utility iniciales para arranque fuera de ventana de servicio (sujetas a aprobación Meta). Registro de conversaciones WA en CRM y bandeja operativa para el equipo. No incluye campañas masivas WA marketing ni chatbot agentic con IA pesada en cada mensaje (ver §10).</p>
+  <h3>3.2 Plazo orientativo</h3>
+  <p>6 a 8 semanas desde kick-off, sujeto a entrega oportuna por parte del cliente de: accesos Meta, cuenta Twilio / WhatsApp Business, catálogos, guiones, usuarios CRM y aprobaciones de plantillas.</p>
+  <h3>3.3 Criterio de go-live</h3>
+  <p>Go-live cuando: flujos aprobados, pruebas UAT firmadas, CRM recibiendo leads, asignación operando y capacitación inicial impartida.</p>
+
+  <h2>4. Alcance de la membresía mensual (detalle)</h2>
+  <p>La membresía inicia a los 15 días del go-live (o fecha pactada) y cubre operación del sistema implementado, no nueva implementación.</p>
+  <table class="data">
+    <tr><th>Concepto</th><th>Detalle</th></tr>
+    <tr><td>Precio</td><td>$2,200 MXN/mes + IVA ($2,552 MXN facturados con IVA 16%)</td></tr>
+    <tr class="alt"><td>Cupo de mensajería</td><td>1,000 unidades/mes compartidas entre Meta, WhatsApp y email transaccional (Anexo A)</td></tr>
+    <tr><td>Renovación</td><td>Mensual; periodo mínimo recomendado 12 meses post go-live</td></tr>
+    <tr class="alt"><td>Soporte incluido</td><td>Hasta 2 horas efectivas/mes para incidentes y ajustes menores</td></tr>
+  </table>
+  <h3>4.1 Servicios incluidos en la membresía</h3>
+  <ol>
+    <li>Operación del chatbot en Facebook, Instagram y WhatsApp Business (Meta y Twilio según disponibilidad de proveedores).</li>
+    <li>Operación del CRM implementado (acceso, estabilidad, respaldos de la información del alcance).</li>
+    <li>Monitoreo básico de errores e integraciones del proyecto.</li>
+    <li>Revisión operativa general periódica (no auditoría de marketing ni optimización de anuncios).</li>
+    <li>Respaldo y administración de la información generada en el sistema del proyecto.</li>
+    <li>Soporte técnico acotado: incidentes P2/P3, fallas de integración dentro del alcance, correcciones menores de copy en flujo sin rediseño estructural.</li>
+    <li>Hasta 1,000 unidades de mensajería/mes en canales habilitados y contabilizados según Anexo A.</li>
+    <li>Uso ligero de IA asociado al alcance Meta/CRM mientras el consumo se mantenga en rangos bajos (orden de magnitud: hasta ~$150 MXN/mes equivalente en tokens); por encima, aplica §5.4.</li>
+  </ol>
+  <h3>4.2 Límites de servicio (membresía)</h3>
+  <table class="data">
+    <tr><th>Tema</th><th>Límite</th></tr>
+    <tr><td>Horas de soporte/evolutivo</td><td>2 h/mes incluidas; adicional se cotiza</td></tr>
+    <tr class="alt"><td>Rediseño de flujos</td><td>No incluido (cotización por change order)</td></tr>
+    <tr><td>Nuevas automatizaciones</td><td>No incluidas</td></tr>
+    <tr class="alt"><td>Campañas de marketing</td><td>No incluidas</td></tr>
+    <tr><td>Canales nuevos (web, Google Ads, etc.)</td><td>No incluidos</td></tr>
+    <tr class="alt"><td>WhatsApp</td><td>Incluido dentro del cupo de 1,000 unidades/mes</td></tr>
+    <tr><td>Mensajes sobre cupo</td><td>Excedente §5.4</td></tr>
+  </table>
+
+  <h2>5. Costos detallados</h2>
+  <h3>5.1 Resumen de inversión</h3>
+  <table class="data">
+    <tr><th>Concepto</th><th class="num">Sin IVA</th><th class="num">IVA 16%</th><th class="num">Total facturado</th></tr>
+    <tr><td>Implementación (única)</td><td class="num">$30,000</td><td class="num">$4,800.00</td><td class="num">$34,800.00</td></tr>
+    <tr class="alt"><td>Membresía (mensual)</td><td class="num">$2,200</td><td class="num">$352.00</td><td class="num">$2,552.00</td></tr>
+    <tr class="total"><td>Año 1 estimado (impl. + 12 meses membresía)</td><td class="num">$56,400</td><td class="num">$9,024.00</td><td class="num">$65,424.00</td></tr>
+  </table>
+  <p class="note">Año 1 sin excedentes de mensajería, sin add-ons, sin segundo jardín activo. Modelo tarifa fija (sin comisiones variables).</p>
+
+  <h3>5.2 Calendario de pago — implementación</h3>
+  <table class="data">
+    <tr><th>Hito</th><th class="num">%</th><th class="num">Sin IVA</th><th class="num">Con IVA</th></tr>
+    <tr class="accent"><td>Anticipo a la firma / kick-off</td><td class="num">50%</td><td class="num">$15,000</td><td class="num">$17,400.00</td></tr>
+    <tr><td>Go-live aceptado</td><td class="num">50%</td><td class="num">$15,000</td><td class="num">$17,400.00</td></tr>
+    <tr class="total"><td>Total</td><td class="num">100%</td><td class="num">$30,000</td><td class="num">$34,800.00</td></tr>
+  </table>
+
+  <h3>5.3 Calendario de pago — membresía</h3>
+  <ul>
+    <li>Facturación mensual anticipada.</li>
+    <li>Primera mensualidad a los 15 días naturales posteriores al go-live.</li>
+    <li>Forma de pago: transferencia / depósito en cuenta indicada en factura (CFDI México).</li>
+  </ul>
+
+  <h3>5.4 Excedentes (no incluidos en $2,200)</h3>
+  <table class="data">
+    <tr><th>Concepto</th><th>Regla de cobro</th></tr>
+    <tr><td>Mensajería por encima de 1,000 unidades/mes</td><td>Costo Twilio / Resend / Meta del periodo + 15% administración + IVA</td></tr>
+    <tr class="alt"><td>OpenAI por encima de uso ligero incluido</td><td>Consumo real (tokens + embeddings) + 15% + IVA; reporte mensual</td></tr>
+    <tr><td>Horas de soporte adicionales</td><td>$350 MXN/h + IVA (misma tarifa referencia implementación)</td></tr>
+    <tr class="alt"><td>Change orders</td><td>Cotización previa por escrito</td></tr>
+  </table>
+  <p>Tarifas de referencia al cliente (excedente mensajería, MXN/unidad, sin IVA):</p>
+  <table class="data">
+    <tr><th>Canal</th><th class="num">MXN/unidad</th></tr>
+    <tr><td>WhatsApp utility</td><td class="num">$0.28</td></tr>
+    <tr class="alt"><td>WhatsApp marketing</td><td class="num">$0.73</td></tr>
+    <tr><td>SMS México</td><td class="num">$3.70</td></tr>
+    <tr class="alt"><td>Email transaccional</td><td class="num">$0.05</td></tr>
+  </table>
+
+  <h3>5.5 Costos de terceros (referencia, no facturados por integrador salvo pass-through)</h3>
+  <p>Estos servicios pueden facturarse directo al cliente o replicarse en excedente:</p>
+  <table class="data">
+    <tr><th>Proveedor</th><th>Uso</th><th>Orden de magnitud MXN/mes</th></tr>
+    <tr><td>Railway (API, DB, Redis)</td><td>Hosting backend</td><td>$610 – $1,225</td></tr>
+    <tr class="alt"><td>Vercel</td><td>Panel / portales</td><td>$350 – $1,050</td></tr>
+    <tr><td>AWS S3 / CDN</td><td>Media</td><td>$260 – $790</td></tr>
+    <tr class="alt"><td>Meta</td><td>Publicidad</td><td>Variable (cuenta del cliente)</td></tr>
+    <tr><td>Twilio (WhatsApp)</td><td>Incluido en cupo de 1,000 unidades; excedente §5.4</td><td>~$280–$560 si 1,000 msgs WA utility</td></tr>
+    <tr class="alt"><td>OpenAI</td><td>IA ligera incluida; picos vía excedente</td><td>Según volumen</td></tr>
+  </table>
+  <p>La membresía de $2,200 absorbe operación acotada en Meta + WhatsApp + CRM; no cubre mensajería ilimitada ni IA agentic pesada sin excedente.</p>
+
+  <h2>6. Condiciones comerciales y de pago</h2>
+  <table class="data">
+    <tr><th>Tema</th><th>Condición</th></tr>
+    <tr><td>Vigencia de precios</td><td>Precios de esta propuesta válidos hasta el 02 de octubre de 2026</td></tr>
+    <tr class="alt"><td>Anticipo de implementación</td><td><strong>50% a la firma / kick-off</strong> ($15,000 + IVA = $17,400). El 50% restante al go-live aceptado.</td></tr>
+    <tr><td>Facturación</td><td>CFDI; datos fiscales del cliente requeridos antes del primer cobro</td></tr>
+    <tr class="alt"><td>Plazo de pago</td><td>15 días naturales desde emisión de factura salvo pacto distinto</td></tr>
+    <tr><td>Mora</td><td>Suspende servicios automatizados tras 10 días de atraso; reactivación en 24–48 h tras liquidación</td></tr>
+    <tr class="alt"><td>Propiedad de datos</td><td>Los datos de leads y CRM son del cliente; export disponible según contrato marco</td></tr>
+    <tr><td>Confidencialidad</td><td>Información comercial y de prospectos tratada como confidencial</td></tr>
+    <tr class="alt"><td>Cancelación membresía</td><td>Aviso 30 días; no hay reembolso de mes anticipado ya facturado</td></tr>
+    <tr><td>Modelo comercial</td><td>Tarifa fija: implementación única + membresía mensual; sin comisiones por consulta, cierre ni volumen de eventos</td></tr>
+  </table>
+
+  <h2>7. Responsabilidades del cliente</h2>
+  <ul>
+    <li>Designar responsable único de aprobaciones (guiones, flujos, go-live).</li>
+    <li>Entregar accesos a Meta Business, páginas FB/IG, cuenta Twilio (o crearla con soporte de Medina Systems) y WhatsApp Business vinculado.</li>
+    <li>Aprobar plantillas WhatsApp y cumplir políticas Meta/Twilio (tiempos de aprobación a cargo del cliente).</li>
+    <li>Proveer textos, rangos de precios autorizados para el bot y políticas de privacidad.</li>
+    <li>Capacitar a su equipo para contactar leads en 15–30 min cuando el sistema escale a humano.</li>
+    <li>Pagar implementación (incluido el anticipo del 50%), membresía y excedentes en tiempo.</li>
+    <li>No usar el sistema para spam ni mensajes sin base legal de contacto (LFPDPPP, políticas Meta).</li>
+    <li>Mantener cuentas de anuncios y presupuesto de media por su cuenta.</li>
+  </ul>
+
+  <h2>8. Supuestos y limitaciones</h2>
+  <ul>
+    <li>El volumen de leads no superará de forma sostenida el cupo de 1,000 mensajes/mes sin contratar bolsa ampliada.</li>
+    <li>Meta puede cambiar APIs, políticas o tiempos de aprobación de plantillas sin control del integrador.</li>
+    <li>Tiempos de respuesta del bot dependen de disponibilidad de Meta y del hosting contratado.</li>
+    <li>Traducciones, contenido legal y aprobación de copy son responsabilidad del cliente salvo redacción expresamente contratada.</li>
+    <li>Integraciones con ERP, contabilidad, sitio web, Google Ads u otros canales no están en alcance base (WhatsApp vía Twilio sí está incluido).</li>
+  </ul>
+
+  <h2>9. Lo que NO incluye esta propuesta (explícito)</h2>
+  <p>Esta sección forma parte del contrato comercial. Cualquier ítem no listado en §3 o §4 como incluido se considera excluido.</p>
+  <h3>9.1 Canales y medios</h3>
+  <table class="data">
+    <tr><th>#</th><th>Exclusión</th></tr>
+    <tr><td>E1</td><td>Sitio web (widget, chat embebido, formularios web fuera de Meta/WA)</td></tr>
+    <tr class="alt"><td>E2</td><td>Google Ads y canales fuera del ecosistema Meta + WhatsApp contratado</td></tr>
+    <tr><td>E3</td><td>SMS masivo o telefonía (llamadas, IVR)</td></tr>
+    <tr class="alt"><td>E4</td><td>Email marketing masivo / newsletters / campañas FXP</td></tr>
+    <tr><td>E5</td><td>Push notifications a app móvil (si no se implementó expresamente)</td></tr>
+    <tr class="alt"><td>E6</td><td>WhatsApp marketing masivo (plantillas marketing fuera del uso transaccional acordado; consumen cupo y pueden requerir bolsa ampliada)</td></tr>
+  </table>
+  <h3>9.2 Marketing y automatización comercial</h3>
+  <table class="data">
+    <tr><th>#</th><th>Exclusión</th></tr>
+    <tr><td>E7</td><td>Campañas de marketing (audiencias, remarketing, envíos masivos)</td></tr>
+    <tr class="alt"><td>E8</td><td>Seguimiento automático después del primer contacto (secuencias, drips, recordatorios automatizados multi-día)</td></tr>
+    <tr><td>E9</td><td>Reactivación de leads fríos o bases históricas</td></tr>
+    <tr class="alt"><td>E10</td><td>Scoring avanzado o modelos predictivos (churn, LTV, ML custom)</td></tr>
+    <tr><td>E11</td><td>Métricas comparativas bot vs equipo (dashboards analíticos avanzados)</td></tr>
+    <tr class="alt"><td>E12</td><td>Gestión de pauta Meta Ads (creación, optimización, presupuesto)</td></tr>
+  </table>
+  <h3>9.3 Producto, IA y evolutivos</h3>
+  <table class="data">
+    <tr><th>#</th><th>Exclusión</th></tr>
+    <tr><td>E13</td><td>Chatbot agentic con IA pesada en cada mensaje (RAG híbrido, múltiples llamadas OpenAI por turno en WhatsApp)</td></tr>
+    <tr class="alt"><td>E14</td><td>OpenAI / tokens ilimitados; solo uso ligero absorbido en membresía</td></tr>
+    <tr><td>E15</td><td>Rediseño completo de flujos conversacionales post go-live</td></tr>
+    <tr class="alt"><td>E16</td><td>Nuevas automatizaciones no descritas en §3</td></tr>
+    <tr><td>E17</td><td>Evolutivos ilimitados o desarrollo a demanda sin bolsa de horas</td></tr>
+    <tr class="alt"><td>E18</td><td>Segundo jardín sin change order al activarse</td></tr>
+    <tr><td>E19</td><td>Integración con sistemas externos (ERP, Stripe cobros, POS, inventario, etc.)</td></tr>
+  </table>
+  <h3>9.4 Operación y volumen</h3>
+  <table class="data">
+    <tr><th>#</th><th>Exclusión</th></tr>
+    <tr><td>E20</td><td>Más de 1,000 unidades de mensajería/mes sin facturación de excedente</td></tr>
+    <tr class="alt"><td>E21</td><td>Más de 2 horas/mes de soporte sin cargo adicional</td></tr>
+    <tr><td>E22</td><td>Guardia 24/7 o NOC dedicado</td></tr>
+    <tr class="alt"><td>E23</td><td>Capacitación continua más allá de las 8 h de implementación</td></tr>
+    <tr><td>E24</td><td>SLA de uptime con penalizaciones (salvo anexo enterprise)</td></tr>
+  </table>
+  <h3>9.5 Legal y contenido</h3>
+  <table class="data">
+    <tr><th>#</th><th>Exclusión</th></tr>
+    <tr><td>E25</td><td>Asesoría legal, avisos de privacidad o contratos con prospectos</td></tr>
+    <tr class="alt"><td>E26</td><td>Traducción a otros idiomas</td></tr>
+    <tr><td>E27</td><td>Producción de creativos, fotos o videos para anuncios</td></tr>
+  </table>
+  <h3>9.6 Resumen en una frase</h3>
+  <p>Esta propuesta cubre: implementación del embudo Meta + WhatsApp → bot → CRM → asignación (<strong>$30,000 sin IVA</strong>), más operación mensual acotada (<strong>$2,200 + IVA</strong>) con tope de 1,000 mensajes/mes. Anticipo del <strong>50%</strong> a la firma. No cubre marketing automatizado, seguimiento post-contacto, campañas masivas, IA agentic ilimitada, web/Google Ads ni trabajo ilimitado del integrador.</p>
+
+  <h2>10. Add-ons y fases futuras</h2>
+  <table class="data">
+    <tr><th>Add-on</th><th>Descripción</th><th>Precio orientativo</th></tr>
+    <tr><td>Bolsa 3,000 / 5,000 msgs</td><td>Ampliación de cupo mensual (Meta + WA + email)</td><td>Desde $1,200 MXN/mes adicional + excedente</td></tr>
+    <tr class="alt"><td>WhatsApp marketing intensivo</td><td>Campañas plantilla marketing</td><td>Bolsa aparte o excedente $0.73/unidad</td></tr>
+    <tr><td>Reserva IA</td><td>Tope tokens + reporte</td><td>$1,000 – $2,000 MXN/mes</td></tr>
+    <tr class="alt"><td>Segundo jardín</td><td>CRM sede 2, reglas, go-live</td><td>Change order (cotización)</td></tr>
+  </table>
+  <p class="note">Referencia de plan amplio Event Master System (mercado): $9,000 MXN/mes · 5,000 mensajes.</p>
+
+  <h2>11. Aceptación</h2>
+  <p>Al firmar, el cliente acepta precios, alcance, exclusiones (§9), cupo de mensajes (Anexo A), el <strong>anticipo del 50% a la firma / kick-off</strong> y las demás condiciones de pago de esta propuesta.</p>
+  <table class="sign">
+    <tr>
+      <th>Cliente (Tres Cielos)</th>
+      <th>Proveedor (Medina Systems)</th>
+    </tr>
+    <tr><td>Nombre</td><td>Nombre</td></tr>
+    <tr><td>Cargo</td><td>Cargo</td></tr>
+    <tr><td class="blank">Firma</td><td class="blank">Firma</td></tr>
+    <tr><td>Fecha</td><td>02 de septiembre de 2026</td></tr>
+  </table>
+
+  <h2>12. Anexos</h2>
+  <table class="data">
+    <tr><th>Anexo</th><th>Contenido</th></tr>
+    <tr><td>A</td><td>Definición de unidad de mensaje y cupo 1,000</td></tr>
+    <tr class="alt"><td>B</td><td>Escenarios de consumo y excedentes</td></tr>
+    <tr><td>C</td><td>Plantilla reporte mensual de uso (Twilio / OpenAI)</td></tr>
+  </table>
+  <p class="note" style="margin-top:14px;">Medina Systems · Propuesta confidencial para Tres Cielos · Documento para envío formal. No constituye contrato hasta firma de ambas partes o orden de compra equivalente.</p>
+
+</body>
+</html>

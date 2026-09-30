@@ -229,6 +229,21 @@ export default function CrmPage() {
                         {VISITA_LABEL[c.visitaEstado as VisitaEstado]}
                       </span>
                     ) : null}
+                    {c.rutaComercial ? (
+                      <span className="rounded-full bg-white/70 px-2 py-0.5 text-ink/70">
+                        {c.rutaComercial.replace("_", " ")}
+                      </span>
+                    ) : null}
+                    {c.encajeEconomico ? (
+                      <span className="rounded-full bg-teal/15 px-2 py-0.5 text-teal">
+                        Encaje {c.encajeEconomico.replace("_", " ")}
+                      </span>
+                    ) : null}
+                    {c.intencionNivel ? (
+                      <span className="rounded-full bg-white/70 px-2 py-0.5 text-ink/55">
+                        Intención {c.intencionNivel}
+                      </span>
+                    ) : null}
                     <span className="rounded-full bg-white/70 px-2 py-0.5 text-ink/55">
                       {ESTADO_ATENCION_LABEL[c.estadoAtencion]}
                     </span>

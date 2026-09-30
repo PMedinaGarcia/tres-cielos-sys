@@ -1,6 +1,7 @@
 import { resolvePaqueteSkuAlias } from "@tres-cielos/shared";
 import { normalizeProspectText } from "../text-normalize";
 import { isLocationQuery } from "./location-intent";
+import { isIntencionVisita } from "./visit-intent";
 
 export type CommercialFaqTopic =
   | "overview"
@@ -8,7 +9,9 @@ export type CommercialFaqTopic =
   | "pago"
   | "exclusiones"
   | "ubicacion"
-  | "fecha_minima";
+  | "fecha_minima"
+  | "hospedaje"
+  | "distancia";
 
 const VENUE_RE =
   /\b(estacionamiento|dress code|pirotecnia)\b/;
@@ -35,6 +38,10 @@ export function matchCommercialFaqTopic(
   if (!n) return null;
 
   if (FECHA_MINIMA_RE.test(n)) return "fecha_minima";
+  if (/\b(hospedaje|hotel|villas?|habitaciones)\b/.test(n)) return "hospedaje";
+  if (/\b(lejos|distancia|traslado|90 min|cdmx)\b/.test(n) && isLocationQuery(texto)) {
+    return "distancia";
+  }
   if (isPackageDetailQuery(texto)) return null;
   if (isLocationQuery(texto)) return "ubicacion";
   if (VENUE_RE.test(n)) return null;
@@ -70,5 +77,17 @@ export function isPackageDetailQuery(texto: string): boolean {
     /\b(incluye|inclusiones|que trae|que tiene|detalle|ficha|de que consta)\b/.test(
       n,
     ) && !/\bpaquetes tienen\b/.test(n)
+  );
+}
+
+/** En nutrición: “Quiero conocer” pide la ficha del piso, no una visita. */
+export function isPedidoFichaMasEconomico(texto: string): boolean {
+  const n = normalizeProspectText(texto);
+  if (!n) return false;
+  if (isIntencionVisita(texto)) return false;
+  return (
+    /\bquiero conocer\b/.test(n) ||
+    /\bver (el )?(paquete|estandar|premium)\b/.test(n) ||
+    /\bmas (barato|economico)\b/.test(n)
   );
 }

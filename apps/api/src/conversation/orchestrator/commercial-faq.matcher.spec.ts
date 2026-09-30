@@ -1,5 +1,6 @@
 import {
   isPackageDetailQuery,
+  isPedidoFichaMasEconomico,
   matchCommercialFaqTopic,
 } from "./commercial-faq.matcher";
 
@@ -52,5 +53,10 @@ describe("commercial-faq.matcher", () => {
     expect(isPackageDetailQuery("qué paquetes tienen")).toBe(false);
     expect(isPackageDetailQuery("tiene estacionamiento")).toBe(false);
     expect(matchCommercialFaqTopic("que tiene el estandar")).toBeNull();
+  });
+
+  it("Quiero conocer pide ficha; conocer el jardín es visita", () => {
+    expect(isPedidoFichaMasEconomico("Quiero conocer")).toBe(true);
+    expect(isPedidoFichaMasEconomico("quiero conocer el jardín")).toBe(false);
   });
 });

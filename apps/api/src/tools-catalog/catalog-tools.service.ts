@@ -6,9 +6,12 @@ import {
   sedeToCatalogSlug,
 } from "@tres-cielos/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { PISO_INVERSION_MXN } from "../conversation/conversation-flow";
 import {
   fechaConsultaDate,
   matchPrecioPorAforo,
+  pickSkuBajoPiso,
+  pickSkuPisoVigente,
   vigenciaWhere,
 } from "./catalog-price.util";
 import {
@@ -343,6 +346,64 @@ export class CatalogToolsService {
         mensajeProspecto: r.mensajeProspecto,
       })),
     };
+  }
+
+  async findSkuBajoPiso(pisoMxn = PISO_INVERSION_MXN): Promise<{
+    sku: string;
+    nombre: string;
+    monto: number;
+  } | null> {
+    const fechaConsulta = fechaConsultaDate();
+    const rows = await this.prisma.paquetePrecio.findMany({
+      where: {
+        ...vigenciaWhere(fechaConsulta),
+        monto: { gt: 0 },
+        paquete: { estado: "publicado" },
+      },
+      include: { paquete: { select: { codigoSku: true, nombre: true } } },
+    });
+    return pickSkuBajoPiso(
+      rows.map((r) => ({
+        sku: r.paquete.codigoSku,
+        nombre: r.paquete.nombre,
+        monto: r.monto != null ? Number(r.monto) : null,
+        moneda: r.moneda,
+        unidad: r.unidad,
+        rangoMin: r.rangoMin,
+        rangoMax: r.rangoMax,
+      })),
+      pisoMxn,
+    );
+  }
+
+  async findSkuPisoVigente(): Promise<{
+    sku: string;
+    nombre: string;
+    monto: number;
+  } | null> {
+    const fechaConsulta = fechaConsultaDate();
+    const paquetes = await this.prisma.paquete.findMany({
+      where: { estado: "publicado" },
+      include: {
+        precios: {
+          where: vigenciaWhere(fechaConsulta),
+          orderBy: { rangoMin: "asc" },
+        },
+      },
+    });
+    return pickSkuPisoVigente(
+      paquetes.map((p) => ({
+        sku: p.codigoSku,
+        nombre: p.nombre,
+        precios: p.precios.map((r) => ({
+          monto: r.monto != null ? Number(r.monto) : null,
+          moneda: r.moneda,
+          unidad: r.unidad,
+          rangoMin: r.rangoMin,
+          rangoMax: r.rangoMax,
+        })),
+      })),
+    );
   }
 
   private async findPaquete(input: { sku?: string; paqueteId?: string }) {

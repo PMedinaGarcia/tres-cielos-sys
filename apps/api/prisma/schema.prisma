@@ -191,7 +191,26 @@ enum PasoGuion {
   sede
   presupuesto
   intencion
+  nombre_fecha
+  aforo_inversion
+  aclaracion_piso
+  accion
   faq_libre
+}
+
+enum EncajeEconomico {
+  confirmado
+  probable
+  no_confirmado
+  no
+}
+
+enum RutaComercial {
+  handoff
+  atencion_general
+  seguimiento
+  nutricion
+  cierre
 }
 
 enum CalificacionOportunidad {
@@ -623,7 +642,13 @@ model Conversacion {
   ultimaRuta           RutaOrquestador? @map("ultima_ruta")
   motivoHandoff        MotivoHandoff?   @map("motivo_handoff")
   escaladoEn           DateTime?        @map("escalado_en")
+  encajeEconomico      EncajeEconomico? @map("encaje_economico")
+  rutaComercial        RutaComercial?   @map("ruta_comercial")
   sede                 String?
+  guionVersion         String?          @map("guion_version")
+  asesorLockId         String?          @map("asesor_lock_id")
+  slaVenceEn           DateTime?        @map("sla_vence_en")
+  cola                 String?
   creadoEn             DateTime         @default(now()) @map("creado_en")
   actualizadoEn        DateTime         @updatedAt @map("actualizado_en")
   mensajes             Mensaje[]
@@ -634,6 +659,10 @@ model Conversacion {
   @@index([oportunidadId])
   @@index([clienteId])
   @@index([estadoBot])
+  @@index([encajeEconomico])
+  @@index([rutaComercial])
+  @@index([cola])
+  @@index([asesorLockId])
   @@map("conversaciones")
 }
 

@@ -10,6 +10,7 @@ import {
   SKU_PAQUETE_PREMIUM,
   SKU_SOLO_RENTA,
 } from "@tres-cielos/shared";
+import { COPY_V3_FECHA_MINIMA } from "../script/script-v2.copy";
 import type { CommercialFaqTopic } from "./commercial-faq.matcher";
 
 export const COPY_VISITA =
@@ -93,7 +94,16 @@ const FICHAS: Record<string, string> = {
 const CONTRASTE_PAQUETES =
   "El Estándar es el evento de tres días sin barra libre ni plafón. El Premium es ese mismo paquete más table styling, barra libre nacional, sillas premium, plafón y menú 100% res. Pregúntame qué incluye el estándar o el premium y te detallo cada uno.";
 
-export function composeCommercialFaq(topic: Exclude<CommercialFaqTopic, "fecha_minima">): string {
+export function composeCommercialFaq(topic: CommercialFaqTopic): string {
+  if (topic === "fecha_minima") {
+    return `${COPY_V3_FECHA_MINIMA}\n\n${FAQ_CTA}`;
+  }
+  if (topic === "hospedaje") {
+    return `El hospedaje se arma con el asesor en la visita; si hay disponibilidad publicada, te la confirma ahí.\n\n${FAQ_CTA}`;
+  }
+  if (topic === "distancia") {
+    return `${COPY_UBICACION}\n\nLa visita es la prueba de locación.\n\n${FAQ_CTA}`;
+  }
   const body =
     topic === "horario"
       ? COPY_HORARIO

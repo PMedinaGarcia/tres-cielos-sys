@@ -1,12 +1,24 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Optional } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import {
+  conversationFlowVersion,
+  effectiveConversationFlow,
+  isCalificadoV3,
+} from "../conversation-flow";
 import type { CamposCapturados, ConversacionState } from "../types";
 
 @Injectable()
 export class CrmBriefStubService {
+  constructor(@Optional() private readonly config?: ConfigService) {}
+
   evalCalificacion(campos: CamposCapturados): {
     calificado: boolean;
     listoParaCotizar: boolean;
   } {
+    if (conversationFlowVersion(this.config) === "v3") {
+      const calificado = isCalificadoV3(campos);
+      return { calificado, listoParaCotizar: calificado };
+    }
     const calificado = Boolean(
       campos.nombre &&
         campos.tipoEvento &&
@@ -41,11 +53,16 @@ export class CrmBriefStubService {
     listoParaCotizar: boolean;
     brief: Record<string, unknown>;
   }> {
-    const { calificado } = this.evalCalificacion(conv.camposCapturados);
+    const { calificado, listoParaCotizar: listoV3 } = this.evalCalificacion(
+      conv.camposCapturados,
+    );
     const hasPaquete = Boolean(
       extras?.paqueteTentativoId ?? conv.paqueteTentativoId,
     );
-    const listoParaCotizar = calificado && hasPaquete;
+    const listoParaCotizar =
+      effectiveConversationFlow(conv, this.config) === "v3"
+        ? listoV3
+        : calificado && hasPaquete;
 
     const brief: Record<string, unknown> = {
       ...conv.brief,
@@ -65,6 +82,10 @@ export class CrmBriefStubService {
         canalRespuesta: conv.canal,
       },
       listoParaCotizar,
+      encajeEconomico: conv.camposCapturados.encajeEconomico ?? null,
+      intencionNivel: conv.camposCapturados.intencionNivel ?? null,
+      rutaComercial: conv.camposCapturados.rutaComercial ?? null,
+      rangoInversion: conv.camposCapturados.rangoInversion ?? null,
       ...(hasPaquete
         ? {
             paquete: {

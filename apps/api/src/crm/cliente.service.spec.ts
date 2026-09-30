@@ -179,6 +179,20 @@ describe("ClienteService", () => {
     expect(JSON.stringify(arg.where)).toContain("listo_para_cotizar");
   });
 
+  it("cola atencion_general filtra ruta comercial", async () => {
+    prisma.cliente.findMany.mockResolvedValue([clienteRow()]);
+    prisma.cliente.count.mockResolvedValue(1);
+    await service.list(asesor, {
+      cola: "atencion_general",
+      page: 1,
+      pageSize: 20,
+    });
+    const arg = prisma.cliente.findMany.mock.calls[0][0] as {
+      where: unknown;
+    };
+    expect(JSON.stringify(arg.where)).toContain("atencion_general");
+  });
+
   it("historial unificado no recorta el texto del mensaje", async () => {
     const long = "A".repeat(400);
     prisma.cliente.findFirst.mockResolvedValue(clienteRow());

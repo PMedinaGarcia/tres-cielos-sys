@@ -59,6 +59,53 @@ export function vigenciaWhere(fechaConsulta: Date) {
   };
 }
 
+/** Total del evento: por persona × tramo; otras unidades usan el monto crudo. */
+export function totalEventoFromPrecio(row: PrecioRowLike): number | null {
+  if (row.monto == null || !Number.isFinite(row.monto) || row.monto <= 0) {
+    return null;
+  }
+  if (row.unidad === "persona") {
+    const tramo = row.rangoMin ?? row.rangoMax;
+    if (tramo == null || !Number.isFinite(tramo) || tramo <= 0) return null;
+    return row.monto * tramo;
+  }
+  return row.monto;
+}
+
+export function pickSkuBajoPiso<
+  T extends PrecioRowLike & { sku: string; nombre: string },
+>(
+  rows: T[],
+  pisoMxn: number,
+): { sku: string; nombre: string; monto: number } | null {
+  let best: { sku: string; nombre: string; monto: number } | null = null;
+  for (const row of rows) {
+    const total = totalEventoFromPrecio(row);
+    if (total == null || total >= pisoMxn) continue;
+    if (!best || total > best.monto) {
+      best = { sku: row.sku, nombre: row.nombre, monto: total };
+    }
+  }
+  return best;
+}
+
+/** Paquete publicado más económico por total de evento del tramo de partida. */
+export function pickSkuPisoVigente(
+  paquetes: Array<{ sku: string; nombre: string; precios: PrecioRowLike[] }>,
+): { sku: string; nombre: string; monto: number } | null {
+  let best: { sku: string; nombre: string; monto: number } | null = null;
+  for (const p of paquetes) {
+    const match = matchPrecioPorAforo(p.precios);
+    if (match.kind !== "exact" && match.kind !== "desde") continue;
+    const total = match.totalEvento;
+    if (!Number.isFinite(total) || total <= 0) continue;
+    if (!best || total < best.monto) {
+      best = { sku: p.sku, nombre: p.nombre, monto: total };
+    }
+  }
+  return best;
+}
+
 function personaRows(precios: PrecioRowLike[]): PrecioRowLike[] {
   return precios.filter(
     (p) => p.unidad === "persona" && p.monto != null && Number.isFinite(p.monto),

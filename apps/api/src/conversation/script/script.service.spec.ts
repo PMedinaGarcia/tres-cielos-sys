@@ -231,7 +231,11 @@ describe("ScriptService (B2)", () => {
       completeWithTools: jest.fn(),
     };
     const config = {
-      get: (k: string) => (k === "ai.providersMode" ? "live" : undefined),
+      get: (k: string) => {
+        if (k === "ai.providersMode") return "live";
+        if (k === "conversation.flow") return "v1";
+        return undefined;
+      },
     };
     const live = new ScriptService(llm as never, config as never);
     const r = await live.handleTurn(
@@ -259,7 +263,11 @@ describe("ScriptService (B2)", () => {
       completeWithTools: jest.fn(),
     };
     const config = {
-      get: (k: string) => (k === "ai.providersMode" ? "live" : undefined),
+      get: (k: string) => {
+        if (k === "ai.providersMode") return "live";
+        if (k === "conversation.flow") return "v1";
+        return undefined;
+      },
     };
     const live = new ScriptService(llm as never, config as never);
 

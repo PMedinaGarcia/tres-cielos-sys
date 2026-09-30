@@ -437,3 +437,201 @@ describe("routing.policies (D-BOT-1)", () => {
     ).toBe(false);
   });
 });
+
+describe("routing.policies v2", () => {
+  const base = {
+    estadoBot: "activo" as const,
+    hardQuota: false,
+    adjuntoInvalido: false,
+    flow: "v2" as const,
+    pasoGuion: "nombre_fecha" as const,
+    capturaPendiente: true,
+    intent: "guion_captura" as const,
+  };
+
+  it("precalificado → jump_visita", () => {
+    const r = decideRoute({
+      ...base,
+      texto: "quiero visita",
+      capturaPendiente: false,
+      campos: {
+        fechaTentativa: { tipo: "dia", fecha: "2027-12-22", flexible: false },
+        aforo: 150,
+        rangoInversion: "r350_499",
+        encajeEconomico: "confirmado",
+        intencionNivel: "alta",
+      },
+    });
+    expect(r.kind).toBe("jump_visita");
+  });
+
+  it("por_definir con tope de captura no cierra: B3 pendiente", () => {
+    const r = decideRoute({
+      ...base,
+      texto: "aún por definir",
+      capturaPendiente: true,
+      pasoGuion: "aforo_inversion",
+      campos: {
+        rangoInversion: "por_definir",
+        encajeEconomico: "no_confirmado",
+        numeroAclaracionesPiso: 0,
+        numeroMensajesCaptura: 3,
+      },
+    });
+    expect(r.kind).toBe("guion");
+  });
+
+  it("menor al piso → nutrición sin cola comercial", () => {
+    const r = decideRoute({
+      ...base,
+      texto: "quiero precios",
+      intent: "datos_duros",
+      campos: { encajeEconomico: "no" },
+    });
+    expect(r).toEqual({ kind: "nutricion", motivo: "menor_piso" });
+  });
+
+  it("encaje no se queda en nutrición salvo asesor", () => {
+    expect(
+      decideRoute({
+        ...base,
+        texto: "Quiero conocer",
+        intent: "ambiguo",
+        capturaPendiente: false,
+        pasoGuion: "faq_libre",
+        campos: {
+          encajeEconomico: "no",
+          rutaComercial: "nutricion",
+        },
+      }),
+    ).toEqual({ kind: "nutricion", motivo: "menor_piso" });
+    const humano = decideRoute({
+      ...base,
+      texto: "Quiero hablar con un asesor",
+      intent: "solicitud_humana",
+      capturaPendiente: false,
+      pasoGuion: "faq_libre",
+      campos: {
+        encajeEconomico: "no",
+        rutaComercial: "nutricion",
+      },
+    });
+    expect(humano.kind).toBe("handoff");
+  });
+
+  it("pide humano en B1 → atención general", () => {
+    const r = decideRoute({
+      ...base,
+      texto: "Quiero hablar con un asesor",
+      intent: "solicitud_humana",
+      campos: {},
+    });
+    expect(r.kind).toBe("handoff");
+    if (r.kind === "handoff") {
+      expect(r.cola).toBe("atencion_general");
+    }
+  });
+
+  it("límite de 1 aclaración: tras evasión → nutrición", () => {
+    const r = decideRoute({
+      ...base,
+      texto: "luego veo",
+      capturaPendiente: false,
+      pasoGuion: "faq_libre",
+      campos: {
+        rangoInversion: "por_definir",
+        encajeEconomico: "no_confirmado",
+        numeroAclaracionesPiso: 1,
+      },
+    });
+    expect(r).toEqual({ kind: "nutricion", motivo: "evasion" });
+  });
+
+  it("tope de 3 mensajes de captura → nutrición", () => {
+    const r = decideRoute({
+      ...base,
+      texto: "ok",
+      campos: {
+        numeroMensajesCaptura: 3,
+        encajeEconomico: "no_confirmado",
+      },
+    });
+    expect(r).toEqual({ kind: "nutricion", motivo: "evasion" });
+  });
+});
+
+describe("routing.policies v3", () => {
+  const base = {
+    estadoBot: "activo" as const,
+    hardQuota: false,
+    adjuntoInvalido: false,
+    flow: "v3" as const,
+    pasoGuion: "nombre_fecha" as const,
+    capturaPendiente: true,
+    intent: "guion_captura" as const,
+  };
+
+  it("precio en captura → answer_inline", () => {
+    const r = decideRoute({
+      ...base,
+      texto: "¿cuánto cuesta una boda?",
+      intent: "datos_duros",
+    });
+    expect(r.kind).toBe("answer_inline");
+  });
+
+  it("fecha_minima → faq inline", () => {
+    const r = decideRoute({
+      ...base,
+      texto: "fecha minima de contratacion",
+      capturaPendiente: false,
+    });
+    expect(r.kind).toBe("faq_comercial");
+  });
+
+  it("quota dura → degrade_script", () => {
+    expect(decideRoute({ ...base, hardQuota: true, texto: "hola" }).kind).toBe(
+      "degrade_script",
+    );
+  });
+
+  it("visita + encaje confirmado → jump_visita", () => {
+    const r = decideRoute({
+      ...base,
+      texto: "quiero visitar el jardín",
+      capturaPendiente: false,
+      campos: {
+        rangoInversion: "r350_499",
+        encajeEconomico: "confirmado",
+        aforo: 150,
+        intencionNivel: "alta",
+        fechaTentativa: { tipo: "dia", fecha: "2027-12-22", flexible: false },
+      },
+    });
+    expect(r.kind).toBe("jump_visita");
+  });
+
+  it("queja → cola general", () => {
+    const r = decideRoute({
+      ...base,
+      texto: "esto es una queja formal",
+      intent: "solicitud_humana",
+    });
+    expect(r.kind).toBe("handoff");
+    if (r.kind === "handoff") expect(r.cola).toBe("atencion_general");
+  });
+
+  it("adjunto inválido primer intento → retry", () => {
+    expect(
+      decideRoute({ ...base, texto: "foto", adjuntoInvalido: true }).kind,
+    ).toBe("adjunto_retry");
+  });
+
+  it("a futuro → nutrición", () => {
+    expect(
+      decideRoute({ ...base, texto: "lo vemos a futuro", capturaPendiente: false })
+        .kind,
+    ).toBe("nutricion");
+  });
+});
+

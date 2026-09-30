@@ -101,7 +101,7 @@ Corpus modular de lo que Tres Cielos vende (inclusiones Julio 2026 + **tarifas P
 
 ## Fuente comercial
 
-[Propuesta_TresCielos_SistemaLeads_MedinaSystems_v1.5.pdf](../Propuesta_TresCielos_SistemaLeads_MedinaSystems_v1.5.pdf)
+[Propuesta_TresCielos_SistemaLeads_MedinaSystems_v1.6.pdf](../Propuesta_TresCielos_SistemaLeads_MedinaSystems_v1.6.pdf) (02-sep-2026; reemisión de [v1.5](../Propuesta_TresCielos_SistemaLeads_MedinaSystems_v1.5.pdf))
 
 ## Fase Doc (multimodal / Agentic RAG)
 

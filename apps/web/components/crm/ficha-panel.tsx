@@ -57,6 +57,21 @@ export function FichaPanel({
         <span className="rounded-full bg-white/70 px-3 py-1 text-xs text-teal">
           {ESTADO_ATENCION_LABEL[cliente.estadoAtencion]}
         </span>
+        {cliente.conversaciones[0]?.encajeEconomico ? (
+          <span className="rounded-full bg-teal/15 px-3 py-1 text-xs text-teal">
+            Encaje {cliente.conversaciones[0].encajeEconomico.replace(/_/g, " ")}
+          </span>
+        ) : null}
+        {cliente.conversaciones[0]?.intencionNivel ? (
+          <span className="rounded-full bg-white/70 px-3 py-1 text-xs text-ink/60">
+            Intención {cliente.conversaciones[0].intencionNivel}
+          </span>
+        ) : null}
+        {cliente.conversaciones[0]?.rutaComercial ? (
+          <span className="rounded-full bg-white/70 px-3 py-1 text-xs text-ink/60">
+            {cliente.conversaciones[0].rutaComercial.replace(/_/g, " ")}
+          </span>
+        ) : null}
         {cliente.tieneDuplicado ? (
           <span className="rounded-full bg-amber-100 px-3 py-1 text-xs text-amber-800">
             Posible duplicado

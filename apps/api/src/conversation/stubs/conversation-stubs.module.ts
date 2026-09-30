@@ -5,6 +5,8 @@ import { CrmBriefStubService } from "./crm-brief.stub";
 import { QuotaStubService } from "./quota.stub";
 import { RAG_PIPELINE_PORT } from "./rag-pipeline.port";
 import { StubRagPipeline } from "./stub-rag-pipeline";
+import { NurtureWorkerService } from "../nurture/nurture.worker";
+import { SlaClockService } from "../nurture/sla-clock.service";
 
 @Global()
 @Module({
@@ -13,6 +15,8 @@ import { StubRagPipeline } from "./stub-rag-pipeline";
     AuditEventoService,
     CrmBriefStubService,
     QuotaStubService,
+    NurtureWorkerService,
+    SlaClockService,
     { provide: RAG_PIPELINE_PORT, useClass: StubRagPipeline },
   ],
   exports: [
@@ -20,6 +24,8 @@ import { StubRagPipeline } from "./stub-rag-pipeline";
     AuditEventoService,
     CrmBriefStubService,
     QuotaStubService,
+    NurtureWorkerService,
+    SlaClockService,
     RAG_PIPELINE_PORT,
   ],
 })
