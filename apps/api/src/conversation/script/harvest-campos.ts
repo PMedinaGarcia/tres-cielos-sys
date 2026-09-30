@@ -25,6 +25,7 @@ import {
   applyRangoHarvest,
   parseAceptaPiso,
   parseIntencionNivel,
+  parseRangoInversion,
 } from "./harvest-rango";
 import type { LlmPasoExtract } from "./script-llm.extract";
 
@@ -240,7 +241,7 @@ export function harvestCamposLexical(
   }
 
   const aforoParsed = parseAforo(trimmed, {
-    modo: isAforoFocusedPaso(focused) ? "paso" : "harvest",
+    modo: aforoHarvestModo(focused, trimmed),
   });
   let aforoMotivo: AforoParseMotivo | undefined;
   if (aforoParsed.ok) {
@@ -407,7 +408,7 @@ export function mergeLlmExtract(
       mark("aforo");
     } else {
       const lexical = parseAforo(texto, {
-        modo: isAforoFocusedPaso(opts?.focusedPaso) ? "paso" : "harvest",
+        modo: aforoHarvestModo(opts?.focusedPaso, texto),
       });
       if (lexical.ok && shouldReplaceAforo(next.aforo, extracted.aforo)) {
         next.aforo = extracted.aforo;
@@ -552,6 +553,18 @@ export function parseAforo(
   const modo = opts?.modo ?? "paso";
   if (modo === "harvest") return parseAforoHarvest(texto);
   return parseAforoPaso(texto);
+}
+
+function aforoHarvestModo(
+  focused: PasoGuion | undefined,
+  texto: string,
+): "paso" | "harvest" {
+  if (!isAforoFocusedPaso(focused)) return "harvest";
+  const t = texto.trim();
+  if (/^inversion\./i.test(t) || parseRangoInversion(t) != null) {
+    return "harvest";
+  }
+  return "paso";
 }
 
 export function extractSiNo(texto: string): boolean | null {

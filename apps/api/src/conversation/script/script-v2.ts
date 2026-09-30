@@ -1,5 +1,6 @@
 import {
   applyDefaultBoda,
+  b2PreguntaV3,
   nextPasoGuionV2,
   syncCamposV2,
 } from "../conversation-flow";
@@ -23,6 +24,7 @@ import {
   COPY_V2_B2,
   COPY_V2_B2_SIN_NOMBRE,
   COPY_V2_B3,
+  copyB2Aforo,
 } from "./script-v2.copy";
 
 export interface ScriptV2TurnResult {
@@ -68,23 +70,26 @@ export function handleTurnV2(
 
 function composeCopyV2(
   campos: CamposCapturados,
-  filled: HarvestFilledKey[],
+  _filled: HarvestFilledKey[],
   next: PasoGuion,
-  from: PasoGuion,
+  _from: PasoGuion,
   harvest: ReturnType<typeof harvestCamposLexical>,
 ): string {
   if (next === "nombre_fecha") {
     return copyNombreFecha(campos, harvest);
   }
   if (next === "aforo_inversion") {
-    if (campos.nombre && (filled.includes("nombre") || from === "nombre_fecha")) {
-      return COPY_V2_B2(campos.nombre);
-    }
-    if (campos.nombre) return COPY_V2_B2(campos.nombre);
-    return COPY_V2_B2_SIN_NOMBRE;
+    return copyB2V2(campos, false);
   }
   if (next === "aclaracion_piso") return COPY_V2_B3;
   return COPY_V2_B1;
+}
+
+function copyB2V2(campos: CamposCapturados, retry: boolean): string {
+  if (b2PreguntaV3(campos) === "aforo") {
+    return copyB2Aforo(campos, retry);
+  }
+  return campos.nombre ? COPY_V2_B2(campos.nombre) : COPY_V2_B2_SIN_NOMBRE;
 }
 
 function focusedSlotErrorV2(
@@ -98,12 +103,9 @@ function focusedSlotErrorV2(
     }
   }
   if (focused === "aforo_inversion") {
-    if (!campos.rangoInversion) {
-      return replyV2(
-        campos.nombre ? COPY_V2_B2(campos.nombre) : COPY_V2_B2_SIN_NOMBRE,
-        "aforo_inversion",
-        campos,
-      );
+    const cual = b2PreguntaV3(campos);
+    if (cual) {
+      return replyV2(copyB2V2(campos, cual === "aforo"), "aforo_inversion", campos);
     }
   }
   return null;

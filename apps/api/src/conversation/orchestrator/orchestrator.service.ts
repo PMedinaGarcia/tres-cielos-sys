@@ -1513,6 +1513,7 @@ export class OrchestratorService {
       reasoningTraceId: finished?.id ?? this.reasoning.currentId() ?? null,
       reasoningTrace: finished ?? this.reasoning.current() ?? null,
       document,
+      aforo: convForPdf?.camposCapturados.aforo,
     });
   }
 

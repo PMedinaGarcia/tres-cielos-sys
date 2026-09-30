@@ -223,6 +223,7 @@ export function isPrequalificadoV2(campos: CamposCapturados): boolean {
   return (
     encaje === "confirmado" &&
     Boolean(campos.fechaTentativa) &&
+    campos.aforo != null &&
     nivel !== "baja"
   );
 }
@@ -261,7 +262,7 @@ export function isCapturaPendienteV2(conv: ConversacionState): boolean {
 export function nextPasoGuionV2(campos: CamposCapturados): PasoGuion {
   const c = syncCamposV2(campos);
   if (!c.nombre || !c.fechaTentativa) return "nombre_fecha";
-  if (!c.rangoInversion) return "aforo_inversion";
+  if (c.aforo == null || !c.rangoInversion) return "aforo_inversion";
   const encaje = deriveEncaje(c);
   if (
     encaje !== "confirmado" &&
@@ -367,11 +368,9 @@ export function scoreFit(campos: CamposCapturados): FitScore {
 
 export function isCalificadoV3(campos: CamposCapturados): boolean {
   const fit = scoreFit(campos);
-  const fechaEstado = campos.fechaEstado ?? fechaEstadoFrom(campos);
-  const fechaOk = fechaEstado != null && fechaEstado !== "sin_definir";
   return (
     (fit.encaje === "confirmado" || fit.encaje === "probable") &&
-    (fechaOk || campos.aforo != null) &&
+    campos.aforo != null &&
     (fit.intencion === "alta" || fit.intencion === "media")
   );
 }
@@ -433,7 +432,7 @@ export function isCapturaPendienteV3(conv: ConversacionState): boolean {
 export function nextPasoGuionV3(campos: CamposCapturados): PasoGuion {
   const c = syncCamposV3(campos);
   if (!c.nombre || !c.fechaTentativa) return "nombre_fecha";
-  if (!c.rangoInversion) return "aforo_inversion";
+  if (c.aforo == null || !c.rangoInversion) return "aforo_inversion";
   const encaje = deriveEncajeV3(c);
   if (
     encaje !== "confirmado" &&
@@ -485,6 +484,7 @@ export function slaMinutos(cola?: "comercial" | "atencion_general" | null): numb
 export function b2PreguntaV3(
   campos: CamposCapturados,
 ): "aforo" | "rango" | null {
+  if (campos.aforo == null) return "aforo";
   if (!campos.rangoInversion) return "rango";
   return null;
 }

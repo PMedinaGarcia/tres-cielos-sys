@@ -1,7 +1,7 @@
 import { ScriptService } from "./script.service";
 import { flowConfig } from "../__tests__/flow-config";
 import type { ConversacionState } from "../types";
-import { COPY_V2_B1, COPY_V2_B3, COPY_V2_FECHA_ANOTADA, COPY_V2_FECHA_CON_NOMBRE, COPY_V3_B2_RANGO } from "./script-v2.copy";
+import { COPY_V2_B1, COPY_V2_B3, COPY_V2_FECHA_ANOTADA, COPY_V2_FECHA_CON_NOMBRE, COPY_V2_AFORO_RETRY, COPY_V3_B2_RANGO } from "./script-v2.copy";
 
 function baseConv(overrides?: Partial<ConversacionState>): ConversacionState {
   return {
@@ -76,8 +76,9 @@ describe("ScriptService v3", () => {
       flexible: true,
     });
     expect(r.pasoGuion).toBe("aforo_inversion");
-    expect(r.textoRespuesta).toMatch(/250/);
+    expect(r.textoRespuesta).toMatch(/cuántas personas/);
     expect(r.textoRespuesta).not.toMatch(/día, mes y año/i);
+    expect(r.textoRespuesta).not.toMatch(/250/);
   });
 
   it("tres turnos sin slot nuevo llegan a 3; un turno con fecha reinicia", async () => {
@@ -130,7 +131,7 @@ describe("ScriptService v3", () => {
     expect(r.textoRespuesta).not.toMatch(/cuántas personas/);
   });
 
-  it("con rango confirmado no pide aforo", async () => {
+  it("con rango confirmado pide aforo si falta", async () => {
     const r = await script.handleTurn(
       baseConv({
         pasoGuion: "aforo_inversion",
@@ -143,11 +144,43 @@ describe("ScriptService v3", () => {
       }),
       "ok",
     );
+    expect(r.pasoGuion).toBe("aforo_inversion");
+    expect(r.textoRespuesta).toBe(COPY_V2_AFORO_RETRY);
+  });
+
+  it("con aforo y rango confirmado avanza a accion", async () => {
+    const r = await script.handleTurn(
+      baseConv({
+        pasoGuion: "aforo_inversion",
+        camposCapturados: {
+          nombre: "Ana",
+          tipoEvento: "boda",
+          fechaTentativa: { tipo: "dia", fecha: "2027-12-22", flexible: false },
+          aforo: 150,
+          rangoInversion: "r350_499",
+        },
+      }),
+      "ok",
+    );
     expect(r.pasoGuion).toBe("accion");
     expect(r.textoRespuesta).toBe("");
   });
 
-  it("por_definir sin aforo abre B3", async () => {
+  it("por_definir sin aforo pide aforo; con aforo abre B3", async () => {
+    const sinAforo = await script.handleTurn(
+      baseConv({
+        pasoGuion: "aforo_inversion",
+        camposCapturados: {
+          nombre: "Ana",
+          tipoEvento: "boda",
+          fechaTentativa: { tipo: "mes", mes: 2, anio: 2027, flexible: true },
+        },
+      }),
+      "aún por definir",
+    );
+    expect(sinAforo.pasoGuion).toBe("aforo_inversion");
+    expect(sinAforo.textoRespuesta).toBe(COPY_V2_AFORO_RETRY);
+
     const r = await script.handleTurn(
       baseConv({
         pasoGuion: "aforo_inversion",
@@ -155,6 +188,7 @@ describe("ScriptService v3", () => {
           nombre: "Ana",
           tipoEvento: "boda",
           fechaTentativa: { tipo: "mes", mes: 2, anio: 2027, flexible: true },
+          aforo: 150,
         },
       }),
       "aún por definir",

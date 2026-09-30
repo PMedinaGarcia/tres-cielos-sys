@@ -24,6 +24,7 @@ import {
   COPY_V2_B3,
   COPY_V3_B2_RANGO,
   COPY_V3_B2_RANGO_SIN_NOMBRE,
+  copyB2Aforo,
 } from "./script-v2.copy";
 import type { ScriptV2TurnResult } from "./script-v2";
 
@@ -77,7 +78,10 @@ function composeCopyV3(
   return COPY_V2_B1;
 }
 
-function copyB2V3(campos: CamposCapturados): string {
+function copyB2V3(campos: CamposCapturados, retry = false): string {
+  if (b2PreguntaV3(campos) === "aforo") {
+    return copyB2Aforo(campos, retry);
+  }
   return campos.nombre
     ? COPY_V3_B2_RANGO(campos.nombre)
     : COPY_V3_B2_RANGO_SIN_NOMBRE;
@@ -96,7 +100,11 @@ function focusedSlotErrorV3(
   if (focused === "aforo_inversion") {
     const cual = b2PreguntaV3(campos);
     if (cual) {
-      return replyV3(copyB2V3(campos), "aforo_inversion", campos);
+      return replyV3(
+        copyB2V3(campos, cual === "aforo"),
+        "aforo_inversion",
+        campos,
+      );
     }
   }
   return null;

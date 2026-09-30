@@ -366,7 +366,11 @@ function decideRouteV3(
   }
 
   const visita = isIntencionVisita(input.texto);
-  if (visita && (encaje === "confirmado" || encaje === "probable")) {
+  if (
+    visita &&
+    campos.aforo != null &&
+    (encaje === "confirmado" || encaje === "probable")
+  ) {
     return { kind: "jump_visita" };
   }
 

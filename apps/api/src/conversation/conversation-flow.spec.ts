@@ -10,6 +10,7 @@ import {
   nextPasoGuionV3,
   resolveConversationFlow,
   scoreFit,
+  b2PreguntaV3,
 } from "./conversation-flow";
 import { flowConfig } from "./__tests__/flow-config";
 
@@ -60,19 +61,31 @@ describe("nextPasoGuionV2", () => {
     ).toBe("aclaracion_piso");
   });
 
-  it("por_definir sin aforo abre B3", () => {
+  it("sin aforo permanece en aforo_inversion aunque haya rango", () => {
     expect(
       nextPasoGuionV2({
         nombre: "Patricio",
         fechaTentativa: { tipo: "mes", mes: 2, anio: 2027, flexible: true },
         rangoInversion: "por_definir",
       }),
-    ).toBe("aclaracion_piso");
+    ).toBe("aforo_inversion");
   });
 });
 
 describe("isPrequalificadoV2", () => {
-  it("encaje confirmado con fecha e intención no baja, sin aforo", () => {
+  it("encaje confirmado con fecha, aforo e intención no baja", () => {
+    expect(
+      isPrequalificadoV2({
+        fechaTentativa: { tipo: "dia", fecha: "2027-12-22", flexible: false },
+        aforo: 150,
+        rangoInversion: "r350_499",
+        encajeEconomico: "confirmado",
+        intencionNivel: "alta",
+      }),
+    ).toBe(true);
+  });
+
+  it("sin aforo no precalifica", () => {
     expect(
       isPrequalificadoV2({
         fechaTentativa: { tipo: "dia", fecha: "2027-12-22", flexible: false },
@@ -80,7 +93,7 @@ describe("isPrequalificadoV2", () => {
         encajeEconomico: "confirmado",
         intencionNivel: "alta",
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("probable con rango suelto ≥ 250k se trata como confirmado", () => {
@@ -123,7 +136,7 @@ describe("v3 score y fecha", () => {
     ).toBe(true);
   });
 
-  it("B2 pide rango; por_definir sin aforo abre B3", () => {
+  it("B2 pide aforo si falta; con aforo pide rango; ambos desbloquean B3", () => {
     expect(
       nextPasoGuionV3({
         nombre: "Ana",
@@ -135,6 +148,14 @@ describe("v3 score y fecha", () => {
       nextPasoGuionV3({
         nombre: "Ana",
         fechaTentativa: { tipo: "mes", mes: 12, anio: 2027, flexible: true },
+        rangoInversion: "por_definir",
+      }),
+    ).toBe("aforo_inversion");
+    expect(
+      nextPasoGuionV3({
+        nombre: "Ana",
+        fechaTentativa: { tipo: "mes", mes: 12, anio: 2027, flexible: true },
+        aforo: 150,
         rangoInversion: "por_definir",
       }),
     ).toBe("aclaracion_piso");
@@ -151,5 +172,11 @@ describe("v3 score y fecha", () => {
     expect(fit.encaje).toBe("confirmado");
     expect(fit.intencion).toBe("alta");
     expect(fit.completitud).toBe("comercial");
+  });
+
+  it("B2 pregunta aforo antes que rango", () => {
+    expect(b2PreguntaV3({})).toBe("aforo");
+    expect(b2PreguntaV3({ aforo: 150 })).toBe("rango");
+    expect(b2PreguntaV3({ aforo: 150, rangoInversion: "r350_499" })).toBeNull();
   });
 });

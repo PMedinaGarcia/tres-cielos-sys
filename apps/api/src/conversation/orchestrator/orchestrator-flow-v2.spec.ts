@@ -334,7 +334,7 @@ describe("Orchestrator v2 (V2.8)", () => {
       canal: "whatsapp",
       externalThreadId: "v2-sandbox-b3",
       externalMessageId: "m4",
-      texto: "Aún por definir",
+      texto: "150 invitados, Aún por definir",
       recibidoEn: new Date().toISOString(),
     });
     expect(t4.pasoGuion).toBe("aclaracion_piso");
@@ -343,7 +343,7 @@ describe("Orchestrator v2 (V2.8)", () => {
     expect(t4.textoRespuesta).not.toMatch(/Conservamos tu solicitud/);
   });
 
-  it("B3 sí → visita sin pedir aforo", async () => {
+  it("B3 sí → visita después de aforo", async () => {
     const { orch, store } = buildOrchestratorV2();
     await orch.handleTurn({
       canal: "whatsapp",
@@ -356,7 +356,7 @@ describe("Orchestrator v2 (V2.8)", () => {
       canal: "whatsapp",
       externalThreadId: "v2-b3-si",
       externalMessageId: "m2",
-      texto: "aún por definir",
+      texto: "150 invitados, aún por definir",
       recibidoEn: new Date().toISOString(),
     });
     const res = await orch.handleTurn({
@@ -370,7 +370,7 @@ describe("Orchestrator v2 (V2.8)", () => {
     expect(res.textoRespuesta).toBe(COPY_PISO_VISITA);
     const conv = await store.findById(res.conversacionId);
     expect(conv?.camposCapturados.encajeEconomico).toBe("confirmado");
-    expect(conv?.camposCapturados.aforo).toBeUndefined();
+    expect(conv?.camposCapturados.aforo).toBe(150);
     expect(conv?.camposCapturados.intencionVisita).toBe(true);
     expect(conv?.cola).toBe("comercial");
   });
@@ -388,7 +388,7 @@ describe("Orchestrator v2 (V2.8)", () => {
       canal: "whatsapp",
       externalThreadId: "v2-b3-no",
       externalMessageId: "m2",
-      texto: "aún por definir",
+      texto: "150 invitados, aún por definir",
       recibidoEn: new Date().toISOString(),
     });
     const res = await orch.handleTurn({
@@ -457,7 +457,7 @@ describe("Orchestrator v2 (V2.8)", () => {
       canal: "whatsapp",
       externalThreadId: "v2-b3-alt",
       externalMessageId: "m2",
-      texto: "aún por definir",
+      texto: "150 invitados, aún por definir",
       recibidoEn: new Date().toISOString(),
     });
     const res = await orch.handleTurn({
@@ -484,7 +484,7 @@ describe("Orchestrator v2 (V2.8)", () => {
       canal: "whatsapp",
       externalThreadId: "v2-b3-skip",
       externalMessageId: "m2",
-      texto: "aún por definir",
+      texto: "150 invitados, aún por definir",
       recibidoEn: new Date().toISOString(),
     });
     const res = await orch.handleTurn({

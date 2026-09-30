@@ -1,7 +1,7 @@
 import { ScriptService } from "./script.service";
 import { flowConfig } from "../__tests__/flow-config";
 import type { ConversacionState } from "../types";
-import { COPY_V2_B1, COPY_V2_B3, COPY_V2_FECHA_ANOTADA, COPY_V2_FECHA_CON_NOMBRE } from "./script-v2.copy";
+import { COPY_V2_B1, COPY_V2_B3, COPY_V2_FECHA_ANOTADA, COPY_V2_FECHA_CON_NOMBRE, COPY_V2_AFORO_RETRY, COPY_V3_B2_AFORO } from "./script-v2.copy";
 
 function baseConv(overrides?: Partial<ConversacionState>): ConversacionState {
   return {
@@ -78,8 +78,9 @@ describe("ScriptService v2", () => {
     });
     expect(r.pasoGuion).toBe("aforo_inversion");
     expect(r.textoRespuesta).toMatch(/Patricio Medina/);
-    expect(r.textoRespuesta).toMatch(/250/);
+    expect(r.textoRespuesta).toMatch(/cuántas personas/);
     expect(r.textoRespuesta).not.toMatch(/día, mes y año/i);
+    expect(r.textoRespuesta).not.toMatch(/250/);
   });
 
   it("tres turnos sin slot nuevo llegan a 3; un turno con fecha reinicia", async () => {
@@ -117,18 +118,19 @@ describe("ScriptService v2", () => {
     expect(t4.pasoGuion).toBe("nombre_fecha");
   });
 
-  it("con nombre y fecha avanza a inversión, sin pedir aforo", async () => {
+  it("con nombre y fecha avanza a aforo, no a rango", async () => {
     const r = await script.handleTurn(
       baseConv(),
       "Soy Ana, boda el 22 de diciembre de 2027",
     );
     expect(r.camposCapturados.nombre?.toLowerCase()).toContain("ana");
     expect(r.pasoGuion).toBe("aforo_inversion");
-    expect(r.textoRespuesta).toMatch(/250/);
-    expect(r.textoRespuesta).not.toMatch(/cuántas personas/);
+    expect(r.textoRespuesta).toBe(COPY_V3_B2_AFORO(r.camposCapturados.nombre as string));
+    expect(r.textoRespuesta).toMatch(/cuántas personas/);
+    expect(r.textoRespuesta).not.toMatch(/250/);
   });
 
-  it("B3 es la única aclaración del piso, también sin aforo", async () => {
+  it("sin aforo no abre B3 aunque el rango esté por definir", async () => {
     const r = await script.handleTurn(
       baseConv({
         pasoGuion: "aforo_inversion",
@@ -140,10 +142,28 @@ describe("ScriptService v2", () => {
       }),
       "aún por definir",
     );
+    expect(r.pasoGuion).toBe("aforo_inversion");
+    expect(r.textoRespuesta).toBe(COPY_V2_AFORO_RETRY);
+    expect(r.camposCapturados.aforo).toBeUndefined();
+  });
+
+  it("con aforo, por_definir abre B3", async () => {
+    const r = await script.handleTurn(
+      baseConv({
+        pasoGuion: "aforo_inversion",
+        camposCapturados: {
+          nombre: "Ana",
+          tipoEvento: "boda",
+          fechaTentativa: { tipo: "dia", fecha: "2027-12-22", flexible: false },
+          aforo: 150,
+        },
+      }),
+      "aún por definir",
+    );
     expect(r.pasoGuion).toBe("aclaracion_piso");
     expect(r.textoRespuesta).toBe(COPY_V2_B3);
     expect(r.camposCapturados.numeroAclaracionesPiso).toBe(1);
-    expect(r.camposCapturados.aforo).toBeUndefined();
+    expect(r.camposCapturados.aforo).toBe(150);
   });
 
   it("corrige XV sin reiniciar captura", async () => {

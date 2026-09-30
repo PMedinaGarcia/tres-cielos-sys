@@ -127,7 +127,7 @@ describe("composeWaContent", () => {
     ).toBeUndefined();
   });
 
-  it("v2 nombre_fecha es texto; aforo_inversion es list-picker de rangos", () => {
+  it("v2 nombre_fecha es texto; aforo_inversion pide aforo en texto y rango en list-picker", () => {
     const b1 = composeWaContent({
       texto: "¿nombre y fecha?",
       ruta: "guion",
@@ -135,10 +135,18 @@ describe("composeWaContent", () => {
     });
     expect(b1?.kind).toBe("text");
     expect(b1?.templateId).toBe("guion.nombre_fecha");
+    const b2Aforo = composeWaContent({
+      texto: "¿Para cuántas personas sería aproximadamente?",
+      ruta: "guion",
+      pasoGuion: "aforo_inversion",
+    });
+    expect(b2Aforo?.kind).toBe("text");
+    expect(b2Aforo?.templateId).toBe("guion.aforo");
     const b2 = composeWaContent({
       texto: "inversión",
       ruta: "guion",
       pasoGuion: "aforo_inversion",
+      aforo: 150,
     });
     expect(b2?.kind).toBe("list-picker");
     expect(b2?.list?.items.map((i) => i.id)).toEqual(

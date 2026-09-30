@@ -15,6 +15,7 @@ export function composeWaContent(input: {
   ruta: string;
   pasoGuion?: string | null;
   document?: WaDocument;
+  aforo?: number | null;
 }): WaContent | undefined {
   const body = input.texto.trim();
   if (!body || input.ruta === "silencio") return undefined;
@@ -32,7 +33,7 @@ export function composeWaContent(input: {
       body,
     );
   } else {
-    content = composeGuionPaso(body, input.pasoGuion);
+    content = composeGuionPaso(body, input.pasoGuion, input.aforo);
   }
 
   if (!content) return undefined;
@@ -45,6 +46,7 @@ export function composeWaContent(input: {
 function composeGuionPaso(
   body: string,
   pasoGuion?: string | null,
+  aforo?: number | null,
 ): WaContent {
   switch (pasoGuion) {
     case "ocasion":
@@ -56,6 +58,9 @@ function composeGuionPaso(
         contentSid: contentSidFor("guion.ocasion"),
       };
     case "aforo_inversion":
+      if (aforo == null) {
+        return textTemplate("guion.aforo", body);
+      }
       return {
         templateId: "guion.aforo_inversion",
         kind: "list-picker",
@@ -102,9 +107,10 @@ export function attachWaContent<
     pasoGuion?: string;
     waContent?: WaContent | null;
     document?: WaDocument;
+    aforo?: number | null;
   },
->(result: T): Omit<T, "document"> {
-  const { document, ...rest } = result;
+>(result: T): Omit<T, "document" | "aforo"> {
+  const { document, aforo, ...rest } = result;
   if (rest.waContent) return rest;
   if (rest.silencio || !rest.textoRespuesta) return rest;
   const waContent = composeWaContent({
@@ -112,6 +118,7 @@ export function attachWaContent<
     ruta: rest.ruta,
     pasoGuion: rest.pasoGuion,
     document,
+    aforo,
   });
   if (!waContent) return rest;
   return { ...rest, waContent };

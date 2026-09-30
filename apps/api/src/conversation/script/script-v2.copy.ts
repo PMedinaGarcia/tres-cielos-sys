@@ -83,6 +83,16 @@ export const COPY_V3_B2_AFORO = (nombre: string): string =>
 export const COPY_V3_B2_AFORO_SIN_NOMBRE =
   "¿Para cuántas personas sería aproximadamente?";
 
+export function copyB2Aforo(
+  campos: CamposCapturados,
+  retry = false,
+): string {
+  if (retry) return COPY_V2_AFORO_RETRY;
+  return campos.nombre
+    ? COPY_V3_B2_AFORO(campos.nombre)
+    : COPY_V3_B2_AFORO_SIN_NOMBRE;
+}
+
 export const COPY_V3_B2_RANGO = (nombre: string): string =>
   `Gracias, ${nombre}. Para orientarte correctamente, ¿qué escenario consideran más viable: $250–349 mil, $350–499 mil, $500 mil o más, o aún lo están definiendo?`;
 

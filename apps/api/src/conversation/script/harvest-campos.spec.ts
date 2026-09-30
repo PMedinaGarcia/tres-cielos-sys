@@ -125,6 +125,19 @@ describe("harvestCamposLexical", () => {
     expect(parseAforo("150", { modo: "paso" })).toEqual({ ok: true, aforo: 150 });
   });
 
+  it("payload de inversión no se interpreta como aforo 250", () => {
+    const r = harvestCamposLexical("inversion.r250_349", {}, {
+      focusedPaso: "aforo_inversion",
+    });
+    expect(r.campos.aforo).toBeUndefined();
+    expect(r.campos.rangoInversion).toBe("r250_349");
+    const rango = harvestCamposLexical("$250–349 mil", { aforo: 150 }, {
+      focusedPaso: "aforo_inversion",
+    });
+    expect(rango.campos.aforo).toBe(150);
+    expect(rango.campos.rangoInversion).toBe("r250_349");
+  });
+
   it("captura día aunque falte de entre número y mes", () => {
     const r = harvestCamposLexical(
       "Hola quiero cotizar una boda para el 22 Diciembre del 2026",
