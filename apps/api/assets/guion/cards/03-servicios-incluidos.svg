@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+  <rect width="800" height="500" fill="#0d4f4f"/>
+  <text x="48" y="72" fill="#e8f6f6" font-family="Segoe UI, Arial, sans-serif" font-size="32" font-weight="700">Servicios incluidos</text>
+  <text x="72" y="150" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="22"> Mobiliario y montaje base</text>
+  <text x="72" y="200" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="22"> Banquete y barra (según paquete)</text>
+  <text x="72" y="250" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="22"> Coordinación en el día del evento</text>
+  <text x="72" y="300" fill="#c5e8e8" font-family="Segoe UI, Arial, sans-serif" font-size="20">Detalle completo en el PDF adjunto</text>
+</svg>

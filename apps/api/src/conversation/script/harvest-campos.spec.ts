@@ -32,6 +32,45 @@ describe("harvestCamposLexical", () => {
     expect(nextPasoGuion(r.campos)).toBe("nombre");
   });
 
+  it("payload fecha.* y su título llenan la ventana con foco fecha_ventana o nombre_fecha", () => {
+    const porId = harvestCamposLexical("fecha.oct_dic", {}, {
+      now: NOW,
+      focusedPaso: "fecha_ventana",
+    });
+    expect(porId.campos.fechaTentativa).toMatchObject({
+      tipo: "rango",
+      desde: "2027-10-01",
+      hasta: "2027-12-31",
+    });
+    const porTitulo = harvestCamposLexical("Ene-May", {}, {
+      now: NOW,
+      focusedPaso: "fecha_ventana",
+    });
+    expect(porTitulo.filled).toContain("fechaTentativa");
+    expect(porTitulo.campos.fechaTentativa).toMatchObject({
+      desde: "2027-01-01",
+      hasta: "2027-05-31",
+    });
+    const porListaNombreFecha = harvestCamposLexical("Jun-Sep", {}, {
+      now: NOW,
+      focusedPaso: "nombre_fecha",
+    });
+    expect(porListaNombreFecha.filled).toContain("fechaTentativa");
+    expect(porListaNombreFecha.campos.fechaTentativa).toMatchObject({
+      desde: "2027-06-01",
+      hasta: "2027-09-30",
+    });
+    expect(porListaNombreFecha.campos.nombre).toBeFalsy();
+    const eneMayNombreFecha = harvestCamposLexical("Ene-May", {}, {
+      now: NOW,
+      focusedPaso: "nombre_fecha",
+    });
+    expect(eneMayNombreFecha.campos.fechaTentativa).toBeTruthy();
+    expect(eneMayNombreFecha.campos.nombre).toBeFalsy();
+    const sinFoco = harvestCamposLexical("2028", {}, { now: NOW });
+    expect(sinFoco.campos.fechaTentativa).toBeFalsy();
+  });
+
   it("diciembre 2027 es ventana y unas 150 llena aforo", () => {
     const r = harvestCamposLexical("Soy Ana, diciembre 2027, unas 150", {}, { now: NOW });
     expect(r.campos.fechaTentativa?.tipo).toBe("mes");

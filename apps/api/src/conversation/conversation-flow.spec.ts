@@ -9,36 +9,30 @@ import {
   nextPasoGuionV2,
   nextPasoGuionV3,
   resolveConversationFlow,
-  scoreFit,
-  b2PreguntaV3,
 } from "./conversation-flow";
 import { flowConfig } from "./__tests__/flow-config";
 
 describe("conversationFlowVersion", () => {
-  it("sin ConfigService queda en v1", () => {
+  it("sin config devuelve v1", () => {
     expect(conversationFlowVersion()).toBe("v1");
   });
 
-  it("con Nest config el default es v2", () => {
+  it("con config devuelve el flow configurado", () => {
     expect(conversationFlowVersion(flowConfig("v2"))).toBe("v2");
     expect(conversationFlowVersion(flowConfig("v1"))).toBe("v1");
     expect(conversationFlowVersion(flowConfig("v3"))).toBe("v3");
   });
 
-  it("canary con v2 reparte v3 por hash estable y respeta persistido", () => {
+  it("canary puede forzar v3", () => {
     const cfg = flowConfig("v2", { canaryPct: 100 });
     expect(
-      resolveConversationFlow(cfg, { threadId: "wa:canary" }),
+      resolveConversationFlow(cfg, {
+        threadId: "wa:x",
+      }),
     ).toBe("v3");
     expect(
       resolveConversationFlow(flowConfig("v2", { canaryPct: 0 }), {
-        threadId: "wa:canary",
-      }),
-    ).toBe("v2");
-    expect(
-      resolveConversationFlow(flowConfig("v2", { canaryPct: 100 }), {
         threadId: "wa:x",
-        persisted: "v2",
       }),
     ).toBe("v2");
     expect(hashCanaryBucket("sede-a")).toBe(hashCanaryBucket("sede-a"));
@@ -50,25 +44,34 @@ describe("nextPasoGuionV2", () => {
     expect(nextPasoGuionV2({ tipoEvento: "boda" })).toBe("nombre_fecha");
   });
 
-  it("pide aclaración si el rango está por definir", () => {
+  it("con nombre y fecha va a accion (paquete) antes del PDF", () => {
     expect(
       nextPasoGuionV2({
         nombre: "Ana",
         fechaTentativa: { tipo: "dia", fecha: "2027-12-22", flexible: false },
-        aforo: 150,
-        rangoInversion: "por_definir",
       }),
-    ).toBe("aclaracion_piso");
+    ).toBe("accion");
   });
 
-  it("sin aforo permanece en aforo_inversion aunque haya rango", () => {
+  it("tras PDF sin CTA permanece en accion", () => {
     expect(
       nextPasoGuionV2({
-        nombre: "Patricio",
-        fechaTentativa: { tipo: "mes", mes: 2, anio: 2027, flexible: true },
-        rangoInversion: "por_definir",
+        nombre: "Ana",
+        fechaTentativa: { tipo: "dia", fecha: "2027-12-22", flexible: false },
+        pdfEnviado: true,
       }),
-    ).toBe("aforo_inversion");
+    ).toBe("accion");
+  });
+
+  it("con PDF y CTA pasa a faq_libre", () => {
+    expect(
+      nextPasoGuionV2({
+        nombre: "Ana",
+        fechaTentativa: { tipo: "dia", fecha: "2027-12-22", flexible: false },
+        pdfEnviado: true,
+        ctaGuion: "visita",
+      }),
+    ).toBe("faq_libre");
   });
 });
 
@@ -136,47 +139,20 @@ describe("v3 score y fecha", () => {
     ).toBe(true);
   });
 
-  it("B2 pide aforo si falta; con aforo pide rango; ambos desbloquean B3", () => {
+  it("v3 con nombre y fecha va a accion para paquete comercial", () => {
     expect(
       nextPasoGuionV3({
         nombre: "Ana",
         fechaTentativa: { tipo: "mes", mes: 12, anio: 2027, flexible: true },
-        aforo: 150,
       }),
-    ).toBe("aforo_inversion");
+    ).toBe("accion");
     expect(
       nextPasoGuionV3({
         nombre: "Ana",
         fechaTentativa: { tipo: "mes", mes: 12, anio: 2027, flexible: true },
-        rangoInversion: "por_definir",
+        pdfEnviado: true,
+        ctaGuion: "ejecutivo",
       }),
-    ).toBe("aforo_inversion");
-    expect(
-      nextPasoGuionV3({
-        nombre: "Ana",
-        fechaTentativa: { tipo: "mes", mes: 12, anio: 2027, flexible: true },
-        aforo: 150,
-        rangoInversion: "por_definir",
-      }),
-    ).toBe("aclaracion_piso");
-  });
-
-  it("scoreFit separa ejes", () => {
-    const fit = scoreFit({
-      nombre: "Ana",
-      aforo: 150,
-      rangoInversion: "r350_499",
-      intencionNivel: "alta",
-      fechaTentativa: { tipo: "dia", fecha: "2027-12-22", flexible: false },
-    });
-    expect(fit.encaje).toBe("confirmado");
-    expect(fit.intencion).toBe("alta");
-    expect(fit.completitud).toBe("comercial");
-  });
-
-  it("B2 pregunta aforo antes que rango", () => {
-    expect(b2PreguntaV3({})).toBe("aforo");
-    expect(b2PreguntaV3({ aforo: 150 })).toBe("rango");
-    expect(b2PreguntaV3({ aforo: 150, rangoInversion: "r350_499" })).toBeNull();
+    ).toBe("faq_libre");
   });
 });

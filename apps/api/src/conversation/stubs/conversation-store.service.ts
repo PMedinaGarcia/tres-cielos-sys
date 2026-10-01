@@ -85,7 +85,7 @@ export class ConversationStoreService {
     const campos: CamposCapturados = {
       nombre: null,
       telefono,
-      ...(isV2Plus(flow) ? { tipoEvento: "boda" } : {}),
+      ...(isV2Plus(flow) || flow === "v4" ? { tipoEvento: "boda" } : {}),
     };
     const state: ConversacionState = {
       id: randomUUID(),

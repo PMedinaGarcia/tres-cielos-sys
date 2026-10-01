@@ -1,7 +1,7 @@
 import { ConfigService } from "@nestjs/config";
 
 export function flowConfig(
-  flow: "v1" | "v2" | "v3",
+  flow: "v1" | "v2" | "v3" | "v4",
   extras?: { canaryPct?: number },
 ): ConfigService {
   return {

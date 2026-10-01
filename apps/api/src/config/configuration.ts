@@ -81,7 +81,7 @@ export default () => {
       driver: (env.QUEUE_DRIVER ?? "inline") as "inline" | "bullmq",
     },
     conversation: {
-      flow: (env.CONVERSATION_FLOW ?? "v2") as "v1" | "v2" | "v3",
+      flow: (env.CONVERSATION_FLOW ?? "v2") as "v1" | "v2" | "v3" | "v4",
       canaryPct: Number(env.CONVERSATION_FLOW_CANARY_PCT ?? 0),
     },
   };

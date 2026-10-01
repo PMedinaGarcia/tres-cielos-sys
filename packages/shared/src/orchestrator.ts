@@ -23,6 +23,7 @@ export const PasoGuionSchema = z.enum([
   "presupuesto",
   "intencion",
   "nombre_fecha",
+  "fecha_ventana",
   "aforo_inversion",
   "aclaracion_piso",
   "accion",
@@ -106,6 +107,7 @@ export const CamposCapturadosSchema = z.object({
   email: z.string().nullish(),
   pdfEnviado: z.boolean().nullish(),
   adjuntoReintentos: z.number().int().min(0).nullish(),
+  ctaGuion: z.enum(["visita", "ejecutivo", "fuera_presupuesto"]).nullish(),
 });
 export type CamposCapturados = z.infer<typeof CamposCapturadosSchema>;
 

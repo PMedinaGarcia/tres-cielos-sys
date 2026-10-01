@@ -192,6 +192,7 @@ enum PasoGuion {
   presupuesto
   intencion
   nombre_fecha
+  fecha_ventana
   aforo_inversion
   aclaracion_piso
   accion

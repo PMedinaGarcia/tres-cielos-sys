@@ -1,4 +1,4 @@
-import { SEDE_ID, SEDE_NOMBRE } from "@tres-cielos/shared";
+import { anioTarifaPublicada, SEDE_ID, SEDE_NOMBRE } from "@tres-cielos/shared";
 import {
   aforoBandaFrom,
   fechaEstadoFrom,
@@ -7,13 +7,21 @@ import {
   isFechaFocusedPaso,
   isNombreFocusedPaso,
   presupuestoFromRango,
+  presupuestoFromRangoPresupuestoFuera,
 } from "../conversation-flow";
 import {
   DATOS_DUROS_RE,
   isIntencionMonetaria,
 } from "../orchestrator/monetary-intent";
 import { stripAccents } from "../text-normalize";
-import type { CamposCapturados, FechaTentativa, FechaTipo, PasoGuion } from "../types";
+import type {
+  CamposCapturados,
+  CtaGuion,
+  RangoPresupuestoFuera,
+  FechaTentativa,
+  FechaTipo,
+  PasoGuion,
+} from "../types";
 import {
   explainFechaTentativa,
   fechaTentativaToIso,
@@ -226,10 +234,16 @@ export function harvestCamposLexical(
     }
   }
 
-  const fechaParsed = explainFechaTentativa(trimmed, {
-    now: opts?.now,
-    paso: isFechaFocusedPaso(focused) ? "fecha" : focused,
-  });
+  const ventana =
+    focused === "fecha_ventana" || focused === "nombre_fecha"
+      ? parseFechaVentana(trimmed)
+      : null;
+  const fechaParsed = ventana
+    ? ({ ok: true, fecha: ventana } as const)
+    : explainFechaTentativa(trimmed, {
+        now: opts?.now,
+        paso: isFechaFocusedPaso(focused) ? "fecha" : focused,
+      });
   let fechaMotivo: FechaParseMotivo | undefined;
   if (fechaParsed.ok) {
     if (shouldReplaceFecha(next.fechaTentativa, fechaParsed.fecha, trimmed)) {
@@ -290,6 +304,32 @@ export function harvestCamposLexical(
   if (nivel && !next.intencionNivel) {
     next.intencionNivel = nivel;
     mark("intencionNivel");
+  }
+
+  if (focused === "accion" && !next.ctaGuion) {
+    const cta = parseCtaGuion(trimmed);
+    if (cta) {
+      next.ctaGuion = cta;
+      mark("ctaGuion");
+      if (cta === "visita") {
+        next.intencionVisita = true;
+        next.intencionNivel = "alta";
+      } else if (cta === "fuera_presupuesto") {
+        next.encajeEconomico = "no";
+      }
+    }
+  }
+
+  if (focused === "presupuesto_fuera" && !next.rangoPresupuestoFuera) {
+    const rangoFuera = parseRangoPresupuestoFuera(trimmed);
+    if (rangoFuera) {
+      next.rangoPresupuestoFuera = rangoFuera;
+      mark("rangoPresupuestoFuera");
+      next.presupuestoOrientativo =
+        presupuestoFromRangoPresupuestoFuera(rangoFuera);
+      next.encajeEconomico = "no";
+      mark("encajeEconomico");
+    }
   }
 
   if (focused === "aclaracion_piso" && next.aceptaPiso250k == null) {
@@ -486,6 +526,7 @@ export function looksLikePersonName(value: string): boolean {
 
   const normalized = stripAccents(cleaned.toLowerCase());
   if (hasRejectedNameLexeme(normalized)) return false;
+  if (parseFechaVentana(value)) return false;
 
   let nameTokens = 0;
   for (const tok of tokens) {
@@ -501,6 +542,7 @@ export function extractNombre(
   texto: string,
   opts?: { nombreExistente?: string | null; focusedPaso?: PasoGuion },
 ): string | null {
+  if (parseFechaVentana(texto.trim())) return null;
   if (opts?.nombreExistente && !hasNameCue(texto)) return null;
   if (extractSiNo(texto) != null && !hasNameCue(texto)) return null;
   if (isFrasePeticionOInteres(texto) && !hasNameCue(texto)) return null;
@@ -565,6 +607,70 @@ function aforoHarvestModo(
     return "harvest";
   }
   return "paso";
+}
+
+/** Opciones del list-picker v4 (id `fecha.*` o su título). Ene-May / Jun-Sep / Oct-Dic anclan al año de tarifa. */
+export function parseFechaVentana(texto: string): FechaTentativa | null {
+  const t = stripAccents(texto.toLowerCase()).trim().replace(/\s+/g, "");
+  const anio = anioTarifaPublicada();
+  const rango = (y: number, desde: string, hasta: string): FechaTentativa => ({
+    tipo: "rango",
+    desde: `${y}-${desde}`,
+    hasta: `${y}-${hasta}`,
+    anio: y,
+    flexible: true,
+  });
+  if (/^(fecha\.ene_may|ene-may|enero-mayo)$/.test(t)) {
+    return rango(anio, "01-01", "05-31");
+  }
+  if (/^(fecha\.jun_sep|jun-sep|junio-septiembre)$/.test(t)) {
+    return rango(anio, "06-01", "09-30");
+  }
+  if (/^(fecha\.oct_dic|oct-dic|octubre-diciembre)$/.test(t)) {
+    return rango(anio, "10-01", "12-31");
+  }
+  if (/^(fecha\.anio_2028|2028)$/.test(t)) {
+    return rango(2028, "01-01", "12-31");
+  }
+  return null;
+}
+
+const RANGO_PRESUPUESTO_FUERA_POR_PAYLOAD: Record<string, RangoPresupuestoFuera> =
+  {
+    "presupuesto.r200_250": "r200_250",
+    "presupuesto.r250_300": "r250_300",
+    "presupuesto.fuera_rango": "fuera_rango",
+  };
+
+export function parseRangoPresupuestoFuera(
+  texto: string,
+): RangoPresupuestoFuera | null {
+  const raw = texto.trim();
+  const fromPayload = RANGO_PRESUPUESTO_FUERA_POR_PAYLOAD[raw];
+  if (fromPayload) return fromPayload;
+  const t = stripAccents(raw.toLowerCase());
+  if (/^200\s*[–\-a]\s*250|200\s*-\s*250|200\s*a\s*250/.test(t)) {
+    return "r200_250";
+  }
+  if (/^250\s*[–\-a]\s*300|250\s*-\s*300|250\s*a\s*300/.test(t)) {
+    return "r250_300";
+  }
+  if (/fuera de rango|debajo de 200|menos de 200/.test(t)) {
+    return "fuera_rango";
+  }
+  return null;
+}
+
+export function parseCtaGuion(texto: string): CtaGuion | null {
+  const t = stripAccents(texto.toLowerCase()).trim();
+  if (/^accion\.visita$|\b(agendar|visita|visitar)\b/.test(t)) return "visita";
+  if (/^accion\.ejecutivo$|\bejecutiv/.test(t)) return "ejecutivo";
+  if (
+    /^accion\.fuera_presupuesto$|fuera de (tu|mi|nuestro) presupuesto|muy caro|no nos alcanza/.test(t)
+  ) {
+    return "fuera_presupuesto";
+  }
+  return null;
 }
 
 export function extractSiNo(texto: string): boolean | null {

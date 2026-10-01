@@ -57,3 +57,10 @@ apps/api/prisma/*.db-journal
 .railway/*
 !.railway/railway.ts
 !.railway/README.md
+
+# Entregables producto: solo artefactos versionados (borrar PDFs locales obsoletos con cleanup-obsolete-pdfs.ps1)
+docs/producto/entregables/*
+!docs/producto/entregables/README.md
+!docs/producto/entregables/flujo-v4-arquitectura-y-copy.html
+!docs/producto/entregables/cleanup-obsolete-pdfs.ps1
+!docs/producto/entregables/flujo-v4-guion-completo.pdf

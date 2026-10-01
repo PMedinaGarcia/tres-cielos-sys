@@ -8,6 +8,7 @@ import {
   isAclaracionPisoPendiente,
   isCalificadoV3,
   isPrequalificadoV2,
+  isPresupuestoFueraPendiente,
 } from "../conversation-flow";
 import type {
   CamposCapturados,
@@ -22,6 +23,7 @@ import {
 import { DATOS_DUROS_RE, MONTO_RIESGO_RE } from "./monetary-intent";
 import { isIntencionVisita } from "./visit-intent";
 import { isLocationQuery } from "./location-intent";
+import { parseCtaGuion } from "../script/harvest-campos";
 
 const HUMAN_RE =
   /\b(hablar con (un |una )?(humano|asesor|persona|agente)|quiero (un )?asesor|pasame (con|a) (un )?humano|atenci[oó]n humana)\b/i;
@@ -136,6 +138,9 @@ export function decideRoute(input: {
       : { kind: "quota_hard" };
   }
 
+  if (input.flow === "v4") {
+    return decideRouteV4(input);
+  }
   if ((input.flow ?? "v1") === "v3") {
     return decideRouteV3(input);
   }
@@ -234,6 +239,9 @@ function decideRouteV2(
   }
 
   if (encaje === "no") {
+    if (isPresupuestoFueraPendiente(campos)) {
+      return { kind: "guion" };
+    }
     return { kind: "nutricion", motivo: "menor_piso" };
   }
 
@@ -255,6 +263,13 @@ function decideRouteV2(
   }
 
   if (input.capturaPendiente) {
+    if (
+      input.pasoGuion === "accion" &&
+      !campos.ctaGuion &&
+      (input.buttonPayload?.startsWith("accion.") || parseCtaGuion(input.texto))
+    ) {
+      return { kind: "guion" };
+    }
     if (isLocationQuery(input.texto) && !isIntencionVisita(input.texto)) {
       return { kind: "faq_comercial" };
     }
@@ -271,6 +286,14 @@ function decideRouteV2(
       cola: "comercial",
       rutaComercial: "handoff",
     };
+  }
+
+  if (campos.ctaGuion && !campos.rutaComercial) return { kind: "guion" };
+  if (
+    input.pasoGuion === "accion" &&
+    (input.buttonPayload?.startsWith("accion.") || parseCtaGuion(input.texto))
+  ) {
+    return { kind: "guion" };
   }
 
   if (comercial) return { kind: "faq_comercial" };
@@ -349,6 +372,9 @@ function decideRouteV3(
   }
 
   if (encaje === "no") {
+    if (isPresupuestoFueraPendiente(campos)) {
+      return { kind: "guion" };
+    }
     return { kind: "nutricion", motivo: "menor_piso" };
   }
 
@@ -453,6 +479,71 @@ function decideRouteV3(
   }
   if (input.intent === "ambiguo") return { kind: "rag" };
 
+  return { kind: "safe" };
+}
+
+function decideRouteV4(
+  input: Parameters<typeof decideRoute>[0],
+): RoutingDecision {
+  const campos = input.campos ?? {};
+  const forced = detectForcedHandoff(input.texto, input.buttonPayload);
+  if (forced.handoff && forced.motivo && forced.motivo !== "solicitud_usuario") {
+    return {
+      kind: "handoff",
+      motivo: forced.motivo,
+      cola: "atencion_general",
+      rutaComercial: "atencion_general",
+    };
+  }
+  if (input.adjuntoInvalido) {
+    return { kind: "handoff", motivo: "adjunto_no_soportado" };
+  }
+  if (forced.handoff || input.intent === "solicitud_humana") {
+    return {
+      kind: "handoff",
+      motivo: "solicitud_usuario",
+      cola: "comercial",
+      rutaComercial: "handoff",
+    };
+  }
+
+  if (input.capturaPendiente) {
+    // Con CTA elegido el guion cierra (handoff / nutrición); en el paso accion
+    // las preguntas sueltas sí se contestan sin perder el paso.
+    if (input.pasoGuion === "accion" && !campos.ctaGuion) {
+      const ctaPayload = input.buttonPayload?.trim();
+      if (
+        (ctaPayload && ctaPayload.startsWith("accion.")) ||
+        parseCtaGuion(input.texto)
+      ) {
+        return { kind: "guion" };
+      }
+      if (input.intent === "datos_duros") return { kind: "catalogo" };
+      if (input.intent === "pregunta_documental") return { kind: "rag" };
+    }
+    if (isLocationQuery(input.texto) && !isIntencionVisita(input.texto)) {
+      return { kind: "faq_comercial" };
+    }
+    return { kind: "guion" };
+  }
+
+  if (
+    campos.rutaComercial === "nutricion" ||
+    (campos.encajeEconomico === "no" && !isPresupuestoFueraPendiente(campos))
+  ) {
+    return { kind: "nutricion", motivo: "menor_piso" };
+  }
+  if (campos.ctaGuion && !campos.rutaComercial) return { kind: "guion" };
+
+  const comercial = matchCommercialFaqTopic(input.texto);
+  if (comercial) return { kind: "faq_comercial" };
+  if (isIntencionVisita(input.texto)) return { kind: "jump_visita" };
+  if (input.intent === "datos_duros") return { kind: "catalogo" };
+  if (input.intent === "pregunta_documental") return { kind: "rag" };
+  if (input.intent === "ambiguo" && MONTO_RIESGO_RE.test(input.texto)) {
+    return { kind: "catalogo" };
+  }
+  if (input.intent === "ambiguo") return { kind: "rag" };
   return { kind: "safe" };
 }
 

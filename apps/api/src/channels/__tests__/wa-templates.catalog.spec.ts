@@ -1,5 +1,11 @@
-import { HABLAR_ASESOR_PAYLOAD, HABLAR_ASESOR_TEXTO } from "@tres-cielos/shared";
 import {
+  HABLAR_ASESOR_PAYLOAD,
+  HABLAR_ASESOR_TEXTO,
+  WA_LIST_ITEM_TITLE_MAX,
+} from "@tres-cielos/shared";
+import {
+  ACCION_CTA_ITEMS,
+  FECHA_VENTANA_ITEMS,
   resolveInteractiveInbound,
   WA_PAYLOAD_TEXTO,
 } from "../wa-templates.catalog";
@@ -26,6 +32,13 @@ describe("resolveInteractiveInbound", () => {
     });
     expect(r.texto).toBe(HABLAR_ASESOR_TEXTO);
     expect(r.buttonPayload).toBe(HABLAR_ASESOR_PAYLOAD);
+  });
+
+  it("todos los items v4 tienen texto canónico y títulos dentro del límite WA", () => {
+    for (const item of [...FECHA_VENTANA_ITEMS, ...ACCION_CTA_ITEMS]) {
+      expect(WA_PAYLOAD_TEXTO[item.id]).toBeTruthy();
+      expect(item.title.length).toBeLessThanOrEqual(WA_LIST_ITEM_TITLE_MAX);
+    }
   });
 
   it("sin payload deja el texto intacto", () => {

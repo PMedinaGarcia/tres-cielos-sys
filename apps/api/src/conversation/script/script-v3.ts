@@ -1,6 +1,5 @@
 import {
   applyDefaultBoda,
-  b2PreguntaV3,
   nextPasoGuionV3,
   syncCamposV3,
 } from "../conversation-flow";
@@ -19,14 +18,9 @@ import {
   harvestCamposLexical,
   type HarvestFilledKey,
 } from "./harvest-campos";
-import {
-  COPY_V2_B1,
-  COPY_V2_B3,
-  COPY_V3_B2_RANGO,
-  COPY_V3_B2_RANGO_SIN_NOMBRE,
-  copyB2Aforo,
-} from "./script-v2.copy";
+import { COPY_V2_B1, COPY_V2_B3 } from "./script-v2.copy";
 import type { ScriptV2TurnResult } from "./script-v2";
+import { composePaqueteComercialTurn } from "./script-paquete-comercial";
 
 export function handleTurnV3(
   conv: ConversacionState,
@@ -43,9 +37,8 @@ export function handleTurnV3(
   }
 
   const next = nextPasoGuionV3(campos);
-  if (next === "faq_libre" || next === "accion") {
-    return replyV3("", next, campos, true);
-  }
+  const paquete = composePaqueteComercialTurn(conv, campos, next);
+  if (paquete) return bumpCaptura(paquete, conv, filled);
 
   const copy = composeCopyV3(campos, filled, next, conv.pasoGuion, harvest);
   const aclarando = next === "aclaracion_piso";
@@ -71,20 +64,8 @@ function composeCopyV3(
   if (next === "nombre_fecha") {
     return copyNombreFecha(campos, harvest);
   }
-  if (next === "aforo_inversion") {
-    return copyB2V3(campos);
-  }
   if (next === "aclaracion_piso") return COPY_V2_B3;
   return COPY_V2_B1;
-}
-
-function copyB2V3(campos: CamposCapturados, retry = false): string {
-  if (b2PreguntaV3(campos) === "aforo") {
-    return copyB2Aforo(campos, retry);
-  }
-  return campos.nombre
-    ? COPY_V3_B2_RANGO(campos.nombre)
-    : COPY_V3_B2_RANGO_SIN_NOMBRE;
 }
 
 function focusedSlotErrorV3(
@@ -95,16 +76,6 @@ function focusedSlotErrorV3(
   if (focused === "nombre_fecha") {
     if (gapNombreFecha(campos) !== "completo") {
       return replyV3(copyNombreFecha(campos, harvest), "nombre_fecha", campos);
-    }
-  }
-  if (focused === "aforo_inversion") {
-    const cual = b2PreguntaV3(campos);
-    if (cual) {
-      return replyV3(
-        copyB2V3(campos, cual === "aforo"),
-        "aforo_inversion",
-        campos,
-      );
     }
   }
   return null;

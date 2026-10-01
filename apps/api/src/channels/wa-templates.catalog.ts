@@ -64,6 +64,37 @@ export const ACLARACION_NO_BUTTON: WaButton = {
   title: "Buscamos algo menor",
 };
 
+export const FECHA_VENTANA_ITEMS: WaListItem[] = [
+  { id: "fecha.ene_may", title: "Ene-May" },
+  { id: "fecha.jun_sep", title: "Jun-Sep" },
+  { id: "fecha.oct_dic", title: "Oct-Dic" },
+  {
+    id: "fecha.anio_2028",
+    title: "2028",
+    description: "Planeo en este año",
+  },
+];
+
+export const ACCION_CTA_ITEMS: WaListItem[] = [
+  { id: "accion.visita", title: "Agendar Visita" },
+  { id: "accion.ejecutivo", title: "Hablar con un ejecutivo" },
+  {
+    id: "accion.fuera_presupuesto",
+    title: "Fuera de presupuesto",
+    description: "Estamos fuera de tu presupuesto",
+  },
+];
+
+export const PRESUPUESTO_FUERA_ITEMS: WaListItem[] = [
+  { id: "presupuesto.r200_250", title: "200-250 mil" },
+  { id: "presupuesto.r250_300", title: "250-300 mil" },
+  {
+    id: "presupuesto.fuera_rango",
+    title: "Fuera de Rango",
+    description: "Por debajo de 200 mil",
+  },
+];
+
 /**
  * Texto canónico para extractores del guion cuando el inbound
  * llega como ButtonPayload / ListId de Twilio o del sandbox.
@@ -84,6 +115,16 @@ export const WA_PAYLOAD_TEXTO: Record<string, string> = {
   "inversion.por_definir": "aún por definir",
   "aclaracion.si": "sí",
   "aclaracion.no": "Buscamos algo menor",
+  "fecha.ene_may": "Ene-May",
+  "fecha.jun_sep": "Jun-Sep",
+  "fecha.oct_dic": "Oct-Dic",
+  "fecha.anio_2028": "2028",
+  "accion.visita": "Agendar visita",
+  "accion.ejecutivo": "Hablar con un ejecutivo",
+  "accion.fuera_presupuesto": "Estamos fuera de tu presupuesto",
+  "presupuesto.r200_250": "200-250 mil",
+  "presupuesto.r250_300": "250-300 mil",
+  "presupuesto.fuera_rango": "Fuera de Rango",
 };
 
 export function resolveInteractiveInbound(input: {

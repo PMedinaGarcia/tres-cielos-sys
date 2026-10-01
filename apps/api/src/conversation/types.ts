@@ -32,9 +32,11 @@ export type PasoGuion =
   | "presupuesto"
   | "intencion"
   | "nombre_fecha"
+  | "fecha_ventana"
   | "aforo_inversion"
   | "aclaracion_piso"
   | "accion"
+  | "presupuesto_fuera"
   | "faq_libre";
 
 export type EncajeEconomico =
@@ -60,7 +62,12 @@ export type AforoBanda = 100 | 150 | 200 | 250 | 300;
 
 export type ColaAsesor = "comercial" | "atencion_general";
 
-export type GuionVersion = "v1" | "v2" | "v3";
+export type GuionVersion = "v1" | "v2" | "v3" | "v4";
+
+export type CtaGuion = "visita" | "ejecutivo" | "fuera_presupuesto";
+
+/** Rango declarado tras CTA «Fuera de presupuesto» (v4). */
+export type RangoPresupuestoFuera = "r200_250" | "r250_300" | "fuera_rango";
 
 export type RutaComercial =
   | "handoff"
@@ -120,6 +127,8 @@ export interface CamposCapturados {
   email?: string | null;
   pdfEnviado?: boolean | null;
   adjuntoReintentos?: number | null;
+  ctaGuion?: CtaGuion | null;
+  rangoPresupuestoFuera?: RangoPresupuestoFuera | null;
 }
 
 export interface AdjuntoInbound {

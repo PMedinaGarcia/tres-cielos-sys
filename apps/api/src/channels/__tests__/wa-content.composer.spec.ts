@@ -127,14 +127,34 @@ describe("composeWaContent", () => {
     ).toBeUndefined();
   });
 
-  it("v2 nombre_fecha es texto; aforo_inversion pide aforo en texto y rango en list-picker", () => {
+  it("v2 nombre_fecha sin fecha es list-picker; con fecha solo texto; aforo_inversion pide aforo en texto y rango en list-picker", () => {
     const b1 = composeWaContent({
       texto: "¿nombre y fecha?",
       ruta: "guion",
       pasoGuion: "nombre_fecha",
+      fechaTentativa: null,
     });
-    expect(b1?.kind).toBe("text");
+    expect(b1?.kind).toBe("list-picker");
     expect(b1?.templateId).toBe("guion.nombre_fecha");
+    expect(b1?.list?.items.map((i) => i.title)).toEqual([
+      "Ene-May",
+      "Jun-Sep",
+      "Oct-Dic",
+      "2028",
+    ]);
+    const b1SoloNombre = composeWaContent({
+      texto: "¿cómo te llamas?",
+      ruta: "guion",
+      pasoGuion: "nombre_fecha",
+      fechaTentativa: {
+        tipo: "rango",
+        desde: "2027-06-01",
+        hasta: "2027-09-30",
+        flexible: true,
+      },
+    });
+    expect(b1SoloNombre?.kind).toBe("text");
+    expect(b1SoloNombre?.templateId).toBe("guion.nombre_fecha");
     const b2Aforo = composeWaContent({
       texto: "¿Para cuántas personas sería aproximadamente?",
       ruta: "guion",
@@ -173,5 +193,66 @@ describe("composeWaContent", () => {
     for (const title of b3?.buttons?.map((b) => b.title) ?? []) {
       expect(title.length).toBeLessThanOrEqual(20);
     }
+  });
+
+  it("v4 fecha_ventana es list-picker con las cuatro temporadas", () => {
+    const wa = composeWaContent({
+      texto: "¿En qué temporada?",
+      ruta: "guion",
+      pasoGuion: "fecha_ventana",
+    });
+    expect(wa?.kind).toBe("list-picker");
+    expect(wa?.templateId).toBe("guion.fecha_ventana");
+    expect(wa?.list?.items.map((i) => i.title)).toEqual([
+      "Ene-May",
+      "Jun-Sep",
+      "Oct-Dic",
+      "2028",
+    ]);
+  });
+
+  it("v4 accion adjunta PDF y lista de CTAs; v2 accion sigue en texto", () => {
+    const document = {
+      filename: "Tres Cielos Paquete Bodas 2027.pdf",
+      mime: "application/pdf" as const,
+      url: "http://localhost:3011/public/guion/paquete-bodas-2027.pdf",
+    };
+    const v4 = composeWaContent({
+      texto: "Gracias, Ana.",
+      ruta: "guion",
+      pasoGuion: "accion",
+      document,
+      accionModo: "cta_v4",
+    });
+    expect(v4?.kind).toBe("list-picker");
+    expect(v4?.templateId).toBe("guion.accion_cta");
+    expect(v4?.document?.url).toMatch(/paquete-bodas-2027\.pdf$/);
+    expect(v4?.list?.items.map((i) => i.id)).toEqual([
+      "accion.visita",
+      "accion.ejecutivo",
+      "accion.fuera_presupuesto",
+    ]);
+    const legacy = composeWaContent({
+      texto: "x",
+      ruta: "guion",
+      pasoGuion: "accion",
+    });
+    expect(legacy?.kind).toBe("text");
+    expect(legacy?.templateId).toBe("guion.accion");
+  });
+
+  it("v4 presupuesto_fuera es list-picker con tres rangos", () => {
+    const wa = composeWaContent({
+      texto: "¿En qué rango está su presupuesto?",
+      ruta: "guion",
+      pasoGuion: "presupuesto_fuera",
+    });
+    expect(wa?.kind).toBe("list-picker");
+    expect(wa?.templateId).toBe("guion.presupuesto_fuera");
+    expect(wa?.list?.items.map((i) => i.title)).toEqual([
+      "200-250 mil",
+      "250-300 mil",
+      "Fuera de Rango",
+    ]);
   });
 });

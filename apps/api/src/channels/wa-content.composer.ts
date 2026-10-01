@@ -1,7 +1,17 @@
-import type { WaButton, WaContent, WaDocument } from "@tres-cielos/shared";
+import type {
+  WaButton,
+  WaContent,
+  WaDocument,
+  WaImage,
+  WaListItem,
+} from "@tres-cielos/shared";
+import type { FechaTentativa } from "../conversation/types";
 import {
+  ACCION_CTA_ITEMS,
+  PRESUPUESTO_FUERA_ITEMS,
   ACLARACION_NO_BUTTON,
   ACLARACION_SI_BUTTON,
+  FECHA_VENTANA_ITEMS,
   INTENCION_NO_BUTTON,
   INTENCION_SI_BUTTON,
   INVERSION_ITEMS,
@@ -10,12 +20,17 @@ import {
   contentSidFor,
 } from "./wa-templates.catalog";
 
+export type AccionModo = "cta_v4" | "legacy";
+
 export function composeWaContent(input: {
   texto: string;
   ruta: string;
   pasoGuion?: string | null;
   document?: WaDocument;
   aforo?: number | null;
+  fechaTentativa?: FechaTentativa | null;
+  accionModo?: AccionModo;
+  images?: WaImage[];
 }): WaContent | undefined {
   const body = input.texto.trim();
   if (!body || input.ruta === "silencio") return undefined;
@@ -33,22 +48,32 @@ export function composeWaContent(input: {
       body,
     );
   } else {
-    content = composeGuionPaso(body, input.pasoGuion, input.aforo);
+    content = composeGuionPaso(
+      body,
+      input.pasoGuion,
+      input.aforo,
+      input.fechaTentativa,
+      input.accionModo,
+    );
   }
 
   if (!content) return undefined;
-  if (input.document) {
-    return { ...content, document: input.document };
-  }
-  return content;
+  let merged = content;
+  if (input.document) merged = { ...merged, document: input.document };
+  if (input.images?.length) merged = { ...merged, images: input.images };
+  return merged;
 }
 
 function composeGuionPaso(
   body: string,
   pasoGuion?: string | null,
   aforo?: number | null,
+  fechaTentativa?: FechaTentativa | null,
+  accionModo?: AccionModo,
 ): WaContent {
   switch (pasoGuion) {
+    case "fecha_ventana":
+      return listPicker("guion.fecha_ventana", body, FECHA_VENTANA_ITEMS);
     case "ocasion":
       return {
         templateId: "guion.ocasion",
@@ -74,9 +99,20 @@ function composeGuionPaso(
         ACLARACION_NO_BUTTON,
       ]);
     case "nombre_fecha":
+      if (!fechaTentativa) {
+        return listPicker("guion.nombre_fecha", body, FECHA_VENTANA_ITEMS);
+      }
       return textTemplate("guion.nombre_fecha", body);
     case "accion":
-      return textTemplate("guion.accion", body);
+      return accionModo === "cta_v4"
+        ? listPicker("guion.accion_cta", body, ACCION_CTA_ITEMS)
+        : textTemplate("guion.accion", body);
+    case "presupuesto_fuera":
+      return listPicker(
+        "guion.presupuesto_fuera",
+        body,
+        PRESUPUESTO_FUERA_ITEMS,
+      );
     case "sede":
       return textTemplate("guion.sede", body);
     case "intencion":
@@ -108,9 +144,15 @@ export function attachWaContent<
     waContent?: WaContent | null;
     document?: WaDocument;
     aforo?: number | null;
+    fechaTentativa?: FechaTentativa | null;
+    accionModo?: AccionModo;
+    images?: WaImage[];
   },
->(result: T): Omit<T, "document" | "aforo"> {
-  const { document, aforo, ...rest } = result;
+>(result: T): Omit<
+  T,
+  "document" | "aforo" | "fechaTentativa" | "accionModo" | "images"
+> {
+  const { document, aforo, fechaTentativa, accionModo, images, ...rest } = result;
   if (rest.waContent) return rest;
   if (rest.silencio || !rest.textoRespuesta) return rest;
   const waContent = composeWaContent({
@@ -119,6 +161,9 @@ export function attachWaContent<
     pasoGuion: rest.pasoGuion,
     document,
     aforo,
+    fechaTentativa,
+    accionModo,
+    images,
   });
   if (!waContent) return rest;
   return { ...rest, waContent };
@@ -129,6 +174,20 @@ function textTemplate(templateId: string, body: string): WaContent {
     templateId,
     kind: "text",
     body,
+    contentSid: contentSidFor(templateId),
+  };
+}
+
+function listPicker(
+  templateId: string,
+  body: string,
+  items: WaListItem[],
+): WaContent {
+  return {
+    templateId,
+    kind: "list-picker",
+    body,
+    list: { button: WA_LIST_OPEN_BUTTON, items },
     contentSid: contentSidFor(templateId),
   };
 }

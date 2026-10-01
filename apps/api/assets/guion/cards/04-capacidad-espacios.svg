@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+  <rect width="800" height="500" fill="#e8f6f6"/>
+  <text x="48" y="72" fill="#0d4f4f" font-family="Segoe UI, Arial, sans-serif" font-size="32" font-weight="700">Capacidad y espacios</text>
+  <text x="48" y="140" fill="#2d6a6a" font-family="Segoe UI, Arial, sans-serif" font-size="22">Recepción, jardín y áreas para ceremonia</text>
+  <text x="48" y="190" fill="#2d6a6a" font-family="Segoe UI, Arial, sans-serif" font-size="22">Configuraciones para bodas íntimas o amplias</text>
+  <rect x="48" y="240" width="704" height="120" rx="16" fill="#1a7a7a" opacity="0.15"/>
+  <text x="72" y="310" fill="#0d4f4f" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="600">Consulta aforo ideal en tu visita</text>
+</svg>

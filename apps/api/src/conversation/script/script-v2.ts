@@ -1,6 +1,6 @@
+import type { GuionAdjuntoId } from "@tres-cielos/shared";
 import {
   applyDefaultBoda,
-  b2PreguntaV3,
   nextPasoGuionV2,
   syncCamposV2,
 } from "../conversation-flow";
@@ -19,13 +19,8 @@ import {
   harvestCamposLexical,
   type HarvestFilledKey,
 } from "./harvest-campos";
-import {
-  COPY_V2_B1,
-  COPY_V2_B2,
-  COPY_V2_B2_SIN_NOMBRE,
-  COPY_V2_B3,
-  copyB2Aforo,
-} from "./script-v2.copy";
+import { COPY_V2_B1, COPY_V2_B3 } from "./script-v2.copy";
+import { composePaqueteComercialTurn } from "./script-paquete-comercial";
 
 export interface ScriptV2TurnResult {
   textoRespuesta: string;
@@ -33,6 +28,7 @@ export interface ScriptV2TurnResult {
   camposCapturados: CamposCapturados;
   avanzado: boolean;
   guionCompleto: boolean;
+  adjuntoGuion?: GuionAdjuntoId;
 }
 
 export function handleTurnV2(
@@ -50,9 +46,8 @@ export function handleTurnV2(
   }
 
   const next = nextPasoGuionV2(campos);
-  if (next === "faq_libre" || next === "accion") {
-    return replyV2("", next, campos, true);
-  }
+  const paquete = composePaqueteComercialTurn(conv, campos, next);
+  if (paquete) return bumpCaptura(paquete, conv, filled);
 
   const copy = composeCopyV2(campos, filled, next, conv.pasoGuion, harvest);
   const aclarando = next === "aclaracion_piso";
@@ -78,18 +73,8 @@ function composeCopyV2(
   if (next === "nombre_fecha") {
     return copyNombreFecha(campos, harvest);
   }
-  if (next === "aforo_inversion") {
-    return copyB2V2(campos, false);
-  }
   if (next === "aclaracion_piso") return COPY_V2_B3;
   return COPY_V2_B1;
-}
-
-function copyB2V2(campos: CamposCapturados, retry: boolean): string {
-  if (b2PreguntaV3(campos) === "aforo") {
-    return copyB2Aforo(campos, retry);
-  }
-  return campos.nombre ? COPY_V2_B2(campos.nombre) : COPY_V2_B2_SIN_NOMBRE;
 }
 
 function focusedSlotErrorV2(
@@ -100,12 +85,6 @@ function focusedSlotErrorV2(
   if (focused === "nombre_fecha") {
     if (gapNombreFecha(campos) !== "completo") {
       return replyV2(copyNombreFecha(campos, harvest), "nombre_fecha", campos);
-    }
-  }
-  if (focused === "aforo_inversion") {
-    const cual = b2PreguntaV3(campos);
-    if (cual) {
-      return replyV2(copyB2V2(campos, cual === "aforo"), "aforo_inversion", campos);
     }
   }
   return null;

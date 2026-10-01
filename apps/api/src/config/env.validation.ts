@@ -30,7 +30,7 @@ export const envSchema = z
     AI_PROVIDERS_MODE: z.enum(["fake", "live"]).default("fake"),
 
     /** Guion v1 secuencial, v2 (máx. 3 mensajes + piso) o v3 (conversión visita). */
-    CONVERSATION_FLOW: z.enum(["v1", "v2", "v3"]).default("v2"),
+    CONVERSATION_FLOW: z.enum(["v1", "v2", "v3", "v4"]).default("v2"),
     /** Con CONVERSATION_FLOW=v2, % de hilos nuevos que entran a v3 (hash de sede/hilo). */
     CONVERSATION_FLOW_CANARY_PCT: z.coerce.number().int().min(0).max(100).default(0),
 

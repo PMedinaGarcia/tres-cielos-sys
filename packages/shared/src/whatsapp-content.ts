@@ -46,6 +46,12 @@ export const WaDocumentSchema = z.object({
 });
 export type WaDocument = z.infer<typeof WaDocumentSchema>;
 
+export const WaImageSchema = z.object({
+  url: z.string().min(1),
+  caption: z.string().max(120).optional(),
+});
+export type WaImage = z.infer<typeof WaImageSchema>;
+
 export const WaContentSchema = z.object({
   templateId: z.string().min(1),
   kind: WaContentKindSchema,
@@ -54,5 +60,6 @@ export const WaContentSchema = z.object({
   list: WaListSchema.optional(),
   contentSid: z.string().optional(),
   document: WaDocumentSchema.optional(),
+  images: z.array(WaImageSchema).max(10).optional(),
 });
 export type WaContent = z.infer<typeof WaContentSchema>;

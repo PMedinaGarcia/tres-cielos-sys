@@ -12,6 +12,7 @@ import {
   effectiveConversationFlow,
   isCapturaPendienteV2,
   isCapturaPendienteV3,
+  isCapturaPendienteV4,
 } from "../conversation-flow";
 import { LLM_PORT } from "../../ports/tokens";
 import type { LlmPort } from "../../ports/llm.port";
@@ -33,6 +34,7 @@ import {
 } from "./harvest-campos";
 import { handleTurnV2 } from "./script-v2";
 import { handleTurnV3 } from "./script-v3";
+import { handleTurnV4 } from "./script-v4";
 
 export type { AforoParseMotivo, AforoParseResult } from "./harvest-campos";
 
@@ -97,6 +99,7 @@ export class ScriptService {
   /** ¿El turno debe quedar en captura de guion (sin RAG ni tools precio)? */
   isCapturaPendiente(conv: ConversacionState): boolean {
     const flow = effectiveConversationFlow(conv, this.config);
+    if (flow === "v4") return isCapturaPendienteV4(conv);
     if (flow === "v3") return isCapturaPendienteV3(conv);
     if (flow === "v2") return isCapturaPendienteV2(conv);
     return conv.pasoGuion !== "faq_libre" && !this.isCompleto(conv.camposCapturados);
@@ -142,16 +145,14 @@ export class ScriptService {
     if (campos.aforo != null) assignSedeUnica(campos);
 
     const flow = effectiveConversationFlow(conv, this.config);
+    if (flow === "v4") {
+      return handleTurnV4(conv, { ...harvest, campos });
+    }
     if (flow === "v3") {
-      const v3 = handleTurnV3(conv, { ...harvest, campos }, filled);
-      return { ...v3, adjuntoGuion: undefined };
+      return handleTurnV3(conv, { ...harvest, campos }, filled);
     }
     if (flow === "v2") {
-      const v2 = handleTurnV2(conv, { ...harvest, campos }, filled);
-      return {
-        ...v2,
-        adjuntoGuion: undefined,
-      };
+      return handleTurnV2(conv, { ...harvest, campos }, filled);
     }
 
     const focusedError = focusedSlotError(focused, campos, harvest);

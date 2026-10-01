@@ -4,4 +4,6 @@ export * from "./cliente";
 export * from "./handoff";
 export * from "./orchestrator";
 export * from "./sede";
+export * from "./guion-public-url";
+export * from "./guion-paquete-media";
 export * from "./whatsapp-content";

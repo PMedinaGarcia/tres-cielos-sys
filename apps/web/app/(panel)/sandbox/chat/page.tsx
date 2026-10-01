@@ -255,6 +255,30 @@ export default function SandboxChatPage() {
                         PDF · {line.waContent.document.filename}
                       </a>
                     )}
+                    {line.role === "bot" && line.waContent?.images?.length ? (
+                      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {line.waContent.images.map((img) => (
+                          <a
+                            key={img.url}
+                            href={img.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="overflow-hidden rounded-lg border border-white/60 bg-white/40"
+                          >
+                            <img
+                              src={img.url}
+                              alt={img.caption ?? "Paquete Tres Cielos"}
+                              className="aspect-[8/5] w-full object-cover"
+                            />
+                            {img.caption && (
+                              <p className="px-2 py-1 text-[10px] leading-tight text-ink/60">
+                                {img.caption}
+                              </p>
+                            )}
+                          </a>
+                        ))}
+                      </div>
+                    ) : null}
                     {line.role === "bot" && line.waContent && (
                       <span className="mt-1 inline-block text-[10px] uppercase tracking-wider text-ink/40">
                         {line.waContent.templateId} · {line.waContent.kind}

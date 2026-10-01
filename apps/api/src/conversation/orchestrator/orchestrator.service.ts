@@ -50,12 +50,14 @@ import {
   applyDefaultBoda,
   decideRutaComercial,
   decideRutaComercialV3,
+  decideRutaComercialV4,
   deriveEncaje,
   deriveEncajeV3,
   effectiveConversationFlow,
   isV2Plus,
   nextPasoGuionV2,
   nextPasoGuionV3,
+  nextPasoGuionV4,
   resolveConversationFlow,
   slaMinutos,
   syncCamposV2,
@@ -78,6 +80,10 @@ import {
   COPY_V3_VALOR_INLINE,
   copyV2Handoff,
 } from "../script/script-v2.copy";
+import {
+  COPY_V4_HANDOFF_EJECUTIVO,
+  COPY_V4_HANDOFF_VISITA,
+} from "../script/script-v4.copy";
 import { IntentClassifierService } from "./intent-classifier.service";
 import {
   decideRoute,
@@ -113,7 +119,10 @@ import {
 import { ReasoningTraceService } from "../reasoning/reasoning-trace.service";
 import { ExpedientePersistService } from "../../crm/expediente-persist.service";
 import { attachWaContent } from "../../channels/wa-content.composer";
-import { paqueteBodas2027Document } from "../../channels/guion-assets";
+import {
+  paqueteBodas2027Document,
+  paqueteBodasGaleria,
+} from "../../channels/guion-assets";
 import {
   canonicalizeSku,
   GUION_ADJUNTO_PAQUETE_BODAS,
@@ -334,7 +343,9 @@ export class OrchestratorService {
       route.kind !== "degrade_script"
     ) {
       const nextPaso =
-        flow === "v3"
+        flow === "v4"
+          ? nextPasoGuionV4(camposRuta)
+          : flow === "v3"
           ? nextPasoGuionV3(camposRuta)
           : flow === "v2"
             ? nextPasoGuionV2(camposRuta)
@@ -548,6 +559,34 @@ export class OrchestratorService {
         camposCapturados: campos,
       });
       const flow = this.flowOf(conv);
+      if (flow === "v4" || campos.ctaGuion) {
+        if (
+          (flow === "v4" && decideRutaComercialV4(campos) === "nutricion") ||
+          (flow !== "v4" &&
+            campos.ctaGuion === "fuera_presupuesto" &&
+            campos.rangoPresupuestoFuera)
+        ) {
+          return this.runNutricion(
+            conversacionId,
+            mensajeEntranteId,
+            "menor_piso",
+            texto,
+          );
+        }
+        return this.finishHandoff(
+          conversacionId,
+          conv.oportunidadId,
+          "solicitud_usuario",
+          mensajeEntranteId,
+          null,
+          null,
+          {
+            cola: "comercial",
+            rutaComercial: "handoff",
+            visita: campos.ctaGuion === "visita",
+          },
+        );
+      }
       const ruta =
         flow === "v3" ? decideRutaComercialV3(campos) : decideRutaComercial(campos);
       if (ruta === "seguimiento") {
@@ -878,7 +917,9 @@ export class OrchestratorService {
       lastCatalogArgs,
       texto,
     );
-    const pasoGuion = isGuionCompleto(campos)
+    const pasoGuion = this.flowOf(conv) === "v4"
+      ? nextPasoGuionV4(campos)
+      : isGuionCompleto(campos)
       ? "faq_libre"
       : this.flowOf(conv) === "v3"
         ? nextPasoGuionV3(campos)
@@ -1293,7 +1334,11 @@ export class OrchestratorService {
       });
     }
     const safeCopy =
-      flow === "v3" && opts?.humanoTemprano
+      flow === "v4" && opts?.cola !== "atencion_general"
+        ? opts?.visita
+          ? COPY_V4_HANDOFF_VISITA(campos.nombre)
+          : COPY_V4_HANDOFF_EJECUTIVO(campos.nombre)
+        : flow === "v3" && opts?.humanoTemprano
         ? COPY_V3_HUMANO_TEMPRANO
         : flow === "v3" && (opts?.visita || comercial)
           ? COPY_V3_CIERRE_VISITA(campos.nombre)
@@ -1492,14 +1537,21 @@ export class OrchestratorService {
     const flow = this.flowOf(convForPdf);
     const encaje = deriveEncaje(convForPdf?.camposCapturados ?? {});
     const encaje3 = deriveEncajeV3(convForPdf?.camposCapturados ?? {});
+    const paqueteTemprano =
+      (flow === "v2" || flow === "v3" || flow === "v4") &&
+      adjuntoGuion === GUION_ADJUNTO_PAQUETE_BODAS &&
+      !convForPdf?.camposCapturados.pdfEnviado;
     const allowPdf =
       flow === "v1" ||
+      paqueteTemprano ||
       encaje === "confirmado" ||
       (flow === "v3" && (encaje3 === "confirmado" || encaje3 === "probable"));
     const document =
       adjuntoGuion === GUION_ADJUNTO_PAQUETE_BODAS && allowPdf
         ? await this.resolveGuionDocument()
         : undefined;
+    const images =
+      document && paqueteTemprano ? paqueteBodasGaleria() : undefined;
     if (document && convForPdf) {
       await this.store.update(res.conversacionId, {
         camposCapturados: {
@@ -1514,6 +1566,10 @@ export class OrchestratorService {
       reasoningTrace: finished ?? this.reasoning.current() ?? null,
       document,
       aforo: convForPdf?.camposCapturados.aforo,
+      fechaTentativa: convForPdf?.camposCapturados.fechaTentativa ?? null,
+      accionModo:
+        flow === "v4" || res.pasoGuion === "accion" ? "cta_v4" : "legacy",
+      images,
     });
   }
 

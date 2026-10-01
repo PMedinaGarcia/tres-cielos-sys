@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <title>Tres Cielos - Subflujo presupuesto v4</title>
+  <style>
+    @page { size: A4; margin: 9mm 10mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      font-size: 8.5pt;
+      line-height: 1.28;
+      color: #1a2e2e;
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 0 2mm;
+    }
+    .doc-header {
+      border-bottom: 2px solid #b8ddd8;
+      padding-bottom: 4px;
+      margin-bottom: 6px;
+    }
+    h1 { font-size: 13pt; font-weight: 600; margin: 0; color: #0d4f4f; display: inline; }
+    .meta { font-size: 7.5pt; color: #5a7070; margin: 2px 0 0; }
+    h2 {
+      font-size: 10pt;
+      font-weight: 600;
+      margin: 8px 0 3px;
+      color: #0d4f4f;
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+    h2 .part { font-size: 8pt; font-weight: 600; color: #5a7070; margin-right: 6px; }
+    section { margin-bottom: 6px; }
+    .flow-wrap {
+      background: #f8fcfb;
+      border: 1px solid #b8ddd8;
+      border-radius: 6px;
+      padding: 4px 6px;
+      margin-bottom: 4px;
+      page-break-inside: avoid;
+    }
+    .flow-wrap svg {
+      display: block;
+      width: 100%;
+      max-height: 118mm;
+      height: auto;
+      margin: 0 auto;
+    }
+    .flow-wrap svg text { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 7.25pt;
+      margin-bottom: 6px;
+    }
+    th, td {
+      border: 1px solid #c5ddd9;
+      padding: 2px 4px;
+      vertical-align: top;
+    }
+    th { background: #e8f5f3; font-weight: 600; font-size: 7pt; }
+    code { font-size: 6.75pt; background: #eef6f5; padding: 0 2px; border-radius: 2px; }
+    .ref { font-size: 7pt; color: #4a6060; line-height: 1.25; }
+    .legend { font-size: 7pt; color: #4a6060; margin: 2px 0 0; }
+    .legend span { margin-right: 10px; }
+    .swatch {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      vertical-align: middle;
+      margin-right: 3px;
+    }
+    .blank-fill {
+      min-height: 1.15em;
+      height: 1.15em;
+      background: #fafcfc;
+      border-bottom: 1px dashed #c5ddd9;
+    }
+    .note-client {
+      font-size: 7pt;
+      color: #5a7070;
+      margin: 0 0 3px;
+      line-height: 1.3;
+    }
+    .ord { width: 22px; text-align: center; font-weight: 600; color: #0d4f4f; }
+    .flow-ref { font-size: 6.5pt; color: #2d6a6a; }
+    td.paso { font-size: 6.75pt; }
+    td.id-col { max-width: 28mm; word-break: break-word; }
+    td.when-col { max-width: 32mm; font-size: 6.75pt; }
+    tbody tr { page-break-inside: avoid; break-inside: avoid; }
+    thead { display: table-header-group; }
+    .section-label td {
+      background: #d4eeea;
+      font-weight: 600;
+      font-size: 7pt;
+      color: #0d4f4f;
+      padding: 3px 4px;
+      border-color: #9cc9c4;
+    }
+    .sign-line { font-size: 7.5pt; color: #5a7070; margin-top: 6px; }
+    table.compact-blank th:nth-child(2),
+    table.compact-blank td:nth-child(2) { width: 38%; }
+    table.compact-blank th:nth-child(3) { width: auto; }
+    @media print {
+      body { padding: 0; }
+      h2 { margin-top: 6px; }
+      section.matriz-cliente { page-break-before: auto; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="doc-header">
+    <h1>Flujo v4 &mdash; Guion, diagrama y matriz de copys</h1>
+    <p class="meta">
+      Recorrido: temporada &#8594; nombre &#8594; paquete/CTAs &#8594; presupuesto (opc.) &#8594; nutrici&oacute;n &#8594; faq_libre &middot; Tres Cielos SYS
+    </p>
+  </header>
+
+  <section id="diagrama">
+  <h2><span class="part">1</span> Diagrama de flujo</h2>
+  <div class="flow-wrap">
+    <svg viewBox="0 0 520 920" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagrama de flujo guion v4 completo">
+      <defs>
+        <marker id="ar" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+          <polygon points="0 0, 7 3.5, 0 7" fill="#0d4f4f"/>
+        </marker>
+        <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1" flood-opacity="0.12"/>
+        </filter>
+      </defs>
+
+      <ellipse cx="260" cy="22" rx="56" ry="18" fill="#d4eeea" stroke="#0d4f4f" stroke-width="1.5"/>
+      <text x="260" y="26" text-anchor="middle" font-size="10" font-weight="600">INICIO</text>
+      <line x1="260" y1="40" x2="260" y2="48" stroke="#0d4f4f" stroke-width="1.5" marker-end="url(#ar)"/>
+
+      <!-- Captura: temporada (fecha ventana) -->
+      <rect x="110" y="48" width="300" height="66" rx="8" fill="#fff" stroke="#2d8a84" stroke-width="2" filter="url(#shadow)"/>
+      <text x="260" y="66" text-anchor="middle" font-size="10" font-weight="600">1. Paso: fecha_ventana</text>
+      <text x="260" y="82" text-anchor="middle" font-size="8" fill="#4a6060">Pregunta temporada del evento (ventana de fecha)</text>
+      <text x="260" y="96" text-anchor="middle" font-size="7.5" fill="#2d6a6a">COPY_V4_B1 &#183; list-picker</text>
+      <text x="260" y="108" text-anchor="middle" font-size="7" fill="#4a6060">Ene-May &#183; Jun-Sep &#183; Oct-Dic &#183; 2028</text>
+      <line x1="260" y1="114" x2="260" y2="122" stroke="#0d4f4f" stroke-width="1.5" marker-end="url(#ar)"/>
+
+      <!-- Captura: nombre -->
+      <rect x="130" y="122" width="260" height="50" rx="8" fill="#fff" stroke="#2d8a84" stroke-width="2" filter="url(#shadow)"/>
+      <text x="260" y="142" text-anchor="middle" font-size="10" font-weight="600">2. Paso: nombre</text>
+      <text x="260" y="158" text-anchor="middle" font-size="8" fill="#4a6060">Pregunta nombre del prospecto (texto libre)</text>
+      <text x="260" y="170" text-anchor="middle" font-size="7.5" fill="#2d6a6a">COPY_V4_NOMBRE / COPY_V4_NOMBRE_RETRY</text>
+      <line x1="260" y1="172" x2="260" y2="180" stroke="#0d4f4f" stroke-width="1.5" marker-end="url(#ar)"/>
+
+      <!-- Paquete + CTAs -->
+      <rect x="110" y="180" width="300" height="58" rx="8" fill="#fff" stroke="#2d8a84" stroke-width="2" filter="url(#shadow)"/>
+      <text x="260" y="200" text-anchor="middle" font-size="10" font-weight="600">3. Paso: accion</text>
+      <text x="260" y="216" text-anchor="middle" font-size="8" fill="#4a6060">Env&#237;a PDF paquete + galer&#237;a visual</text>
+      <text x="260" y="230" text-anchor="middle" font-size="7.5" fill="#2d6a6a">COPY_V4_PDF (personalizado con {nombre})</text>
+      <line x1="260" y1="238" x2="260" y2="248" stroke="#0d4f4f" stroke-width="1.5" marker-end="url(#ar)"/>
+
+      <rect x="130" y="248" width="260" height="40" rx="6" fill="#f4faf9" stroke="#2d8a84"/>
+      <text x="260" y="264" text-anchor="middle" font-size="8" font-weight="600">Lista CTAs post-PDF</text>
+      <text x="260" y="278" text-anchor="middle" font-size="7" fill="#4a6060">COPY_V4_CTA_RETRY &#183; Ver opciones</text>
+      <line x1="260" y1="288" x2="260" y2="298" stroke="#0d4f4f" stroke-width="1.5" marker-end="url(#ar)"/>
+
+      <polygon points="260,298 345,338 260,378 175,338" fill="#fff8e6" stroke="#d4a017" stroke-width="2"/>
+      <text x="260" y="332" text-anchor="middle" font-size="9" font-weight="600">&#191;Qu&#233; CTA</text>
+      <text x="260" y="346" text-anchor="middle" font-size="9" font-weight="600">eligi&#243;?</text>
+
+      <rect x="8" y="392" width="100" height="52" rx="6" fill="#e3e8f5" stroke="#4a6bb5"/>
+      <text x="58" y="410" text-anchor="middle" font-size="7.5" font-weight="600">Agendar visita</text>
+      <text x="58" y="424" text-anchor="middle" font-size="6.5" fill="#2a3d6b">accion.visita</text>
+      <text x="58" y="436" text-anchor="middle" font-size="6.5" fill="#2a3d6b">COPY_V4_HANDOFF_VISITA</text>
+
+      <rect x="118" y="392" width="100" height="52" rx="6" fill="#e3e8f5" stroke="#4a6bb5"/>
+      <text x="168" y="410" text-anchor="middle" font-size="7.5" font-weight="600">Ejecutivo</text>
+      <text x="168" y="424" text-anchor="middle" font-size="6.5" fill="#2a3d6b">accion.ejecutivo</text>
+      <text x="168" y="436" text-anchor="middle" font-size="6.5" fill="#2a3d6b">COPY_V4_HANDOFF_EJECUTIVO</text>
+
+      <line x1="200" y1="338" x2="58" y2="392" stroke="#4a6bb5" stroke-width="1.2" marker-end="url(#ar)"/>
+      <line x1="240" y1="360" x2="168" y2="392" stroke="#4a6bb5" stroke-width="1.2" marker-end="url(#ar)"/>
+      <text x="95" y="382" font-size="6.5" fill="#4a6bb5">handoff</text>
+
+      <rect x="300" y="392" width="200" height="52" rx="8" fill="#fff" stroke="#d4a017" stroke-width="2.5" filter="url(#shadow)"/>
+      <text x="400" y="412" text-anchor="middle" font-size="8.5" font-weight="600">Fuera de presupuesto</text>
+      <text x="400" y="426" text-anchor="middle" font-size="7" fill="#6b5a20">accion.fuera_presupuesto</text>
+      <text x="400" y="438" text-anchor="middle" font-size="6.5" fill="#4a6060">encajeEconomico = no</text>
+      <line x1="300" y1="338" x2="400" y2="392" stroke="#d4a017" stroke-width="2" marker-end="url(#ar)"/>
+      <text x="318" y="372" font-size="7" fill="#6b5a20" font-weight="600">s&#237;</text>
+
+      <rect x="110" y="462" width="300" height="56" rx="8" fill="#fff" stroke="#2d8a84" stroke-width="2" filter="url(#shadow)"/>
+      <text x="260" y="482" text-anchor="middle" font-size="10" font-weight="600">4. Paso: presupuesto_fuera</text>
+      <text x="260" y="498" text-anchor="middle" font-size="8" fill="#4a6060">Pregunta rango de presupuesto actual</text>
+      <text x="260" y="512" text-anchor="middle" font-size="7.5" fill="#2d6a6a">COPY_V4_PRESUPUESTO_FUERA &#183; list-picker</text>
+      <line x1="400" y1="444" x2="320" y2="462" stroke="#0d4f4f" stroke-width="1.5" marker-end="url(#ar)"/>
+
+      <path d="M 410 490 Q 470 490 470 540 L 470 575 L 415 575" fill="none" stroke="#999" stroke-width="1" stroke-dasharray="4" marker-end="url(#ar)"/>
+      <text x="478" y="530" font-size="7" fill="#666">inv&#225;lido</text>
+      <rect x="318" y="555" width="98" height="28" rx="4" fill="#f5f5f5" stroke="#999"/>
+      <text x="367" y="572" text-anchor="middle" font-size="6.5">COPY_V4_PRESUPUESTO_FUERA_RETRY</text>
+
+      <polygon points="260,532 330,572 260,612 190,572" fill="#fff8e6" stroke="#d4a017" stroke-width="2"/>
+      <text x="260" y="568" text-anchor="middle" font-size="9" font-weight="600">&#191;Rango?</text>
+      <line x1="260" y1="518" x2="260" y2="532" stroke="#0d4f4f" stroke-width="1.5" marker-end="url(#ar)"/>
+
+      <rect x="24" y="628" width="140" height="38" rx="6" fill="#e8f5f3" stroke="#2d6a6a"/>
+      <text x="94" y="646" text-anchor="middle" font-size="8" font-weight="600">200-250 mil</text>
+      <text x="94" y="658" text-anchor="middle" font-size="7" fill="#4a6060">presupuesto.r200_250</text>
+
+      <rect x="190" y="628" width="140" height="38" rx="6" fill="#e8f5f3" stroke="#2d6a6a"/>
+      <text x="260" y="646" text-anchor="middle" font-size="8" font-weight="600">250-300 mil</text>
+      <text x="260" y="658" text-anchor="middle" font-size="7" fill="#4a6060">presupuesto.r250_300</text>
+
+      <rect x="356" y="628" width="140" height="38" rx="6" fill="#e8f5f3" stroke="#2d6a6a"/>
+      <text x="426" y="646" text-anchor="middle" font-size="8" font-weight="600">Fuera de Rango</text>
+      <text x="426" y="658" text-anchor="middle" font-size="7" fill="#4a6060">presupuesto.fuera_rango</text>
+
+      <line x1="220" y1="612" x2="94" y2="628" stroke="#2d6a6a" marker-end="url(#ar)"/>
+      <line x1="260" y1="612" x2="260" y2="628" stroke="#2d6a6a" marker-end="url(#ar)"/>
+      <line x1="300" y1="612" x2="426" y2="628" stroke="#2d6a6a" marker-end="url(#ar)"/>
+
+      <rect x="155" y="682" width="210" height="40" rx="8" fill="#fff" stroke="#0d4f4f" stroke-width="1.5"/>
+      <text x="260" y="700" text-anchor="middle" font-size="8.5" font-weight="600">Guardar rangoPresupuestoFuera</text>
+      <text x="260" y="714" text-anchor="middle" font-size="7" fill="#4a6060">presupuestoOrientativo &#8594; nutrici&#243;n</text>
+      <line x1="260" y1="666" x2="260" y2="682" stroke="#0d4f4f" marker-end="url(#ar)"/>
+
+      <rect x="130" y="738" width="260" height="50" rx="8" fill="#fde8e8" stroke="#c44" stroke-width="2" filter="url(#shadow)"/>
+      <text x="260" y="758" text-anchor="middle" font-size="10" font-weight="600">Nutrici&#243;n (bot activo)</text>
+      <text x="260" y="774" text-anchor="middle" font-size="8" fill="#6b2a2a">COPY_V2_MENOR_PISO + piso publicado</text>
+      <line x1="260" y1="722" x2="260" y2="738" stroke="#c44" stroke-width="1.5" marker-end="url(#ar)"/>
+
+      <ellipse cx="260" cy="812" rx="52" ry="18" fill="#d4eeea" stroke="#0d4f4f"/>
+      <text x="260" y="816" text-anchor="middle" font-size="9" font-weight="600">faq_libre</text>
+      <line x1="260" y1="788" x2="260" y2="794" stroke="#0d4f4f" marker-end="url(#ar)"/>
+
+      <rect x="380" y="748" width="120" height="36" rx="5" fill="#e3e8f5" stroke="#4a6bb5" stroke-dasharray="3"/>
+      <text x="440" y="764" text-anchor="middle" font-size="7" fill="#2a3d6b">Visita / Ejecutivo</text>
+      <text x="440" y="776" text-anchor="middle" font-size="6.5" fill="#2a3d6b">&#8594; faq_libre tras handoff</text>
+      <line x1="168" y1="444" x2="420" y2="748" stroke="#4a6bb5" stroke-width="1" stroke-dasharray="4" marker-end="url(#ar)"/>
+    </svg>
+    <p class="legend">
+      <span><i class="swatch" style="background:#2d8a84"></i>Paso guion</span>
+      <span><i class="swatch" style="background:#d4a017"></i>Decisi&oacute;n / subflujo</span>
+      <span><i class="swatch" style="background:#c44"></i>Nutrici&oacute;n</span>
+      <span><i class="swatch" style="background:#4a6bb5"></i>Handoff</span>
+    </p>
+  </div>
+  </section>
+
+  <section id="matriz-ref">
+  <h2><span class="part">2</span> Matriz de referencia (#1&ndash;#31, orden cronol&oacute;gico)</h2>
+  <p class="note-client">
+    <strong>Ref.</strong> = bloque del diagrama (1). C&oacute;digo: <code>script-v4.copy.ts</code>, <code>wa-templates.catalog.ts</code>, nutrici&oacute;n en <code>script-v2.copy.ts</code>.
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th class="ord">#</th>
+        <th>Ref.</th>
+        <th>Paso</th>
+        <th>ID</th>
+        <th>Cu&aacute;ndo</th>
+        <th>Texto sistema</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="section-label"><td colspan="6">Bloque 1 &mdash; fecha_ventana</td></tr>
+      <tr>
+        <td class="ord">1</td>
+        <td class="flow-ref">Bloque 1</td>
+        <td class="paso"><code>fecha_ventana</code></td>
+        <td><code>COPY_V4_B1</code></td>
+        <td>Primer turno de captura (saludo + temporada)</td>
+        <td class="ref">&iexcl;Hola! Soy el asistente de Tres Cielos. Para ayudarles con su boda, &iquest;en qu&eacute; temporada tienen pensado celebrar? Elige una opci&oacute;n de la lista.</td>
+      </tr>
+      <tr>
+        <td class="ord">2</td>
+        <td class="flow-ref">Bloque 1</td>
+        <td class="paso"><code>fecha_ventana</code></td>
+        <td><code>COPY_V4_B1_RETRY</code></td>
+        <td>Reintento en el mismo paso sin selecci&oacute;n v&aacute;lida</td>
+        <td class="ref">Para continuar, elige la temporada de tu evento en la lista: Ene-May, Jun-Sep, Oct-Dic o 2028.</td>
+      </tr>
+      <tr>
+        <td class="ord">3</td>
+        <td class="flow-ref">Bloque 1</td>
+        <td class="paso"><code>fecha_ventana</code></td>
+        <td><code>WA_LIST_OPEN_BUTTON</code></td>
+        <td>Etiqueta del bot&oacute;n que abre la lista (UI WhatsApp/sandbox)</td>
+        <td class="ref">Ver opciones</td>
+      </tr>
+      <tr>
+        <td class="ord">4</td>
+        <td class="flow-ref">Bloque 1</td>
+        <td class="paso"><code>fecha_ventana</code></td>
+        <td><code>fecha.ene_may</code></td>
+        <td>&Iacute;tem de lista &mdash; captura ventana Ene&ndash;May (a&ntilde;o tarifa)</td>
+        <td class="ref">T&iacute;tulo: Ene-May</td>
+      </tr>
+      <tr>
+        <td class="ord">5</td>
+        <td class="flow-ref">Bloque 1</td>
+        <td class="paso"><code>fecha_ventana</code></td>
+        <td><code>fecha.jun_sep</code></td>
+        <td>&Iacute;tem de lista &mdash; captura ventana Jun&ndash;Sep</td>
+        <td class="ref">T&iacute;tulo: Jun-Sep</td>
+      </tr>
+      <tr>
+        <td class="ord">6</td>
+        <td class="flow-ref">Bloque 1</td>
+        <td class="paso"><code>fecha_ventana</code></td>
+        <td><code>fecha.oct_dic</code></td>
+        <td>&Iacute;tem de lista &mdash; captura ventana Oct&ndash;Dic</td>
+        <td class="ref">T&iacute;tulo: Oct-Dic</td>
+      </tr>
+      <tr>
+        <td class="ord">7</td>
+        <td class="flow-ref">Bloque 1</td>
+        <td class="paso"><code>fecha_ventana</code></td>
+        <td><code>fecha.anio_2028</code></td>
+        <td>&Iacute;tem de lista &mdash; planea en 2028</td>
+        <td class="ref">T&iacute;tulo: 2028 &middot; Descripci&oacute;n: Planeo en este a&ntilde;o</td>
+      </tr>
+      <tr class="section-label"><td colspan="6">Bloque 2 &mdash; nombre</td></tr>
+      <tr>
+        <td class="ord">8</td>
+        <td class="flow-ref">Bloque 2</td>
+        <td class="paso"><code>nombre</code></td>
+        <td><code>COPY_V4_NOMBRE</code></td>
+        <td>Tras capturar temporada; pide nombre</td>
+        <td class="ref">&iexcl;Perfecto! &iquest;Me compartes tu nombre?</td>
+      </tr>
+      <tr>
+        <td class="ord">9</td>
+        <td class="flow-ref">Bloque 2</td>
+        <td class="paso"><code>nombre</code></td>
+        <td><code>COPY_V4_NOMBRE_RETRY</code></td>
+        <td>Reintento si no se captura nombre</td>
+        <td class="ref">Para continuar, &iquest;me compartes tu nombre?</td>
+      </tr>
+      <tr class="section-label"><td colspan="6">Bloque 3 &mdash; accion (PDF, galer&iacute;a, CTAs)</td></tr>
+      <tr>
+        <td class="ord">10</td>
+        <td class="flow-ref">Bloque 3</td>
+        <td class="paso"><code>accion</code></td>
+        <td><code>COPY_V4_PDF</code></td>
+        <td>Primer mensaje del paso acci&oacute;n (con adjuntos)</td>
+        <td class="ref">Gracias, {nombre}. Te comparto la ficha en PDF y un resumen visual con costos y caracter&iacute;sticas de nuestros paquetes {anio_tarifa}. Cuando lo revises, dime c&oacute;mo prefieres seguir.</td>
+      </tr>
+      <tr>
+        <td class="ord">11</td>
+        <td class="flow-ref">Bloque 3</td>
+        <td class="paso"><code>accion</code></td>
+        <td><code>GUION_PDF_FILENAME</code></td>
+        <td>Nombre del archivo PDF adjunto (no es burbuja de chat)</td>
+        <td class="ref">Tres Cielos Paquete Bodas {anio_tarifa}.pdf</td>
+      </tr>
+      <tr>
+        <td class="ord">12</td>
+        <td class="flow-ref">Bloque 3</td>
+        <td class="paso"><code>accion</code></td>
+        <td><code>guion.galeria_paquete</code></td>
+        <td>Tarjetas visuales post-PDF (assets; sin copy de burbuja)</td>
+        <td class="ref">4 im&aacute;genes SVG del paquete (cat&aacute;logo visual)</td>
+      </tr>
+      <tr>
+        <td class="ord">13</td>
+        <td class="flow-ref">Bloque 3</td>
+        <td class="paso"><code>accion</code></td>
+        <td><code>COPY_V4_CTA_RETRY</code></td>
+        <td>Re-pregunta CTAs si ya se envi&oacute; PDF y no hay selecci&oacute;n</td>
+        <td class="ref">&iquest;C&oacute;mo prefieres seguir? Elige una opci&oacute;n: agendar visita, hablar con un ejecutivo o, si estamos fuera de tu presupuesto, d&iacute;melo.</td>
+      </tr>
+      <tr>
+        <td class="ord">14</td>
+        <td class="flow-ref">Bloque 3</td>
+        <td class="paso"><code>accion</code></td>
+        <td><code>WA_LIST_OPEN_BUTTON</code></td>
+        <td>Bot&oacute;n lista CTAs (<code>guion.accion_cta</code>)</td>
+        <td class="ref">Ver opciones</td>
+      </tr>
+      <tr>
+        <td class="ord">15</td>
+        <td class="flow-ref">Decisi&oacute;n CTA</td>
+        <td class="paso"><code>accion</code></td>
+        <td><code>accion.visita</code></td>
+        <td>&Iacute;tem lista &mdash; rama handoff visita</td>
+        <td class="ref">T&iacute;tulo: Agendar Visita</td>
+      </tr>
+      <tr>
+        <td class="ord">16</td>
+        <td class="flow-ref">Decisi&oacute;n CTA</td>
+        <td class="paso"><code>accion</code></td>
+        <td><code>accion.ejecutivo</code></td>
+        <td>&Iacute;tem lista &mdash; rama handoff ejecutivo</td>
+        <td class="ref">T&iacute;tulo: Hablar con un ejecutivo</td>
+      </tr>
+      <tr>
+        <td class="ord">17</td>
+        <td class="flow-ref">Decisi&oacute;n CTA</td>
+        <td class="paso"><code>accion</code></td>
+        <td><code>accion.fuera_presupuesto</code></td>
+        <td>&Iacute;tem lista &mdash; entra al subflujo presupuesto</td>
+        <td class="ref">T&iacute;tulo: Fuera de presupuesto &middot; Descripci&oacute;n: Estamos fuera de tu presupuesto</td>
+      </tr>
+      <tr class="section-label"><td colspan="6">Handoff (visita / ejecutivo)</td></tr>
+      <tr>
+        <td class="ord">18</td>
+        <td class="flow-ref">Handoff</td>
+        <td class="paso">cierre guion</td>
+        <td><code>COPY_V4_HANDOFF_VISITA</code></td>
+        <td>Respuesta inmediata tras <code>accion.visita</code> (bot escalado)</td>
+        <td class="ref">Perfecto, {nombre}. Un asesor te contacta para agendar tu visita al jard&iacute;n (15&ndash;30 min). (Sin nombre: &laquo;Perfecto.&raquo; + mismo cuerpo.)</td>
+      </tr>
+      <tr>
+        <td class="ord">19</td>
+        <td class="flow-ref">Handoff</td>
+        <td class="paso">cierre guion</td>
+        <td><code>COPY_V4_HANDOFF_EJECUTIVO</code></td>
+        <td>Respuesta inmediata tras <code>accion.ejecutivo</code></td>
+        <td class="ref">Con gusto, {nombre}. Te conecto con un ejecutivo; en breve te atiende (15&ndash;30 min). (Sin nombre: &laquo;Con gusto.&raquo; + mismo cuerpo.)</td>
+      </tr>
+      <tr class="section-label"><td colspan="6">Bloque 4 &mdash; presupuesto_fuera</td></tr>
+      <tr>
+        <td class="ord">20</td>
+        <td class="flow-ref">Bloque 4</td>
+        <td class="paso"><code>presupuesto_fuera</code></td>
+        <td><code>COPY_V4_PRESUPUESTO_FUERA</code></td>
+        <td>Tras <code>accion.fuera_presupuesto</code></td>
+        <td class="ref">Gracias por compartirlo. Para orientarte mejor, &iquest;en qu&eacute; rango est&aacute; su presupuesto actual? Elige una opci&oacute;n de la lista.</td>
+      </tr>
+      <tr>
+        <td class="ord">21</td>
+        <td class="flow-ref">Bloque 4</td>
+        <td class="paso"><code>presupuesto_fuera</code></td>
+        <td><code>COPY_V4_PRESUPUESTO_FUERA_RETRY</code></td>
+        <td>Reintento en <code>presupuesto_fuera</code></td>
+        <td class="ref">Elige el rango que m&aacute;s se acerca a su presupuesto: 200-250 mil, 250-300 mil o Fuera de Rango.</td>
+      </tr>
+      <tr>
+        <td class="ord">22</td>
+        <td class="flow-ref">Bloque 4</td>
+        <td class="paso"><code>presupuesto_fuera</code></td>
+        <td><code>WA_LIST_OPEN_BUTTON</code></td>
+        <td>Bot&oacute;n lista rangos (<code>guion.presupuesto_fuera</code>)</td>
+        <td class="ref">Ver opciones</td>
+      </tr>
+      <tr>
+        <td class="ord">23</td>
+        <td class="flow-ref">Bloque 4</td>
+        <td class="paso"><code>presupuesto_fuera</code></td>
+        <td><code>presupuesto.r200_250</code></td>
+        <td>Opci&oacute;n de rango &mdash; las tres convergen en nutrici&oacute;n</td>
+        <td class="ref">T&iacute;tulo: 200-250 mil</td>
+      </tr>
+      <tr>
+        <td class="ord">24</td>
+        <td class="flow-ref">Bloque 4</td>
+        <td class="paso"><code>presupuesto_fuera</code></td>
+        <td><code>presupuesto.r250_300</code></td>
+        <td>Opci&oacute;n de rango</td>
+        <td class="ref">T&iacute;tulo: 250-300 mil</td>
+      </tr>
+      <tr>
+        <td class="ord">25</td>
+        <td class="flow-ref">Bloque 4</td>
+        <td class="paso"><code>presupuesto_fuera</code></td>
+        <td><code>presupuesto.fuera_rango</code></td>
+        <td>Opci&oacute;n de rango</td>
+        <td class="ref">T&iacute;tulo: Fuera de Rango &middot; Descripci&oacute;n: Por debajo de 200 mil</td>
+      </tr>
+      <tr class="section-label"><td colspan="6">Nutrici&oacute;n y canal</td></tr>
+      <tr>
+        <td class="ord">26</td>
+        <td class="flow-ref">Nutrici&oacute;n</td>
+        <td class="paso"><code>faq_libre</code> / nutrici&oacute;n</td>
+        <td><code>COPY_V2_MENOR_PISO</code></td>
+        <td>Base del mensaje tras rango presupuesto (motivo menor_piso)</td>
+        <td class="ref">Gracias por compartirlo. Revisaremos si existe una opci&oacute;n vigente cercana a su inversi&oacute;n.</td>
+      </tr>
+      <tr>
+        <td class="ord">27</td>
+        <td class="flow-ref">Nutrici&oacute;n</td>
+        <td class="paso"><code>faq_libre</code> / nutrici&oacute;n</td>
+        <td><code>copyMenorPisoConPisoPublicado</code></td>
+        <td>Sufijo con paquete piso del cat&aacute;logo (caso habitual v4)</td>
+        <td class="ref">El piso publicado es el {nombre_paquete}.</td>
+      </tr>
+      <tr>
+        <td class="ord">28</td>
+        <td class="flow-ref">Nutrici&oacute;n</td>
+        <td class="paso"><code>faq_libre</code> / nutrici&oacute;n</td>
+        <td><code>copyMenorPisoConAlternativa</code></td>
+        <td>Variante si existe SKU alternativo cercano</td>
+        <td class="ref">Opci&oacute;n vigente cercana: {nombre_paquete}.</td>
+      </tr>
+      <tr>
+        <td class="ord">29</td>
+        <td class="flow-ref">Nutrici&oacute;n</td>
+        <td class="paso"><code>faq_libre</code></td>
+        <td><code>COPY_V2_NUTRICION_HOLD</code></td>
+        <td>Mensajes posteriores del prospecto ya en nutrici&oacute;n</td>
+        <td class="ref">Conservamos tu solicitud. Si quieres conocer el piso publicado o hablar con un asesor, retomo por este medio.</td>
+      </tr>
+      <tr>
+        <td class="ord">30</td>
+        <td class="flow-ref">Canal</td>
+        <td class="paso">cualquier paso</td>
+        <td><code>HABLAR_ASESOR_TITLE</code></td>
+        <td>Bot&oacute;n r&aacute;pido persistente (sandbox / plantilla WA)</td>
+        <td class="ref">Hablar con asesor</td>
+      </tr>
+      <tr>
+        <td class="ord">31</td>
+        <td class="flow-ref">Canal</td>
+        <td class="paso">cualquier paso</td>
+        <td><code>HABLAR_ASESOR_TEXTO</code></td>
+        <td>Texto can&oacute;nico del payload <code>hablar_asesor</code></td>
+        <td class="ref">Hablar con un asesor</td>
+      </tr>
+    </tbody>
+  </table>
+  </section>
+
+  <section id="matriz-cliente" class="matriz-cliente">
+  <h2><span class="part">3</span> Matriz en blanco (cliente)</h2>
+  <p class="note-client">
+    Misma numeraci&oacute;n que la secci&oacute;n 2. Variables: <code>{nombre}</code>, <code>{nombre_paquete}</code>, <code>{anio_tarifa}</code>.
+  </p>
+  <table class="compact-blank">
+    <thead>
+      <tr>
+        <th class="ord">#</th>
+        <th>ID t&eacute;cnico (paso / ref. en &sect;2)</th>
+        <th>Copy definitivo aprobado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="ord">1</td><td class="id-col"><code>COPY_V4_B1</code> <span class="flow-ref">fecha_ventana</span></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">2</td><td class="id-col"><code>COPY_V4_B1_RETRY</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">3</td><td class="id-col"><code>WA_LIST_OPEN_BUTTON</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">4</td><td class="id-col"><code>fecha.ene_may</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">5</td><td class="id-col"><code>fecha.jun_sep</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">6</td><td class="id-col"><code>fecha.oct_dic</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">7</td><td class="id-col"><code>fecha.anio_2028</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">8</td><td class="id-col"><code>COPY_V4_NOMBRE</code> <span class="flow-ref">nombre</span></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">9</td><td class="id-col"><code>COPY_V4_NOMBRE_RETRY</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">10</td><td class="id-col"><code>COPY_V4_PDF</code> <span class="flow-ref">accion</span></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">11</td><td class="id-col"><code>GUION_PDF_FILENAME</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">12</td><td class="id-col"><code>guion.galeria_paquete</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">13</td><td class="id-col"><code>COPY_V4_CTA_RETRY</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">14</td><td class="id-col"><code>WA_LIST_OPEN_BUTTON</code> (CTAs)</td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">15</td><td class="id-col"><code>accion.visita</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">16</td><td class="id-col"><code>accion.ejecutivo</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">17</td><td class="id-col"><code>accion.fuera_presupuesto</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">18</td><td class="id-col"><code>COPY_V4_HANDOFF_VISITA</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">19</td><td class="id-col"><code>COPY_V4_HANDOFF_EJECUTIVO</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">20</td><td class="id-col"><code>COPY_V4_PRESUPUESTO_FUERA</code> <span class="flow-ref">presupuesto_fuera</span></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">21</td><td class="id-col"><code>COPY_V4_PRESUPUESTO_FUERA_RETRY</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">22</td><td class="id-col"><code>WA_LIST_OPEN_BUTTON</code> (rangos)</td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">23</td><td class="id-col"><code>presupuesto.r200_250</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">24</td><td class="id-col"><code>presupuesto.r250_300</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">25</td><td class="id-col"><code>presupuesto.fuera_rango</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">26</td><td class="id-col"><code>COPY_V2_MENOR_PISO</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">27</td><td class="id-col"><code>copyMenorPisoConPisoPublicado</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">28</td><td class="id-col"><code>copyMenorPisoConAlternativa</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">29</td><td class="id-col"><code>COPY_V2_NUTRICION_HOLD</code> <span class="flow-ref">faq_libre</span></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">30</td><td class="id-col"><code>HABLAR_ASESOR_TITLE</code></td><td class="blank-fill"></td></tr>
+      <tr><td class="ord">31</td><td class="id-col"><code>HABLAR_ASESOR_TEXTO</code></td><td class="blank-fill"></td></tr>
+    </tbody>
+  </table>
+
+  <p class="sign-line">
+    Firma cliente: _________________________ &nbsp;&nbsp; Fecha: _______________
+  </p>
+  </section>
+
+</body>
+</html>

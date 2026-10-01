@@ -7,10 +7,11 @@ import type {
   IntencionNivel,
   PasoGuion,
   RangoInversion,
+  RangoPresupuestoFuera,
   RutaComercial,
 } from "./types";
 
-export type ConversationFlowVersion = "v1" | "v2" | "v3";
+export type ConversationFlowVersion = "v1" | "v2" | "v3" | "v4";
 
 export type CompletitudFit = "minima" | "comercial" | "vacia";
 
@@ -49,6 +50,7 @@ export function conversationFlowVersion(
   config?: ConfigService,
 ): ConversationFlowVersion {
   const raw = config?.get<string>("conversation.flow");
+  if (raw === "v4") return "v4";
   if (raw === "v3") return "v3";
   if (raw === "v2") return "v2";
   if (raw === "v1") return "v1";
@@ -84,12 +86,13 @@ export function resolveConversationFlow(
   if (
     seed.persisted === "v1" ||
     seed.persisted === "v2" ||
-    seed.persisted === "v3"
+    seed.persisted === "v3" ||
+    seed.persisted === "v4"
   ) {
     return seed.persisted;
   }
   const base = conversationFlowVersion(config);
-  if (base === "v3" || base === "v1") return base;
+  if (base === "v4" || base === "v3" || base === "v1") return base;
   const pct = conversationFlowCanaryPct(config);
   if (pct <= 0) return "v2";
   const key = seed.sedeId?.trim() || seed.threadId;
@@ -103,7 +106,8 @@ export function effectiveConversationFlow(
   if (
     conv.guionVersion === "v1" ||
     conv.guionVersion === "v2" ||
-    conv.guionVersion === "v3"
+    conv.guionVersion === "v3" ||
+    conv.guionVersion === "v4"
   ) {
     return conv.guionVersion;
   }
@@ -115,7 +119,7 @@ export function isV2Plus(flow: ConversationFlowVersion): boolean {
 }
 
 export function isFechaFocusedPaso(paso?: PasoGuion | null): boolean {
-  return paso === "fecha" || paso === "nombre_fecha";
+  return paso === "fecha" || paso === "nombre_fecha" || paso === "fecha_ventana";
 }
 
 export function isNombreFocusedPaso(paso?: PasoGuion | null): boolean {
@@ -136,6 +140,7 @@ export function mapPasoGuionV1ToV2(paso: PasoGuion): PasoGuion {
 }
 
 export function initialPasoGuion(flow: ConversationFlowVersion): PasoGuion {
+  if (flow === "v4") return "fecha_ventana";
   return isV2Plus(flow) ? "nombre_fecha" : "saludo";
 }
 
@@ -241,7 +246,10 @@ export function isCapturaPendienteV2(conv: ConversacionState): boolean {
   ) {
     return false;
   }
-  if (c.encajeEconomico === "no") return false;
+  if (c.encajeEconomico === "no" && !isPresupuestoFueraPendiente(c)) return false;
+  if (c.pdfEnviado && c.ctaGuion && !isPresupuestoFueraPendiente(c)) {
+    return false;
+  }
   if (isPrequalificadoV2(c)) return false;
   if (
     deriveEncaje(c) === "confirmado" &&
@@ -262,27 +270,18 @@ export function isCapturaPendienteV2(conv: ConversacionState): boolean {
 export function nextPasoGuionV2(campos: CamposCapturados): PasoGuion {
   const c = syncCamposV2(campos);
   if (!c.nombre || !c.fechaTentativa) return "nombre_fecha";
-  if (c.aforo == null || !c.rangoInversion) return "aforo_inversion";
-  const encaje = deriveEncaje(c);
-  if (
-    encaje !== "confirmado" &&
-    encaje !== "no" &&
-    (c.rangoInversion === "por_definir" || encaje === "no_confirmado") &&
-    (c.numeroAclaracionesPiso ?? 0) < 1
-  ) {
-    return "aclaracion_piso";
-  }
-  if (encaje === "confirmado") {
-    if (c.intencionNivel === "baja") return "faq_libre";
-    return "accion";
-  }
+  if (!c.pdfEnviado || !c.ctaGuion) return "accion";
+  if (isPresupuestoFueraPendiente(c)) return "presupuesto_fuera";
   return "faq_libre";
 }
 
 export function decideRutaComercial(campos: CamposCapturados): RutaComercial | null {
   const encaje = deriveEncaje(campos);
   const nivel = campos.intencionNivel;
-  if (encaje === "no") return "nutricion";
+  if (encaje === "no") {
+    if (isPresupuestoFueraPendiente(campos)) return null;
+    return "nutricion";
+  }
   if (encaje === "confirmado") {
     if (nivel === "baja") return "seguimiento";
     return "handoff";
@@ -411,7 +410,12 @@ export function isCapturaPendienteV3(conv: ConversacionState): boolean {
   ) {
     return false;
   }
-  if (deriveEncajeV3(c) === "no") return false;
+  if (deriveEncajeV3(c) === "no" && !isPresupuestoFueraPendiente(c)) {
+    return false;
+  }
+  if (c.pdfEnviado && c.ctaGuion && !isPresupuestoFueraPendiente(c)) {
+    return false;
+  }
   if (isCalificadoV3(c)) return false;
   if (
     deriveEncajeV3(c) === "confirmado" &&
@@ -432,36 +436,18 @@ export function isCapturaPendienteV3(conv: ConversacionState): boolean {
 export function nextPasoGuionV3(campos: CamposCapturados): PasoGuion {
   const c = syncCamposV3(campos);
   if (!c.nombre || !c.fechaTentativa) return "nombre_fecha";
-  if (c.aforo == null || !c.rangoInversion) return "aforo_inversion";
-  const encaje = deriveEncajeV3(c);
-  if (
-    encaje !== "confirmado" &&
-    encaje !== "no" &&
-    encaje !== "probable" &&
-    (c.rangoInversion === "por_definir" || encaje === "no_confirmado") &&
-    (c.numeroAclaracionesPiso ?? 0) < 1
-  ) {
-    return "aclaracion_piso";
-  }
-  if (encaje === "probable" && (c.numeroAclaracionesPiso ?? 0) < 1) {
-    if (c.intencionNivel === "alta" && c.aceptaPiso250k === true) {
-      return "accion";
-    }
-    if (c.intencionNivel === "alta") return "aclaracion_piso";
-    return "aclaracion_piso";
-  }
-  if (encaje === "confirmado") {
-    if (c.intencionNivel === "baja") return "faq_libre";
-    return "accion";
-  }
-  if (encaje === "probable" && c.intencionNivel === "alta") return "accion";
+  if (!c.pdfEnviado || !c.ctaGuion) return "accion";
+  if (isPresupuestoFueraPendiente(c)) return "presupuesto_fuera";
   return "faq_libre";
 }
 
 export function decideRutaComercialV3(campos: CamposCapturados): RutaComercial | null {
   const encaje = deriveEncajeV3(campos);
   const nivel = campos.intencionNivel;
-  if (encaje === "no") return "nutricion";
+  if (encaje === "no") {
+    if (isPresupuestoFueraPendiente(campos)) return null;
+    return "nutricion";
+  }
   if (encaje === "confirmado") {
     if (nivel === "baja") return "seguimiento";
     return "handoff";
@@ -473,6 +459,50 @@ export function decideRutaComercialV3(campos: CamposCapturados): RutaComercial |
     campos.aceptaPiso250k !== true
   ) {
     return "nutricion";
+  }
+  return null;
+}
+
+export function isPresupuestoFueraPendiente(campos: CamposCapturados): boolean {
+  return (
+    campos.ctaGuion === "fuera_presupuesto" && !campos.rangoPresupuestoFuera
+  );
+}
+
+export function presupuestoFromRangoPresupuestoFuera(
+  rango: RangoPresupuestoFuera,
+): CamposCapturados["presupuestoOrientativo"] {
+  if (rango === "r200_250") {
+    return { tipo: "rango", min: 200_000, max: 250_000, moneda: "MXN" };
+  }
+  if (rango === "r250_300") {
+    return { tipo: "rango", min: 250_000, max: 300_000, moneda: "MXN" };
+  }
+  return { tipo: "no_definido", moneda: "MXN" };
+}
+
+export function nextPasoGuionV4(campos: CamposCapturados): PasoGuion {
+  if (!campos.fechaTentativa) return "fecha_ventana";
+  if (!campos.nombre) return "nombre";
+  if (!campos.ctaGuion) return "accion";
+  if (isPresupuestoFueraPendiente(campos)) return "presupuesto_fuera";
+  return "faq_libre";
+}
+
+export function isCapturaPendienteV4(conv: ConversacionState): boolean {
+  const c = conv.camposCapturados;
+  if (conv.pasoGuion === "faq_libre" || c.rutaComercial) return false;
+  if (!c.ctaGuion) return true;
+  return isPresupuestoFueraPendiente(c);
+}
+
+export function decideRutaComercialV4(campos: CamposCapturados): RutaComercial | null {
+  if (campos.ctaGuion === "fuera_presupuesto") {
+    if (!campos.rangoPresupuestoFuera) return null;
+    return "nutricion";
+  }
+  if (campos.ctaGuion === "visita" || campos.ctaGuion === "ejecutivo") {
+    return "handoff";
   }
   return null;
 }

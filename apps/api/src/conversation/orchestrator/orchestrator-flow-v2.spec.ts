@@ -137,7 +137,7 @@ describe("Orchestrator v2 (V2.8)", () => {
     ).toBe(true);
   });
 
-  it("evade presupuesto → B1, B2, una sola B3, nutrición", async () => {
+  it("captura básica → paquete PDF y CTA fuera de presupuesto → nutrición", async () => {
     const { orch, store } = buildOrchestratorV2();
     const t1 = await orch.handleTurn({
       canal: "whatsapp",
@@ -154,30 +154,36 @@ describe("Orchestrator v2 (V2.8)", () => {
       texto: "Soy Ana, el 22 de diciembre de 2027",
       recibidoEn: new Date().toISOString(),
     });
-    expect(t2.pasoGuion).toBe("aforo_inversion");
+    expect(t2.pasoGuion).toBe("accion");
+    expect(t2.waContent?.document?.url).toMatch(/paquete-bodas-2027\.pdf$/);
+    expect(t2.waContent?.images?.length).toBe(4);
     const t3 = await orch.handleTurn({
       canal: "whatsapp",
       externalThreadId: "v2-evade",
       externalMessageId: "m3",
-      texto: "150 invitados, aún por definir",
+      texto: "Estamos fuera de tu presupuesto",
+      buttonPayload: "accion.fuera_presupuesto",
       recibidoEn: new Date().toISOString(),
     });
-    expect(t3.pasoGuion).toBe("aclaracion_piso");
-    expect(t3.textoRespuesta).toMatch(/250,000/);
+    expect(t3.estadoBot).toBe("activo");
+    expect(t3.ruta).toBe("guion");
+    expect(t3.waContent?.templateId).toBe("guion.presupuesto_fuera");
+    const convMid = await store.findById(t3.conversacionId);
+    expect(convMid?.camposCapturados.ctaGuion).toBe("fuera_presupuesto");
+    expect(convMid?.pasoGuion).toBe("presupuesto_fuera");
+
     const t4 = await orch.handleTurn({
       canal: "whatsapp",
       externalThreadId: "v2-evade",
       externalMessageId: "m4",
-      texto: "todavía no",
+      texto: "200-250 mil",
+      buttonPayload: "presupuesto.r200_250",
       recibidoEn: new Date().toISOString(),
     });
-    expect(t4.estadoBot).toBe("activo");
-    expect(t4.textoRespuesta).toBe(COPY_NUTRICION_T24_INMEDIATO);
+    expect(t4.ruta).toBe("safe");
     const conv = await store.findById(t4.conversacionId);
+    expect(conv?.camposCapturados.rangoPresupuestoFuera).toBe("r200_250");
     expect(conv?.camposCapturados.rutaComercial).toBe("nutricion");
-    expect(conv?.camposCapturados.encajeEconomico).toBe("no_confirmado");
-    expect(conv?.camposCapturados.aceptaPiso250k).toBeUndefined();
-    expect(conv?.camposCapturados.numeroAclaracionesPiso).toBe(1);
   });
 
   it("pide humano en B1 → atención general con encaje no_confirmado", async () => {
@@ -216,7 +222,7 @@ describe("Orchestrator v2 (V2.8)", () => {
     expect(conv?.camposCapturados.tipoEvento).toBe("xv");
     expect(conv?.camposCapturados.nombre?.toLowerCase()).toContain("ana");
     expect(conv?.camposCapturados.aforo).toBe(120);
-    expect(conv?.pasoGuion).toBe("aforo_inversion");
+    expect(conv?.pasoGuion).toBe("accion");
   });
 
   it("tope de 3 mensajes de captura → nutrición", async () => {
@@ -307,201 +313,60 @@ describe("Orchestrator v2 (V2.8)", () => {
     process.env.DATABASE_URL = prev;
   });
 
-  it("sandbox: nombre + febrero 2027 + aún por definir abre B3", async () => {
+  it("sandbox: temporada + nombre entrega PDF, galería y CTAs", async () => {
     const { orch } = buildOrchestratorV2();
     await orch.handleTurn({
       canal: "whatsapp",
-      externalThreadId: "v2-sandbox-b3",
+      externalThreadId: "v2-sandbox-paquete",
       externalMessageId: "m1",
       texto: "Hola",
       recibidoEn: new Date().toISOString(),
     });
     await orch.handleTurn({
       canal: "whatsapp",
-      externalThreadId: "v2-sandbox-b3",
+      externalThreadId: "v2-sandbox-paquete",
       externalMessageId: "m2",
+      texto: "Jun-Sep",
+      buttonPayload: "fecha.jun_sep",
+      recibidoEn: new Date().toISOString(),
+    });
+    const t3 = await orch.handleTurn({
+      canal: "whatsapp",
+      externalThreadId: "v2-sandbox-paquete",
+      externalMessageId: "m3",
       texto: "Patricio Medina",
       recibidoEn: new Date().toISOString(),
     });
-    await orch.handleTurn({
-      canal: "whatsapp",
-      externalThreadId: "v2-sandbox-b3",
-      externalMessageId: "m3",
-      texto: "Sería en febrero de 2027",
-      recibidoEn: new Date().toISOString(),
-    });
-    const t4 = await orch.handleTurn({
-      canal: "whatsapp",
-      externalThreadId: "v2-sandbox-b3",
-      externalMessageId: "m4",
-      texto: "150 invitados, Aún por definir",
-      recibidoEn: new Date().toISOString(),
-    });
-    expect(t4.pasoGuion).toBe("aclaracion_piso");
-    expect(t4.ruta).toBe("guion");
-    expect(t4.textoRespuesta).toBe(COPY_V2_B3);
-    expect(t4.textoRespuesta).not.toMatch(/Conservamos tu solicitud/);
+    expect(t3.pasoGuion).toBe("accion");
+    expect(t3.ruta).toBe("guion");
+    expect(t3.waContent?.document?.url).toMatch(/paquete-bodas-2027\.pdf$/);
+    expect(t3.waContent?.images?.length).toBe(4);
+    expect(t3.waContent?.kind).toBe("list-picker");
+    expect(t3.textoRespuesta).toMatch(/PDF/);
+    expect(t3.textoRespuesta).not.toMatch(/cuántas personas/);
   });
 
-  it("B3 sí → visita después de aforo", async () => {
+  it("CTA agendar visita → handoff comercial", async () => {
     const { orch, store } = buildOrchestratorV2();
     await orch.handleTurn({
       canal: "whatsapp",
-      externalThreadId: "v2-b3-si",
+      externalThreadId: "v2-cta-visita",
       externalMessageId: "m1",
       texto: "Soy Patricio Medina, febrero 2027",
       recibidoEn: new Date().toISOString(),
     });
-    await orch.handleTurn({
-      canal: "whatsapp",
-      externalThreadId: "v2-b3-si",
-      externalMessageId: "m2",
-      texto: "150 invitados, aún por definir",
-      recibidoEn: new Date().toISOString(),
-    });
     const res = await orch.handleTurn({
       canal: "whatsapp",
-      externalThreadId: "v2-b3-si",
-      externalMessageId: "m3",
-      texto: "Sí, lo consideramos",
+      externalThreadId: "v2-cta-visita",
+      externalMessageId: "m2",
+      texto: "Agendar visita",
+      buttonPayload: "accion.visita",
       recibidoEn: new Date().toISOString(),
     });
     expect(res.ruta).toBe("handoff");
     expect(res.textoRespuesta).toBe(COPY_PISO_VISITA);
     const conv = await store.findById(res.conversacionId);
-    expect(conv?.camposCapturados.encajeEconomico).toBe("confirmado");
-    expect(conv?.camposCapturados.aforo).toBe(150);
-    expect(conv?.camposCapturados.intencionVisita).toBe(true);
+    expect(conv?.camposCapturados.ctaGuion).toBe("visita");
     expect(conv?.cola).toBe("comercial");
-  });
-
-  it("B3 no → alternativa sin cola comercial", async () => {
-    const { orch, store, nurture } = buildOrchestratorV2();
-    await orch.handleTurn({
-      canal: "whatsapp",
-      externalThreadId: "v2-b3-no",
-      externalMessageId: "m1",
-      texto: "Soy Patricio Medina, febrero 2027",
-      recibidoEn: new Date().toISOString(),
-    });
-    await orch.handleTurn({
-      canal: "whatsapp",
-      externalThreadId: "v2-b3-no",
-      externalMessageId: "m2",
-      texto: "150 invitados, aún por definir",
-      recibidoEn: new Date().toISOString(),
-    });
-    const res = await orch.handleTurn({
-      canal: "whatsapp",
-      externalThreadId: "v2-b3-no",
-      externalMessageId: "m3",
-      texto: "Buscamos algo menor",
-      recibidoEn: new Date().toISOString(),
-    });
-    expect(res.ruta).toBe("safe");
-    expect(res.textoRespuesta).toBe(
-      copyMenorPisoConPisoPublicado("Paquete Estándar"),
-    );
-    expect(res.textoRespuesta).not.toMatch(/Opción vigente cercana: Upgrade Premium/);
-    const conv = await store.findById(res.conversacionId);
-    expect(conv?.camposCapturados.encajeEconomico).toBe("no");
-    expect(conv?.camposCapturados.rutaComercial).toBe("nutricion");
-    expect(conv?.cola).not.toBe("comercial");
-    expect(nurture.list(res.conversacionId).some((j) => j.plantillaId === "t24")).toBe(
-      true,
-    );
-
-    const follow = await orch.handleTurn({
-      canal: "whatsapp",
-      externalThreadId: "v2-b3-no",
-      externalMessageId: "m4",
-      texto: "Quiero conocer",
-      recibidoEn: new Date().toISOString(),
-    });
-    expect(follow.ruta).toBe("catalogo");
-    expect(follow.textoRespuesta).toBe(fichaPaquetePorSku(SKU_PAQUETE_ESTANDAR));
-    expect(follow.textoRespuesta).not.toBe(res.textoRespuesta);
-    const after = await store.findById(follow.conversacionId);
-    expect(after?.camposCapturados.rutaComercial).toBe("nutricion");
-    expect(after?.cola).not.toBe("comercial");
-    expect(nurture.list(follow.conversacionId).filter((j) => !j.cancelado)).toHaveLength(
-      2,
-    );
-
-    const hold = await orch.handleTurn({
-      canal: "whatsapp",
-      externalThreadId: "v2-b3-no",
-      externalMessageId: "m5",
-      texto: "ok",
-      recibidoEn: new Date().toISOString(),
-    });
-    expect(hold.textoRespuesta).toBe(COPY_V2_NUTRICION_HOLD);
-    expect(hold.ruta).toBe("safe");
-  });
-
-  it("B3 no con SKU bajo piso nombra la alternativa real", async () => {
-    const { orch, catalogFake } = buildOrchestratorV2();
-    (catalogFake.findSkuBajoPiso as jest.Mock).mockResolvedValue({
-      sku: "EVT-MINI",
-      nombre: "Paquete Mini",
-      monto: 180_000,
-    });
-    await orch.handleTurn({
-      canal: "whatsapp",
-      externalThreadId: "v2-b3-alt",
-      externalMessageId: "m1",
-      texto: "Soy Patricio Medina, febrero 2027",
-      recibidoEn: new Date().toISOString(),
-    });
-    await orch.handleTurn({
-      canal: "whatsapp",
-      externalThreadId: "v2-b3-alt",
-      externalMessageId: "m2",
-      texto: "150 invitados, aún por definir",
-      recibidoEn: new Date().toISOString(),
-    });
-    const res = await orch.handleTurn({
-      canal: "whatsapp",
-      externalThreadId: "v2-b3-alt",
-      externalMessageId: "m3",
-      texto: "Buscamos algo menor",
-      recibidoEn: new Date().toISOString(),
-    });
-    expect(res.textoRespuesta).toBe(copyMenorPisoConAlternativa("Paquete Mini"));
-    expect(res.textoRespuesta).not.toMatch(/Upgrade Premium/);
-  });
-
-  it("B3 sin respuesta → nutrición T+24, sin cierre abrupto", async () => {
-    const { orch, store, nurture } = buildOrchestratorV2();
-    await orch.handleTurn({
-      canal: "whatsapp",
-      externalThreadId: "v2-b3-skip",
-      externalMessageId: "m1",
-      texto: "Soy Patricio Medina, febrero 2027",
-      recibidoEn: new Date().toISOString(),
-    });
-    await orch.handleTurn({
-      canal: "whatsapp",
-      externalThreadId: "v2-b3-skip",
-      externalMessageId: "m2",
-      texto: "150 invitados, aún por definir",
-      recibidoEn: new Date().toISOString(),
-    });
-    const res = await orch.handleTurn({
-      canal: "whatsapp",
-      externalThreadId: "v2-b3-skip",
-      externalMessageId: "m3",
-      texto: "gracias",
-      recibidoEn: new Date().toISOString(),
-    });
-    expect(res.ruta).toBe("safe");
-    expect(res.textoRespuesta).toBe(COPY_NUTRICION_T24_INMEDIATO);
-    expect(res.textoRespuesta).not.toMatch(/cuando tengan fecha, aforo o rango/);
-    const conv = await store.findById(res.conversacionId);
-    expect(conv?.camposCapturados.rutaComercial).toBe("nutricion");
-    expect(conv?.estadoBot).toBe("activo");
-    expect(nurture.list(res.conversacionId).some((j) => j.plantillaId === "t24")).toBe(
-      true,
-    );
   });
 });
