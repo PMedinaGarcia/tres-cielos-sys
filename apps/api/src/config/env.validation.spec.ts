@@ -9,6 +9,7 @@ describe("validateEnv (A4)", () => {
     expect(env.AI_PROVIDERS_MODE).toBe("fake");
     expect(env.CONVERSATION_FLOW).toBe("v2");
     expect(env.CONVERSATION_FLOW_CANARY_PCT).toBe(0);
+    expect(env.FIELD_TEST_RESET).toBe("0");
     expect(env.RERANK_THRESHOLD).toBe(0.85);
     expect(env.AI_REQUEST_TIMEOUT_MS).toBe(45_000);
     expect(env.AI_MAX_RETRIES).toBe(2);

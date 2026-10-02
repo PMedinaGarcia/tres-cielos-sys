@@ -33,6 +33,8 @@ export const envSchema = z
     CONVERSATION_FLOW: z.enum(["v1", "v2", "v3", "v4"]).default("v2"),
     /** Con CONVERSATION_FLOW=v2, % de hilos nuevos que entran a v3 (hash de sede/hilo). */
     CONVERSATION_FLOW_CANARY_PCT: z.coerce.number().int().min(0).max(100).default(0),
+    /** 1 = en v4, un hilo ya cerrado vuelve al saludo con el siguiente mensaje. */
+    FIELD_TEST_RESET: z.enum(["0", "1"]).default("0"),
 
     OPENAI_API_KEY: z.string().optional(),
     OPENAI_BASE_URL: z.string().url().optional().or(z.literal("")),

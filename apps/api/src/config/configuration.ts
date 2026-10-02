@@ -83,6 +83,7 @@ export default () => {
     conversation: {
       flow: (env.CONVERSATION_FLOW ?? "v2") as "v1" | "v2" | "v3" | "v4",
       canaryPct: Number(env.CONVERSATION_FLOW_CANARY_PCT ?? 0),
+      fieldTestReset: env.FIELD_TEST_RESET === "1",
     },
   };
 };

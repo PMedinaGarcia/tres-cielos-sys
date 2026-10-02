@@ -147,7 +147,10 @@ export class InboundPipelineService {
     result.conversacionId = result.conversacionId ?? conv.id;
     this.quota.consumeAiTokens(conv.sedeId ?? "default", 500);
 
-    if (result.estadoBot === "escalado" || result.ruta === "handoff") {
+    if (
+      result.ruta === "handoff" ||
+      (result.estadoBot === "escalado" && !result.silencio)
+    ) {
       conv.estadoBot = "escalado";
       await this.finishHandoff(
         message,
