@@ -43,6 +43,11 @@ export const WaDocumentSchema = z.object({
   filename: z.string().min(1),
   mime: z.literal("application/pdf"),
   url: z.string().min(1),
+  /**
+   * `media` cabe en WhatsApp (máx. 16 MB por Twilio).
+   * `link` se manda como texto con la URL pública.
+   */
+  delivery: z.enum(["media", "link"]).optional(),
 });
 export type WaDocument = z.infer<typeof WaDocumentSchema>;
 

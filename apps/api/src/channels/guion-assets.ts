@@ -36,6 +36,7 @@ export function guionFlujoDocuments(): WaDocument[] {
     filename: pdf.filename,
     mime: "application/pdf" as const,
     url: `${base}${pdf.publicPath}`,
+    delivery: pdf.delivery,
   }));
 }
 

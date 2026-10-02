@@ -122,6 +122,14 @@ export function buildTwilioForms(input: {
       : [];
   for (const document of documents) {
     if (!document.url) continue;
+    if (document.delivery === "link") {
+      forms.push({
+        From: from,
+        To: to,
+        Body: `${document.filename.trim()}\n${document.url}`,
+      });
+      continue;
+    }
     const form: TwilioForm = { From: from, To: to, MediaUrl: document.url };
     if (document.filename.trim()) form.Body = document.filename.trim();
     forms.push(form);

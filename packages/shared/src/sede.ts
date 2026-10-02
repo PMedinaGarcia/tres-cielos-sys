@@ -38,17 +38,23 @@ export function sedeToCatalogSlug(
 export const GUION_ADJUNTO_PAQUETE_BODAS = "paquete-bodas-2027" as const;
 export type GuionAdjuntoId = typeof GUION_ADJUNTO_PAQUETE_BODAS;
 
-/** PDF que el guion comparte, en este orden. */
+/**
+ * PDF que el guion comparte, en este orden.
+ * WhatsApp vía Twilio rechaza documentos de más de 16 MB.
+ * El de experiencia pesa ~23 MB, así que viaja como enlace.
+ */
 export const GUION_FLUJO_PDFS = [
   {
     slug: "experiencia-boda-tres-dias-2027",
     filename: "Experiencia boda de tres días - 2027.pdf",
     publicPath: "/public/guion/experiencia-boda-tres-dias-2027.pdf",
+    delivery: "link",
   },
   {
     slug: "tarifas-2027-tres-cielos",
     filename: "Tarifas 2027 - Tres Cielos.pdf",
     publicPath: "/public/guion/tarifas-2027-tres-cielos.pdf",
+    delivery: "media",
   },
 ] as const;
 

@@ -43,21 +43,26 @@ describe("buildTwilioForms", () => {
             filename: "Experiencia boda de tres días - 2027.pdf",
             mime: "application/pdf",
             url: "https://api.example/experiencia.pdf",
+            delivery: "link",
           },
           {
             filename: "Tarifas 2027 - Tres Cielos.pdf",
             mime: "application/pdf",
             url: "https://api.example/tarifas.pdf",
+            delivery: "media",
           },
         ],
       },
     });
-    expect(forms.map((f) => f.MediaUrl ?? f.ContentSid)).toEqual([
-      "https://api.example/experiencia.pdf",
+    expect(forms.map((f) => f.MediaUrl ?? f.ContentSid ?? "text")).toEqual([
+      "text",
       "https://api.example/tarifas.pdf",
       "HXaccion",
     ]);
-    expect(forms[0]?.Body).toBe("Experiencia boda de tres días - 2027.pdf");
+    expect(forms[0]?.Body).toBe(
+      "Experiencia boda de tres días - 2027.pdf\nhttps://api.example/experiencia.pdf",
+    );
+    expect(forms[0]?.MediaUrl).toBeUndefined();
     expect(forms[1]?.Body).toBe("Tarifas 2027 - Tres Cielos.pdf");
     expect(forms[2]?.ContentVariables).toBe(JSON.stringify({ "1": "Ana" }));
     expect(forms[2]?.Body).toBeUndefined();

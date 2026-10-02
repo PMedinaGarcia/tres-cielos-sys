@@ -53,15 +53,20 @@ export class GuionAssetsService implements OnModuleInit {
   async resolveDocuments(): Promise<WaDocument[]> {
     if (isObjectStorageLive(this.config)) {
       try {
+        const published = guionFlujoDocuments();
         return await Promise.all(
-          GUION_FLUJO_PDFS.map(async (pdf) => ({
-            filename: pdf.filename,
-            mime: "application/pdf" as const,
-            url: await this.storage.signedUrl({
-              key: guionPdfStorageKey(pdf.slug),
-              expiresInSec: GUION_SIGNED_URL_TTL_SEC,
-            }),
-          })),
+          GUION_FLUJO_PDFS.map(async (pdf, index) => {
+            if (pdf.delivery === "link") return published[index]!;
+            return {
+              filename: pdf.filename,
+              mime: "application/pdf" as const,
+              url: await this.storage.signedUrl({
+                key: guionPdfStorageKey(pdf.slug),
+                expiresInSec: GUION_SIGNED_URL_TTL_SEC,
+              }),
+              delivery: pdf.delivery,
+            };
+          }),
         );
       } catch (err) {
         this.logger.warn(`signed URL guion falló: ${String(err)}`);

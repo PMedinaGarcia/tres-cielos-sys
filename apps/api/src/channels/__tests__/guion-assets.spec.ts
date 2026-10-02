@@ -23,6 +23,7 @@ describe("guion-assets", () => {
       "https://api.trescielos.test/public/guion/experiencia-boda-tres-dias-2027.pdf",
       "https://api.trescielos.test/public/guion/tarifas-2027-tres-cielos.pdf",
     ]);
+    expect(docs.map((doc) => doc.delivery)).toEqual(["link", "media"]);
     expect(docs.every((doc) => doc.mime === "application/pdf")).toBe(true);
   });
 });
