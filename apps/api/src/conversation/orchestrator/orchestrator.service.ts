@@ -54,6 +54,7 @@ import {
   deriveEncaje,
   deriveEncajeV3,
   effectiveConversationFlow,
+  isHiloV4Terminado,
   isV2Plus,
   nextPasoGuionV2,
   nextPasoGuionV3,
@@ -119,14 +120,11 @@ import {
 import { ReasoningTraceService } from "../reasoning/reasoning-trace.service";
 import { ExpedientePersistService } from "../../crm/expediente-persist.service";
 import { attachWaContent } from "../../channels/wa-content.composer";
-import {
-  paqueteBodas2027Document,
-  paqueteBodasGaleria,
-} from "../../channels/guion-assets";
+import { guionFlujoDocuments } from "../../channels/guion-assets";
 import {
   canonicalizeSku,
   GUION_ADJUNTO_PAQUETE_BODAS,
-  GUION_PDF_FILENAME,
+  GUION_FLUJO_PDFS,
   resolvePaqueteSkuAlias,
   SEDE_SLUG,
   SKU_PAQUETE_ESTANDAR,
@@ -136,7 +134,7 @@ import { ConfigService } from "@nestjs/config";
 import type { ObjectStoragePort } from "../../ports/object-storage.port";
 import {
   GUION_SIGNED_URL_TTL_SEC,
-  STORAGE_KEYS,
+  guionPdfStorageKey,
 } from "../../ports/storage-prefixes";
 import { isObjectStorageLive } from "../../config/ai-mode";
 import { normalizeTipoEventoArg } from "../../tools-catalog/catalog-search.util";
@@ -260,16 +258,6 @@ export class OrchestratorService {
       detail: { hardQuota, snapshot: this.quota.snapshot() },
     });
 
-    const intent = await this.intent.classify({
-      texto: inbound.texto ?? "",
-      pasoGuion: conv.pasoGuion,
-      buttonPayload: inbound.buttonPayload,
-    });
-    this.reasoning.append({
-      level: "intent",
-      value: intent,
-    });
-
     if (!conv.guionVersion) {
       const assigned = resolveConversationFlow(this.config, {
         threadId: inbound.externalThreadId,
@@ -279,7 +267,43 @@ export class OrchestratorService {
       await this.store.update(conv.id, { guionVersion: assigned });
     }
     const flow = this.flowOf(conv);
-    const textoIn = inbound.texto ?? "";
+    const fieldReset =
+      this.fieldTestReset() && flow === "v4" && isHiloV4Terminado(conv);
+    if (fieldReset) {
+      const campos: CamposCapturados = {
+        telefono: conv.camposCapturados.telefono ?? null,
+        tipoEvento: "boda",
+      };
+      conv.estadoBot = "activo";
+      conv.pasoGuion = "fecha_ventana";
+      conv.camposCapturados = campos;
+      conv.motivoHandoff = null;
+      conv.escaladoEn = null;
+      conv.cola = null;
+      conv.slaVenceEn = null;
+      await this.store.update(conv.id, {
+        estadoBot: "activo",
+        pasoGuion: "fecha_ventana",
+        camposCapturados: campos,
+        motivoHandoff: null,
+        escaladoEn: null,
+        cola: null,
+        slaVenceEn: null,
+      });
+    }
+    const textoIn = fieldReset ? "" : (inbound.texto ?? "");
+    const buttonPayload = fieldReset ? undefined : inbound.buttonPayload;
+
+    const intent = await this.intent.classify({
+      texto: textoIn,
+      pasoGuion: conv.pasoGuion,
+      buttonPayload,
+    });
+    this.reasoning.append({
+      level: "intent",
+      value: intent,
+    });
+
     const pasoFrom = conv.pasoGuion;
     const harvested = harvestCamposLexical(textoIn, conv.camposCapturados, {
       focusedPaso: conv.pasoGuion,
@@ -328,7 +352,7 @@ export class OrchestratorService {
       capturaPendiente,
       adjuntoInvalido,
       intent,
-      buttonPayload: inbound.buttonPayload,
+      buttonPayload,
       pedidoCotizacion: pedidoEval.pedido === true,
       perfilListo,
       recotizarPorSlots,
@@ -415,7 +439,7 @@ export class OrchestratorService {
     }
 
     if (route.kind === "degrade_script") {
-      return this.runGuion(conv.id, inbound.texto ?? "", msgIn.id);
+      return this.runGuion(conv.id, textoIn, msgIn.id);
     }
 
     if (route.kind === "adjunto_retry") {
@@ -435,7 +459,7 @@ export class OrchestratorService {
     }
 
     if (route.kind === "answer_inline") {
-      return this.runAnswerInline(conv.id, inbound.texto ?? "", msgIn.id);
+      return this.runAnswerInline(conv.id, textoIn, msgIn.id);
     }
 
     if (route.kind === "jump_visita") {
@@ -486,7 +510,7 @@ export class OrchestratorService {
     }
 
     if (route.kind === "guion") {
-      return this.runGuion(conv.id, inbound.texto ?? "", msgIn.id);
+      return this.runGuion(conv.id, textoIn, msgIn.id);
     }
 
     if (route.kind === "catalogo") {
@@ -495,11 +519,11 @@ export class OrchestratorService {
     }
 
     if (route.kind === "faq_comercial") {
-      return this.runFaqComercial(conv.id, inbound.texto ?? "", msgIn.id);
+      return this.runFaqComercial(conv.id, textoIn, msgIn.id);
     }
 
     if (route.kind === "rag") {
-      return this.runRag(conv.id, inbound.texto ?? "", msgIn.id);
+      return this.runRag(conv.id, textoIn, msgIn.id);
     }
 
     return this.finishSafe(conv.id, conv.oportunidadId, msgIn.id, null);
@@ -1546,13 +1570,11 @@ export class OrchestratorService {
       paqueteTemprano ||
       encaje === "confirmado" ||
       (flow === "v3" && (encaje3 === "confirmado" || encaje3 === "probable"));
-    const document =
+    const documents =
       adjuntoGuion === GUION_ADJUNTO_PAQUETE_BODAS && allowPdf
-        ? await this.resolveGuionDocument()
+        ? await this.resolveGuionDocuments()
         : undefined;
-    const images =
-      document && paqueteTemprano ? paqueteBodasGaleria() : undefined;
-    if (document && convForPdf) {
+    if (documents?.length && convForPdf) {
       await this.store.update(res.conversacionId, {
         camposCapturados: {
           ...convForPdf.camposCapturados,
@@ -1564,32 +1586,37 @@ export class OrchestratorService {
       ...res,
       reasoningTraceId: finished?.id ?? this.reasoning.currentId() ?? null,
       reasoningTrace: finished ?? this.reasoning.current() ?? null,
-      document,
+      documents,
       aforo: convForPdf?.camposCapturados.aforo,
       fechaTentativa: convForPdf?.camposCapturados.fechaTentativa ?? null,
       accionModo:
         flow === "v4" || res.pasoGuion === "accion" ? "cta_v4" : "legacy",
-      images,
+      nombre: convForPdf?.camposCapturados.nombre ?? null,
     });
   }
 
-  private async resolveGuionDocument() {
+  private async resolveGuionDocuments() {
     if (this.storage && this.config && isObjectStorageLive(this.config)) {
       try {
-        const url = await this.storage.signedUrl({
-          key: STORAGE_KEYS.guionPaqueteBodas,
-          expiresInSec: GUION_SIGNED_URL_TTL_SEC,
-        });
-        return {
-          filename: GUION_PDF_FILENAME,
-          mime: "application/pdf" as const,
-          url,
-        };
+        return await Promise.all(
+          GUION_FLUJO_PDFS.map(async (pdf) => ({
+            filename: pdf.filename,
+            mime: "application/pdf" as const,
+            url: await this.storage!.signedUrl({
+              key: guionPdfStorageKey(pdf.slug),
+              expiresInSec: GUION_SIGNED_URL_TTL_SEC,
+            }),
+          })),
+        );
       } catch {
         /* fallback público */
       }
     }
-    return paqueteBodas2027Document();
+    return guionFlujoDocuments();
+  }
+
+  private fieldTestReset(): boolean {
+    return this.config?.get<boolean>("conversation.fieldTestReset") === true;
   }
 
   private flowOf(

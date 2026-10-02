@@ -7,6 +7,11 @@ import type {
 } from "@tres-cielos/shared";
 import type { FechaTentativa } from "../conversation/types";
 import {
+  COPY_V4_B1_RETRY,
+  COPY_V4_CTA_RETRY,
+  COPY_V4_PRESUPUESTO_FUERA_RETRY,
+} from "../conversation/script/script-v4.copy";
+import {
   ACCION_CTA_ITEMS,
   PRESUPUESTO_FUERA_ITEMS,
   ACLARACION_NO_BUTTON,
@@ -27,10 +32,11 @@ export function composeWaContent(input: {
   ruta: string;
   pasoGuion?: string | null;
   document?: WaDocument;
+  documents?: WaDocument[];
   aforo?: number | null;
   fechaTentativa?: FechaTentativa | null;
   accionModo?: AccionModo;
-  images?: WaImage[];
+  nombre?: string | null;
 }): WaContent | undefined {
   const body = input.texto.trim();
   if (!body || input.ruta === "silencio") return undefined;
@@ -54,13 +60,17 @@ export function composeWaContent(input: {
       input.aforo,
       input.fechaTentativa,
       input.accionModo,
+      input.nombre,
     );
   }
 
   if (!content) return undefined;
   let merged = content;
-  if (input.document) merged = { ...merged, document: input.document };
-  if (input.images?.length) merged = { ...merged, images: input.images };
+  if (input.documents?.length) {
+    merged = { ...merged, documents: input.documents };
+  } else if (input.document) {
+    merged = { ...merged, document: input.document };
+  }
   return merged;
 }
 
@@ -70,10 +80,17 @@ function composeGuionPaso(
   aforo?: number | null,
   fechaTentativa?: FechaTentativa | null,
   accionModo?: AccionModo,
+  nombre?: string | null,
 ): WaContent {
   switch (pasoGuion) {
     case "fecha_ventana":
-      return listPicker("guion.fecha_ventana", body, FECHA_VENTANA_ITEMS);
+      return listPicker(
+        body === COPY_V4_B1_RETRY
+          ? "guion.fecha_ventana_retry"
+          : "guion.fecha_ventana",
+        body,
+        FECHA_VENTANA_ITEMS,
+      );
     case "ocasion":
       return {
         templateId: "guion.ocasion",
@@ -104,12 +121,22 @@ function composeGuionPaso(
       }
       return textTemplate("guion.nombre_fecha", body);
     case "accion":
-      return accionModo === "cta_v4"
-        ? listPicker("guion.accion_cta", body, ACCION_CTA_ITEMS)
-        : textTemplate("guion.accion", body);
+      if (accionModo !== "cta_v4") return textTemplate("guion.accion", body);
+      return listPicker(
+        body === COPY_V4_CTA_RETRY
+          ? "guion.accion_cta_retry"
+          : "guion.accion_cta",
+        body,
+        ACCION_CTA_ITEMS,
+        body === COPY_V4_CTA_RETRY || !nombre?.trim()
+          ? undefined
+          : { "1": nombre.trim() },
+      );
     case "presupuesto_fuera":
       return listPicker(
-        "guion.presupuesto_fuera",
+        body === COPY_V4_PRESUPUESTO_FUERA_RETRY
+          ? "guion.presupuesto_fuera_retry"
+          : "guion.presupuesto_fuera",
         body,
         PRESUPUESTO_FUERA_ITEMS,
       );
@@ -143,16 +170,34 @@ export function attachWaContent<
     pasoGuion?: string;
     waContent?: WaContent | null;
     document?: WaDocument;
+    documents?: WaDocument[];
     aforo?: number | null;
     fechaTentativa?: FechaTentativa | null;
     accionModo?: AccionModo;
     images?: WaImage[];
+    nombre?: string | null;
   },
 >(result: T): Omit<
   T,
-  "document" | "aforo" | "fechaTentativa" | "accionModo" | "images"
+  | "document"
+  | "documents"
+  | "aforo"
+  | "fechaTentativa"
+  | "accionModo"
+  | "images"
+  | "nombre"
 > {
-  const { document, aforo, fechaTentativa, accionModo, images, ...rest } = result;
+  const {
+    document,
+    documents,
+    aforo,
+    fechaTentativa,
+    accionModo,
+    images: _fotosNoCompartidas,
+    nombre,
+    ...rest
+  } = result;
+  void _fotosNoCompartidas;
   if (rest.waContent) return rest;
   if (rest.silencio || !rest.textoRespuesta) return rest;
   const waContent = composeWaContent({
@@ -160,10 +205,11 @@ export function attachWaContent<
     ruta: rest.ruta,
     pasoGuion: rest.pasoGuion,
     document,
+    documents,
     aforo,
     fechaTentativa,
     accionModo,
-    images,
+    nombre,
   });
   if (!waContent) return rest;
   return { ...rest, waContent };
@@ -182,6 +228,7 @@ function listPicker(
   templateId: string,
   body: string,
   items: WaListItem[],
+  contentVariables?: Record<string, string>,
 ): WaContent {
   return {
     templateId,
@@ -189,6 +236,7 @@ function listPicker(
     body,
     list: { button: WA_LIST_OPEN_BUTTON, items },
     contentSid: contentSidFor(templateId),
+    ...(contentVariables ? { contentVariables } : {}),
   };
 }
 

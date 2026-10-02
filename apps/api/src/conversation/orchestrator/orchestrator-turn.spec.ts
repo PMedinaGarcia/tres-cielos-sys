@@ -263,8 +263,15 @@ describe("OrchestratorService.handleTurn (B1/B6)", () => {
     expect(res.textoRespuesta).toMatch(/Tequesquitengo/);
     expect(res.textoRespuesta).toMatch(/Lote 36/);
     expect(res.waContent?.templateId).toBe("guion.intencion");
-    expect(res.waContent?.document?.mime).toBe("application/pdf");
-    expect(res.waContent?.document?.url).toMatch(/paquete-bodas-2027\.pdf$/);
+    expect(res.waContent?.documents?.map((d) => d.mime)).toEqual([
+      "application/pdf",
+      "application/pdf",
+    ]);
+    expect(res.waContent?.documents?.map((d) => d.url)).toEqual([
+      expect.stringMatching(/experiencia-boda-tres-dias-2027\.pdf$/),
+      expect.stringMatching(/tarifas-2027-tres-cielos\.pdf$/),
+    ]);
+    expect(res.waContent?.images).toBeUndefined();
     const persisted = await store.findById(conv.id);
     expect(persisted?.camposCapturados.sedeId).toBe("sede-tequesquitengo");
     expect(persisted?.camposCapturados.sedeNombre).toBe(

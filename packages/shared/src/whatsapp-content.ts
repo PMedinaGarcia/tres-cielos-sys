@@ -59,7 +59,11 @@ export const WaContentSchema = z.object({
   buttons: z.array(WaButtonSchema).max(WA_QUICK_REPLY_MAX).optional(),
   list: WaListSchema.optional(),
   contentSid: z.string().optional(),
+  /** Placeholders {{1}}, {{2}} del ContentSid. El body visible sigue siendo el texto ya armado. */
+  contentVariables: z.record(z.string()).optional(),
   document: WaDocumentSchema.optional(),
+  /** PDF del guion. Si viene, reemplaza a `document` al enviar. */
+  documents: z.array(WaDocumentSchema).max(5).optional(),
   images: z.array(WaImageSchema).max(10).optional(),
 });
 export type WaContent = z.infer<typeof WaContentSchema>;

@@ -6,8 +6,11 @@ describe("storage prefixes", () => {
     expect(STORAGE_PREFIXES.adjuntoCanal).toBe("adjunto_canal");
     expect(STORAGE_PREFIXES.guion).toBe("guion");
     expect(STORAGE_PREFIXES.catalogo).toBe("catalogo");
-    expect(STORAGE_KEYS.guionPaqueteBodas).toBe(
-      "guion/paquete-bodas-2027.pdf",
+    expect(STORAGE_KEYS.guionExperienciaBoda).toBe(
+      "guion/experiencia-boda-tres-dias-2027.pdf",
+    );
+    expect(STORAGE_KEYS.guionTarifas2027).toBe(
+      "guion/tarifas-2027-tres-cielos.pdf",
     );
   });
 });

@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  Header,
   Inject,
   NotFoundException,
   Param,
@@ -11,12 +10,13 @@ import { readFile } from "fs/promises";
 import { existsSync } from "fs";
 import { Public } from "../common/public.decorator";
 import {
+  GUION_FLUJO_PDFS,
   GUION_PAQUETE_CARD_SLUGS,
   GUION_PDF_FILENAME,
   type GuionPaqueteCardSlug,
 } from "@tres-cielos/shared";
 import { GuionAssetsService } from "./guion-assets.service";
-import { resolvePaqueteCardPath } from "./guion-assets";
+import { paqueteCardContentType, resolvePaqueteCardPath } from "./guion-assets";
 
 @Controller("public/guion")
 export class GuionAssetsController {
@@ -25,29 +25,34 @@ export class GuionAssetsController {
   ) {}
 
   @Public()
-  @Get("paquete-bodas-2027.pdf")
-  @Header("Content-Type", "application/pdf")
-  @Header(
-    "Content-Disposition",
-    `inline; filename="${GUION_PDF_FILENAME}"`,
-  )
-  async paqueteBodas2027(): Promise<StreamableFile> {
-    const file = await this.guion.loadPdfBytes();
-    if (!file) {
-      throw new NotFoundException("Ficha Paquete Bodas 2027 no encontrada");
+  @Get(":slug")
+  async flujoPdf(@Param("slug") slug: string): Promise<StreamableFile> {
+    if (!slug.toLowerCase().endsWith(".pdf")) {
+      throw new NotFoundException("PDF del guion no encontrado");
     }
+    const id = slug.replace(/\.pdf$/i, "");
+    const known = GUION_FLUJO_PDFS.find((pdf) => pdf.slug === id);
+    const legacy = id === "paquete-bodas-2027";
+    if (!known && !legacy) {
+      throw new NotFoundException("PDF del guion no encontrado");
+    }
+    const file = await this.guion.loadPdfBytes(id);
+    if (!file) {
+      throw new NotFoundException("PDF del guion no encontrado");
+    }
+    const downloadName = known?.filename ?? GUION_PDF_FILENAME;
     return new StreamableFile(file.body, {
       type: file.contentType,
+      disposition: contentDispositionInline(downloadName),
     });
   }
 
   @Public()
-  @Get("cards/:slug.svg")
-  @Header("Content-Type", "image/svg+xml")
+  @Get("cards/:slug")
   async paqueteCard(
     @Param("slug") slug: string,
   ): Promise<StreamableFile> {
-    const key = slug.replace(/\.svg$/i, "") as GuionPaqueteCardSlug;
+    const key = slug.replace(/\.(svg|jpe?g|webp|png)$/i, "") as GuionPaqueteCardSlug;
     if (!GUION_PAQUETE_CARD_SLUGS.includes(key)) {
       throw new NotFoundException("Card de paquete no encontrada");
     }
@@ -56,6 +61,12 @@ export class GuionAssetsController {
       throw new NotFoundException("Card de paquete no encontrada");
     }
     const body = await readFile(path);
-    return new StreamableFile(body, { type: "image/svg+xml" });
+    const type = paqueteCardContentType(path);
+    return new StreamableFile(body, { type });
   }
+}
+
+function contentDispositionInline(filename: string): string {
+  const ascii = filename.replace(/[^\x20-\x7E]/g, "_");
+  return `inline; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
 }

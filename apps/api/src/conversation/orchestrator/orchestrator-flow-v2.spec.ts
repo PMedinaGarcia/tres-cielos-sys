@@ -155,8 +155,11 @@ describe("Orchestrator v2 (V2.8)", () => {
       recibidoEn: new Date().toISOString(),
     });
     expect(t2.pasoGuion).toBe("accion");
-    expect(t2.waContent?.document?.url).toMatch(/paquete-bodas-2027\.pdf$/);
-    expect(t2.waContent?.images?.length).toBe(4);
+    expect(t2.waContent?.documents?.map((d) => d.filename)).toEqual([
+      "Experiencia boda de tres días - 2027.pdf",
+      "Tarifas 2027 - Tres Cielos.pdf",
+    ]);
+    expect(t2.waContent?.images).toBeUndefined();
     const t3 = await orch.handleTurn({
       canal: "whatsapp",
       externalThreadId: "v2-evade",
@@ -313,7 +316,7 @@ describe("Orchestrator v2 (V2.8)", () => {
     process.env.DATABASE_URL = prev;
   });
 
-  it("sandbox: temporada + nombre entrega PDF, galería y CTAs", async () => {
+  it("sandbox: temporada + nombre entrega los dos PDF y CTAs", async () => {
     const { orch } = buildOrchestratorV2();
     await orch.handleTurn({
       canal: "whatsapp",
@@ -339,10 +342,13 @@ describe("Orchestrator v2 (V2.8)", () => {
     });
     expect(t3.pasoGuion).toBe("accion");
     expect(t3.ruta).toBe("guion");
-    expect(t3.waContent?.document?.url).toMatch(/paquete-bodas-2027\.pdf$/);
-    expect(t3.waContent?.images?.length).toBe(4);
+    expect(t3.waContent?.documents?.map((d) => d.filename)).toEqual([
+      "Experiencia boda de tres días - 2027.pdf",
+      "Tarifas 2027 - Tres Cielos.pdf",
+    ]);
+    expect(t3.waContent?.images).toBeUndefined();
     expect(t3.waContent?.kind).toBe("list-picker");
-    expect(t3.textoRespuesta).toMatch(/PDF/);
+    expect(t3.textoRespuesta).toMatch(/pdf/i);
     expect(t3.textoRespuesta).not.toMatch(/cuántas personas/);
   });
 

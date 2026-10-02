@@ -23,8 +23,8 @@ import {
 } from "../script/script-v4.copy";
 import { copyMenorPisoConPisoPublicado } from "../script/script-v2.copy";
 
-function buildOrchestratorV4() {
-  const config = flowConfig("v4");
+function buildOrchestratorV4(opts?: { fieldTestReset?: boolean }) {
+  const config = flowConfig("v4", { fieldTestReset: opts?.fieldTestReset });
   const store = new ConversationStoreService(undefined, config);
   const audit = new AuditEventoService();
   const catalogFake = {
@@ -71,7 +71,7 @@ async function hastaCta(
       recibidoEn: new Date().toISOString(),
     });
   const t1 = await turn("m1", "Hola");
-  const t2 = await turn("m2", "Jun-Sep", "fecha.jun_sep");
+  const t2 = await turn("m2", "Jun-Sep 2027", "fecha.jun_sep");
   const t3 = await turn("m3", "Ana");
   return { t1, t2, t3, turn };
 }
@@ -92,17 +92,21 @@ describe("Orchestrator v4 (fecha → nombre → PDF → CTA)", () => {
     expect(t3.pasoGuion).toBe("accion");
     expect(t3.textoRespuesta).toBe(COPY_V4_PDF("Ana"));
     expect(t3.waContent?.templateId).toBe("guion.accion_cta");
-    expect(t3.waContent?.document?.url).toMatch(/paquete-bodas-2027\.pdf$/);
+    expect(t3.waContent?.documents?.map((d) => d.url)).toEqual([
+      expect.stringMatching(/experiencia-boda-tres-dias-2027\.pdf$/),
+      expect.stringMatching(/tarifas-2027-tres-cielos\.pdf$/),
+    ]);
+    expect(t3.waContent?.images).toBeUndefined();
     expect(t3.waContent?.list?.items.map((i) => i.id)).toContain("accion.visita");
 
     const conv = await store.findById(t3.conversacionId);
     expect(conv?.camposCapturados.pdfEnviado).toBe(true);
   });
 
-  it("Agendar visita → handoff comercial con intención de visita", async () => {
+  it("Conocer Tres Cielos → handoff comercial con intención de visita", async () => {
     const { orch, store } = buildOrchestratorV4();
     const { turn } = await hastaCta(orch, "v4-visita");
-    const res = await turn("m4", "Agendar visita", "accion.visita");
+    const res = await turn("m4", "Conocer Tres Cielos", "accion.visita");
     expect(res.ruta).toBe("handoff");
     expect(res.estadoBot).toBe("escalado");
     expect(res.textoRespuesta).toBe(COPY_V4_HANDOFF_VISITA("Ana"));
@@ -111,10 +115,10 @@ describe("Orchestrator v4 (fecha → nombre → PDF → CTA)", () => {
     expect(conv?.cola).toBe("comercial");
   });
 
-  it("Hablar con un ejecutivo → handoff comercial", async () => {
+  it("Tengo dudas → handoff comercial con ejecutivo", async () => {
     const { orch } = buildOrchestratorV4();
     const { turn } = await hastaCta(orch, "v4-ejecutivo");
-    const res = await turn("m4", "Hablar con un ejecutivo", "accion.ejecutivo");
+    const res = await turn("m4", "Tengo dudas", "accion.ejecutivo");
     expect(res.ruta).toBe("handoff");
     expect(res.textoRespuesta).toBe(COPY_V4_HANDOFF_EJECUTIVO("Ana"));
   });
@@ -148,5 +152,44 @@ describe("Orchestrator v4 (fecha → nombre → PDF → CTA)", () => {
     expect(conv?.camposCapturados.rutaComercial).toBe("nutricion");
     expect(conv?.camposCapturados.encajeEconomico).toBe("no");
     expect(conv?.camposCapturados.rangoPresupuestoFuera).toBe("r250_300");
+  });
+
+  it("con FIELD_TEST_RESET, tras la visita el siguiente mensaje abre el saludo", async () => {
+    const { orch, store } = buildOrchestratorV4({ fieldTestReset: true });
+    const { turn } = await hastaCta(orch, "v4-reset-visita");
+    await turn("m4", "Conocer Tres Cielos", "accion.visita");
+    const again = await turn("m5", "hola");
+    expect(again.estadoBot).toBe("activo");
+    expect(again.textoRespuesta).toBe(COPY_V4_B1);
+    expect(again.waContent?.templateId).toBe("guion.fecha_ventana");
+    expect(again.pasoGuion).toBe("fecha_ventana");
+    const conv = await store.findById(again.conversacionId);
+    expect(conv?.camposCapturados.nombre).toBeFalsy();
+    expect(conv?.camposCapturados.ctaGuion).toBeFalsy();
+    expect(conv?.estadoBot).toBe("activo");
+  });
+
+  it("sin FIELD_TEST_RESET, tras la visita el hilo queda en silencio", async () => {
+    const { orch } = buildOrchestratorV4();
+    const { turn } = await hastaCta(orch, "v4-silencio-visita");
+    await turn("m4", "Conocer Tres Cielos", "accion.visita");
+    const again = await turn("m5", "hola");
+    expect(again.ruta).toBe("silencio");
+    expect(again.textoRespuesta).toBe("");
+    expect(again.estadoBot).toBe("escalado");
+  });
+
+  it("con FIELD_TEST_RESET, tras el rango fuera de presupuesto vuelve el saludo", async () => {
+    const { orch, store } = buildOrchestratorV4({ fieldTestReset: true });
+    const { turn } = await hastaCta(orch, "v4-reset-nutricion");
+    await turn("m4", "Estamos fuera de tu presupuesto", "accion.fuera_presupuesto");
+    await turn("m5", "250-300 mil", "presupuesto.r250_300");
+    const again = await turn("m6", "hola");
+    expect(again.textoRespuesta).toBe(COPY_V4_B1);
+    expect(again.waContent?.templateId).toBe("guion.fecha_ventana");
+    expect(again.estadoBot).toBe("activo");
+    const conv = await store.findById(again.conversacionId);
+    expect(conv?.camposCapturados.rutaComercial).toBeFalsy();
+    expect(conv?.camposCapturados.nombre).toBeFalsy();
   });
 });

@@ -3,17 +3,16 @@ import { anioTarifaPublicada } from "@tres-cielos/shared";
 const ANIO_TARIFA = anioTarifaPublicada();
 
 export const COPY_V4_B1 =
-  "¡Hola! Soy el asistente de Tres Cielos. Para ayudarles con su boda, ¿en qué temporada tienen pensado celebrar? Elige una opción de la lista.";
+  "Gracias por escribirnos ❤️ Si deseas comenzar a planear tu boda con nosotros, ¡cuéntanos qué temporada tienes en mente! Elige una opción de la lista";
 
-export const COPY_V4_B1_RETRY =
-  "Para continuar, elige la temporada de tu evento en la lista: Ene-May, Jun-Sep, Oct-Dic o 2028.";
+export const COPY_V4_B1_RETRY = `Para continuar, elige la temporada de tu evento en la lista: Ene a May ${ANIO_TARIFA}, Jun-Sep ${ANIO_TARIFA}, Oct-Dic ${ANIO_TARIFA} o 2028.`;
 
-export const COPY_V4_NOMBRE = "¡Perfecto! ¿Me compartes tu nombre?";
+export const COPY_V4_NOMBRE = "¡Perfecto! ¿Con quién tenemos el gusto?";
 
 export const COPY_V4_NOMBRE_RETRY = "Para continuar, ¿me compartes tu nombre?";
 
 export const COPY_V4_PDF = (nombre: string): string =>
-  `Gracias, ${nombre}. Te comparto la ficha en PDF y un resumen visual con costos y características de nuestros paquetes ${ANIO_TARIFA}. Cuando lo revises, dime cómo prefieres seguir.`;
+  `Gracias, ${nombre}. Te comparto dos PDF: la experiencia de boda de tres días y las tarifas ${ANIO_TARIFA}. Cuando los revises, dime cómo prefieres seguir.`;
 
 export const COPY_V4_CTA_RETRY =
   "¿Cómo prefieres seguir? Elige una opción: agendar visita, hablar con un ejecutivo o, si estamos fuera de tu presupuesto, dímelo.";

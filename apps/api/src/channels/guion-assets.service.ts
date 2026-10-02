@@ -1,22 +1,17 @@
 import { Inject, Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { readFile } from "fs/promises";
-import {
-  GUION_PDF_FILENAME,
-  type WaDocument,
-} from "@tres-cielos/shared";
+import { GUION_FLUJO_PDFS, type WaDocument } from "@tres-cielos/shared";
+import { existsSync } from "fs";
+import { join } from "path";
 import { OBJECT_STORAGE_PORT } from "../ports/tokens";
 import type { ObjectStoragePort } from "../ports/object-storage.port";
 import {
   GUION_SIGNED_URL_TTL_SEC,
-  STORAGE_KEYS,
+  guionPdfStorageKey,
 } from "../ports/storage-prefixes";
 import { isObjectStorageLive } from "../config/ai-mode";
-import {
-  paqueteBodas2027Document,
-  paqueteBodasPdfExists,
-  resolvePaqueteBodasPdfPath,
-} from "./guion-assets";
+import { guionFlujoDocuments } from "./guion-assets";
 
 @Injectable()
 export class GuionAssetsService implements OnModuleInit {
@@ -33,54 +28,63 @@ export class GuionAssetsService implements OnModuleInit {
 
   async ensureUploaded(): Promise<void> {
     if (!isObjectStorageLive(this.config)) return;
-    if (!paqueteBodasPdfExists()) {
-      this.logger.warn("PDF guion local no encontrado; no se sube a S3");
-      return;
-    }
-    try {
-      if (await this.storage.exists(STORAGE_KEYS.guionPaqueteBodas)) return;
-      const body = await readFile(resolvePaqueteBodasPdfPath());
-      await this.storage.put({
-        key: STORAGE_KEYS.guionPaqueteBodas,
-        body,
-        contentType: "application/pdf",
-      });
-      this.logger.log(`subido ${STORAGE_KEYS.guionPaqueteBodas}`);
-    } catch (err) {
-      this.logger.warn(`no se pudo subir PDF guion: ${String(err)}`);
+    for (const pdf of GUION_FLUJO_PDFS) {
+      const path = join(process.cwd(), "assets", "guion", `${pdf.slug}.pdf`);
+      const key = guionPdfStorageKey(pdf.slug);
+      if (!existsSync(path)) {
+        this.logger.warn(`PDF guion local no encontrado (${pdf.slug}); no se sube`);
+        continue;
+      }
+      try {
+        if (await this.storage.exists(key)) continue;
+        const body = await readFile(path);
+        await this.storage.put({
+          key,
+          body,
+          contentType: "application/pdf",
+        });
+        this.logger.log(`subido ${key}`);
+      } catch (err) {
+        this.logger.warn(`no se pudo subir ${key}: ${String(err)}`);
+      }
     }
   }
 
-  async resolveDocument(): Promise<WaDocument> {
+  async resolveDocuments(): Promise<WaDocument[]> {
     if (isObjectStorageLive(this.config)) {
       try {
-        const url = await this.storage.signedUrl({
-          key: STORAGE_KEYS.guionPaqueteBodas,
-          expiresInSec: GUION_SIGNED_URL_TTL_SEC,
-        });
-        return {
-          filename: GUION_PDF_FILENAME,
-          mime: "application/pdf",
-          url,
-        };
+        return await Promise.all(
+          GUION_FLUJO_PDFS.map(async (pdf) => ({
+            filename: pdf.filename,
+            mime: "application/pdf" as const,
+            url: await this.storage.signedUrl({
+              key: guionPdfStorageKey(pdf.slug),
+              expiresInSec: GUION_SIGNED_URL_TTL_SEC,
+            }),
+          })),
+        );
       } catch (err) {
         this.logger.warn(`signed URL guion falló: ${String(err)}`);
       }
     }
-    return paqueteBodas2027Document();
+    return guionFlujoDocuments();
   }
 
-  async loadPdfBytes(): Promise<{ body: Buffer; contentType: string } | null> {
+  async loadPdfBytes(
+    slug: string,
+  ): Promise<{ body: Buffer; contentType: string } | null> {
+    const key = guionPdfStorageKey(slug);
     if (isObjectStorageLive(this.config)) {
       try {
-        const got = await this.storage.get(STORAGE_KEYS.guionPaqueteBodas);
+        const got = await this.storage.get(key);
         return { body: got.body, contentType: got.contentType ?? "application/pdf" };
       } catch {
-        this.logger.warn("PDF guion no está en object storage; fallback disco");
+        this.logger.warn(`PDF ${slug} no está en object storage; fallback disco`);
       }
     }
-    if (!paqueteBodasPdfExists()) return null;
-    const body = await readFile(resolvePaqueteBodasPdfPath());
+    const path = join(process.cwd(), "assets", "guion", `${slug}.pdf`);
+    if (!existsSync(path)) return null;
+    const body = await readFile(path);
     return { body, contentType: "application/pdf" };
   }
 }

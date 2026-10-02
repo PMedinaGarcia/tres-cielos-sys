@@ -18,11 +18,16 @@ export const GUION_PAQUETE_CARD_CAPTIONS: Record<GuionPaqueteCardSlug, string> =
   };
 
 export const GUION_PAQUETE_CARDS_PUBLIC_PREFIX = "/public/guion/cards";
+export const GUION_PAQUETE_CARD_EXTENSION = "jpg";
+
+export function guionPaqueteCardPublicPath(slug: GuionPaqueteCardSlug): string {
+  return `${GUION_PAQUETE_CARDS_PUBLIC_PREFIX}/${slug}.${GUION_PAQUETE_CARD_EXTENSION}`;
+}
 
 export function guionPaqueteCardUrl(
   slug: GuionPaqueteCardSlug,
   baseUrl?: string,
 ): string {
   const base = (baseUrl ?? publicApiBaseUrlForGuion()).replace(/\/$/, "");
-  return `${base}${GUION_PAQUETE_CARDS_PUBLIC_PREFIX}/${slug}.svg`;
+  return `${base}${guionPaqueteCardPublicPath(slug)}`;
 }

@@ -38,5 +38,22 @@ export function sedeToCatalogSlug(
 export const GUION_ADJUNTO_PAQUETE_BODAS = "paquete-bodas-2027" as const;
 export type GuionAdjuntoId = typeof GUION_ADJUNTO_PAQUETE_BODAS;
 
+/** PDF que el guion comparte, en este orden. */
+export const GUION_FLUJO_PDFS = [
+  {
+    slug: "experiencia-boda-tres-dias-2027",
+    filename: "Experiencia boda de tres días - 2027.pdf",
+    publicPath: "/public/guion/experiencia-boda-tres-dias-2027.pdf",
+  },
+  {
+    slug: "tarifas-2027-tres-cielos",
+    filename: "Tarifas 2027 - Tres Cielos.pdf",
+    publicPath: "/public/guion/tarifas-2027-tres-cielos.pdf",
+  },
+] as const;
+
+export type GuionFlujoPdf = (typeof GUION_FLUJO_PDFS)[number];
+export type GuionFlujoPdfSlug = GuionFlujoPdf["slug"];
+
 export const GUION_PDF_PUBLIC_PATH = "/public/guion/paquete-bodas-2027.pdf";
 export const GUION_PDF_FILENAME = "Tres Cielos Paquete Bodas 2027.pdf";

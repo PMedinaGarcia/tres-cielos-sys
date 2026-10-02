@@ -489,6 +489,14 @@ export function nextPasoGuionV4(campos: CamposCapturados): PasoGuion {
   return "faq_libre";
 }
 
+/** Hilo v4 que ya no captura: handoff o nutrición cerrada. */
+export function isHiloV4Terminado(
+  conv: Pick<ConversacionState, "estadoBot" | "camposCapturados">,
+): boolean {
+  if (conv.estadoBot === "escalado") return true;
+  return conv.camposCapturados.rutaComercial === "nutricion";
+}
+
 export function isCapturaPendienteV4(conv: ConversacionState): boolean {
   const c = conv.camposCapturados;
   if (conv.pasoGuion === "faq_libre" || c.rutaComercial) return false;

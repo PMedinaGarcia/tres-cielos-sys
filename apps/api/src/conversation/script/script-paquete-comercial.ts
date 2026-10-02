@@ -15,7 +15,7 @@ export type ScriptPaqueteTurnResult = ScriptV2TurnResult & {
   adjuntoGuion?: GuionAdjuntoId;
 };
 
-/** Tras nombre + fecha: PDF, galería y CTAs (sin aforo). */
+/** Tras nombre + fecha: dos PDF del flujo y CTAs (sin aforo ni fotos). */
 export function nextPasoGuionPaqueteComercial(
   campos: CamposCapturados,
 ): PasoGuion {

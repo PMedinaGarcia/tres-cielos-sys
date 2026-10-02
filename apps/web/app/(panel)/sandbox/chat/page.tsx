@@ -12,6 +12,7 @@ import {
 } from "@tres-cielos/shared";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { postSandboxInbound, type SandboxTurnData } from "@/lib/api";
+import { browserGuionAssetUrl } from "@/lib/guion-asset-url";
 
 const THREAD_KEY = "tc-sandbox-thread";
 
@@ -33,6 +34,12 @@ function formatTime(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function guionDocuments(content: WaContent | null | undefined) {
+  if (content?.documents?.length) return content.documents;
+  if (content?.document) return [content.document];
+  return [];
 }
 
 export default function SandboxChatPage() {
@@ -245,40 +252,18 @@ export default function SandboxChatPage() {
                     >
                       {line.text}
                     </p>
-                    {line.role === "bot" && line.waContent?.document && (
-                      <a
-                        href={line.waContent.document.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-2 inline-flex items-center gap-2 rounded-full border border-teal/30 bg-white/40 px-3 py-1.5 text-xs text-teal hover:border-teal"
-                      >
-                        PDF · {line.waContent.document.filename}
-                      </a>
-                    )}
-                    {line.role === "bot" && line.waContent?.images?.length ? (
-                      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                        {line.waContent.images.map((img) => (
-                          <a
-                            key={img.url}
-                            href={img.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="overflow-hidden rounded-lg border border-white/60 bg-white/40"
-                          >
-                            <img
-                              src={img.url}
-                              alt={img.caption ?? "Paquete Tres Cielos"}
-                              className="aspect-[8/5] w-full object-cover"
-                            />
-                            {img.caption && (
-                              <p className="px-2 py-1 text-[10px] leading-tight text-ink/60">
-                                {img.caption}
-                              </p>
-                            )}
-                          </a>
-                        ))}
-                      </div>
-                    ) : null}
+                    {line.role === "bot" &&
+                      guionDocuments(line.waContent).map((doc) => (
+                        <a
+                          key={doc.url}
+                          href={browserGuionAssetUrl(doc.url)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-2 mr-2 inline-flex items-center gap-2 rounded-full border border-teal/30 bg-white/40 px-3 py-1.5 text-xs text-teal hover:border-teal"
+                        >
+                          PDF · {doc.filename}
+                        </a>
+                      ))}
                     {line.role === "bot" && line.waContent && (
                       <span className="mt-1 inline-block text-[10px] uppercase tracking-wider text-ink/40">
                         {line.waContent.templateId} · {line.waContent.kind}
