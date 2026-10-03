@@ -41,23 +41,23 @@ function state(
 }
 
 describe("memoria por cliente", () => {
-  it("un campo vacío no borra el nombre ni el tipo de evento ya capturado", () => {
+  it("un campo vacÃ­o no borra el nombre ni el tipo de evento ya capturado", () => {
     const merged = mergeCampos(
       {
-        nombre: "Ana López",
+        nombre: "Ana LÃ³pez",
         tipoEvento: "xv",
         telefono: TEL,
         ctaGuion: "visita",
       },
       { nombre: null, tipoEvento: "boda", aforo: 120, ctaGuion: null },
     );
-    expect(merged.nombre).toBe("Ana López");
+    expect(merged.nombre).toBe("Ana LÃ³pez");
     expect(merged.tipoEvento).toBe("xv");
     expect(merged.aforo).toBe(120);
     expect(merged.ctaGuion).toBe("visita");
   });
 
-  it("el JSON canónico persiste CTA y rango fuera de presupuesto", () => {
+  it("el JSON canÃ³nico persiste CTA y rango fuera de presupuesto", () => {
     const json = canonicalCamposJson({
       ctaGuion: "fuera_presupuesto",
       rangoPresupuestoFuera: "r250_300",
@@ -67,7 +67,7 @@ describe("memoria por cliente", () => {
     expect(json.rangoPresupuestoFuera).toBe("r250_300");
   });
 
-  it("otro canal del mismo teléfono hereda paso, slots y oportunidad", async () => {
+  it("otro canal del mismo telÃ©fono hereda paso, slots y oportunidad", async () => {
     const memoria = new ClienteMemoriaService();
     const wa = state({
       pasoGuion: "accion",
@@ -126,7 +126,7 @@ describe("memoria por cliente", () => {
     expect(again.oportunidadId).toBe(conv.oportunidadId);
   });
 
-  it("saluda de nuevo y deja el paso donde se quedó si pasaron 12 horas", async () => {
+  it("saluda de nuevo y deja el paso donde se quedÃ³ si pasaron 12 horas", async () => {
     const memoria = new ClienteMemoriaService();
     const first = state({ pasoGuion: "nombre", camposCapturados: { nombre: "Ana" } });
     await memoria.aplicar(first, { now: new Date("2026-10-01T10:00:00.000Z") });
@@ -148,7 +148,7 @@ describe("memoria por cliente", () => {
         campos: later.camposCapturados,
       }),
     ).toBe(
-      "¡Ana, qué gusto leerte de nuevo! ?? Seguimos con la planeación de tu boda justo donde nos quedamos.",
+      "Â¡Ana, quÃ© gusto leerte de nuevo! â¤ï¸ Seguimos con la planeaciÃ³n de tu boda justo donde nos quedamos.",
     );
   });
 
@@ -166,7 +166,7 @@ describe("memoria por cliente", () => {
         },
       }),
     ).toBe(
-      "¡Qué gusto leerte de nuevo! ?? Ya tengo la temporada de tu boda y seguimos justo donde nos quedamos.",
+      "Â¡QuÃ© gusto leerte de nuevo! â¤ï¸ Ya tengo la temporada de tu boda y seguimos justo donde nos quedamos.",
     );
     expect(
       resumeGreeting({
@@ -184,11 +184,11 @@ describe("memoria por cliente", () => {
         },
       }),
     ).toBe(
-      "¡Ana, qué gusto leerte de nuevo! ?? Ya tengo la temporada de tu boda, el número de invitados y el presupuesto y seguimos justo donde nos quedamos.",
+      "Â¡Ana, quÃ© gusto leerte de nuevo! â¤ï¸ Ya tengo la temporada de tu boda, el nÃºmero de invitados y el presupuesto y seguimos justo donde nos quedamos.",
     );
   });
 
-  it("el saludo de vuelta no se repite hasta que la hora de sesión avance", async () => {
+  it("el saludo de vuelta no se repite hasta que la hora de sesiÃ³n avance", async () => {
     const memoria = new ClienteMemoriaService();
     const first = state({
       pasoGuion: "nombre",
@@ -212,7 +212,7 @@ describe("memoria por cliente", () => {
     expect(otroDia.reanudarSesion).toBe(true);
   });
 
-  it("un perfil local más nuevo no pierde el paso ni la hora frente a una fila vieja", async () => {
+  it("un perfil local mÃ¡s nuevo no pierde el paso ni la hora frente a una fila vieja", async () => {
     const reciente = "2026-10-03T14:38:00.000Z";
     let filaVieja = false;
     const prisma = {
@@ -284,7 +284,7 @@ describe("memoria por cliente", () => {
     }
   });
 
-  it("guarda el mensaje del cliente mientras el bot está en silencio", async () => {
+  it("guarda el mensaje del cliente mientras el bot estÃ¡ en silencio", async () => {
     const memoria = new ClienteMemoriaService();
     const wa = state({ estadoBot: "humano", pasoGuion: "accion" });
     await memoria.aplicar(wa);
@@ -330,7 +330,7 @@ describe("memoria por cliente", () => {
     expect(perfil?.oportunidadAbiertaId).toBe("opp-1");
   });
 
-  it("la nutrición sobrevive a un worker nuevo", () => {
+  it("la nutriciÃ³n sobrevive a un worker nuevo", () => {
     const memoria = new ClienteMemoriaService();
     const now = new Date("2026-10-01T00:00:00.000Z");
     const first = new NurtureWorkerService(undefined, memoria);

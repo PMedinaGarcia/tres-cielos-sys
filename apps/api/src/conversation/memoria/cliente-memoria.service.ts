@@ -59,7 +59,7 @@ interface PerfilMemoria {
   paqueteTentativoId: string | null;
   pedidoCotizacion: boolean | null;
   pedidoCotizacionFuente: string | null;
-  /** Hora de sesión que ya recibió el saludo de vuelta. */
+  /** Hora de sesiÃ³n que ya recibiÃ³ el saludo de vuelta. */
   reanudacionConsumidaHasta: string | null;
   notasHandoff: string[];
   recientes: LineaMemoria[];
@@ -89,8 +89,8 @@ type MemoriaRow = {
 
 /**
  * Expediente de memoria por cliente.
- * En proceso es la caché; con Postgres es la fuente de verdad y serializa
- * los turnos del mismo cliente con un lock de transacción.
+ * En proceso es la cachÃ©; con Postgres es la fuente de verdad y serializa
+ * los turnos del mismo cliente con un lock de transacciÃ³n.
  */
 @Injectable()
 export class ClienteMemoriaService {
@@ -404,12 +404,12 @@ export class ClienteMemoriaService {
     }
   }
 
-  /** Perfil en caché, para pruebas de reinicio del store. */
+  /** Perfil en cachÃ©, para pruebas de reinicio del store. */
   perfilDe(state: Pick<ConversacionState, "canal" | "externalThreadId" | "camposCapturados">): PerfilMemoria | null {
     return this.findPerfil(this.keysFor(state as ConversacionState, null));
   }
 
-  /** Marca la hora de sesión que ya recibió el saludo de vuelta. */
+  /** Marca la hora de sesiÃ³n que ya recibiÃ³ el saludo de vuelta. */
   marcarReanudacionSaludada(
     state: Pick<ConversacionState, "canal" | "externalThreadId" | "camposCapturados">,
   ): void {
