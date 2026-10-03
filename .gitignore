@@ -64,3 +64,5 @@ docs/producto/entregables/*
 !docs/producto/entregables/flujo-v4-arquitectura-y-copy.html
 !docs/producto/entregables/cleanup-obsolete-pdfs.ps1
 !docs/producto/entregables/flujo-v4-guion-completo.pdf
+!docs/producto/entregables/capturas/
+!docs/producto/entregables/capturas/**

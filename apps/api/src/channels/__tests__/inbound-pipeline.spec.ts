@@ -98,3 +98,52 @@ describe("Cupo hard → cupo_ia", () => {
     }
   });
 });
+
+describe("cola por hilo", () => {
+  it("procesa dos mensajes del mismo hilo en orden", async () => {
+    delete process.env.QUOTA_MSG_HARD;
+    delete process.env.QUOTA_MSG_SOFT;
+    const order: string[] = [];
+    let releaseFirst: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const handler: TurnHandler = {
+      async handleTurn(msg) {
+        order.push(`start:${msg.externalMessageId}`);
+        if (msg.externalMessageId === "m1") await gate;
+        order.push(`end:${msg.externalMessageId}`);
+        return {
+          textoRespuesta: "ok",
+          ruta: "guion",
+          estadoBot: "activo",
+        };
+      },
+    };
+    const pipeline = new InboundPipelineService(
+      new IdempotencyService(),
+      new OutboundService(),
+      new ConversationStateStore(),
+      new ChannelAttachmentService(new ChannelAttachmentJobService(buildMedia())),
+      new AuditService(),
+      new QuotaService(),
+      new CrmCalificacionService(),
+      new NotificationsService(),
+      new AssignmentService(),
+      handler,
+    );
+    const base = {
+      canal: "whatsapp" as const,
+      externalThreadId: "wa:+525512345678",
+      texto: "hola",
+      recibidoEn: new Date().toISOString(),
+    };
+    const first = pipeline.process({ ...base, externalMessageId: "m1" });
+    const second = pipeline.process({ ...base, externalMessageId: "m2" });
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    expect(order).toEqual(["start:m1"]);
+    releaseFirst();
+    await Promise.all([first, second]);
+    expect(order).toEqual(["start:m1", "end:m1", "start:m2", "end:m2"]);
+  });
+});

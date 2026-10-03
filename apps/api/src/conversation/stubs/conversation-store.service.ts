@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import type { Conversacion, Mensaje } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import {
+  conversationFlowVersion,
   initialPasoGuion,
   isV2Plus,
   mapPasoGuionV1ToV2,
@@ -22,6 +23,7 @@ import type {
 } from "../types";
 import { resolveTelefonoCanal } from "../telefono";
 import { mapCanalCrm } from "../../crm/cliente-identity";
+import { ClienteMemoriaService } from "../memoria/cliente-memoria.service";
 
 /**
  * Store in-memory de Conversacion/Mensaje.
@@ -36,10 +38,11 @@ export class ConversationStoreService {
   constructor(
     @Optional() private readonly prisma?: PrismaService,
     @Optional() private readonly config?: ConfigService,
+    @Optional() private readonly memoria?: ClienteMemoriaService,
   ) {}
 
   private key(canal: string, externalThreadId: string): string {
-    return `${canal}::${externalThreadId}`;
+    return `${mapCanalCrm(canal)}::${externalThreadId}`;
   }
 
   async resolveOrCreate(input: {
@@ -62,7 +65,8 @@ export class ConversationStoreService {
         };
         existing.actualizadoEn = new Date().toISOString();
       }
-      return existing;
+      rememberPerfil(existing, input);
+      return this.withMemoria(existing, input.perfilWaId);
     }
 
     const hydrated = await this.hydrateFromPrisma(input.canal, input.externalThreadId);
@@ -73,9 +77,10 @@ export class ConversationStoreService {
           telefono,
         };
       }
+      rememberPerfil(hydrated, input);
       this.byKey.set(k, hydrated);
       this.byId.set(hydrated.id, hydrated);
-      return hydrated;
+      return this.withMemoria(hydrated, input.perfilWaId);
     }
 
     const flow = resolveConversationFlow(this.config, {
@@ -109,9 +114,18 @@ export class ConversationStoreService {
       creadoEn: now,
       actualizadoEn: now,
     };
+    rememberPerfil(state, input);
     this.byKey.set(k, state);
     this.byId.set(state.id, state);
-    return state;
+    return this.withMemoria(state, input.perfilWaId);
+  }
+
+  private async withMemoria(
+    state: ConversacionState,
+    perfilWaId?: string | null,
+  ): Promise<ConversacionState> {
+    if (!this.memoria) return state;
+    return this.memoria.aplicar(state, { perfilWaId });
   }
 
   async findById(id: string): Promise<ConversacionState | null> {
@@ -121,7 +135,7 @@ export class ConversationStoreService {
     if (hydrated) {
       this.byId.set(hydrated.id, hydrated);
       this.byKey.set(this.key(hydrated.canal, hydrated.externalThreadId), hydrated);
-      return hydrated;
+      return this.withMemoria(hydrated, null);
     }
     return null;
   }
@@ -138,6 +152,7 @@ export class ConversationStoreService {
     };
     conv.mensajes.push(row);
     conv.actualizadoEn = new Date().toISOString();
+    this.memoria?.commitFromState(conv);
     return row;
   }
 
@@ -162,6 +177,7 @@ export class ConversationStoreService {
     const conv = this.byId.get(conversacionId);
     if (!conv) throw new Error(`conversacion ${conversacionId} no encontrada`);
     Object.assign(conv, patch, { actualizadoEn: new Date().toISOString() });
+    this.memoria?.commitFromState(conv);
     return conv;
   }
 
@@ -247,14 +263,26 @@ export class ConversationStoreService {
       slaVenceEn?: Date | null;
       cola?: string | null;
     };
-    const flow = resolveConversationFlow(this.config, {
+    let flow = resolveConversationFlow(this.config, {
       threadId: row.externalThreadId ?? "",
       persisted: extra.guionVersion,
     });
-    const paso = isV2Plus(flow)
+    let paso = isV2Plus(flow)
       ? mapPasoGuionV1ToV2(row.pasoGuion as PasoGuion)
       : (row.pasoGuion as PasoGuion);
     const campos = camposFromJson(row.camposCapturados);
+    const configured = conversationFlowVersion(this.config);
+    const aunEnApertura =
+      !campos.nombre &&
+      !campos.fechaTentativa &&
+      !campos.ctaGuion &&
+      !campos.rutaComercial &&
+      (paso === "nombre_fecha" || paso === "saludo" || paso === "fecha_ventana");
+    if (configured === "v4" && flow !== "v4" && aunEnApertura) {
+      flow = "v4";
+      paso = "fecha_ventana";
+      campos.numeroMensajesCaptura = 0;
+    }
     if (row.encajeEconomico && !campos.encajeEconomico) {
       campos.encajeEconomico = row.encajeEconomico;
     }
@@ -286,12 +314,27 @@ export class ConversationStoreService {
       mensajes: row.mensajes.map(mensajeFromPrisma),
       creadoEn: row.creadoEn.toISOString(),
       actualizadoEn: row.actualizadoEn.toISOString(),
-      guionVersion: (extra.guionVersion as GuionVersion | null) ?? flow,
+      guionVersion: flow,
       asesorLockId: extra.asesorLockId ?? null,
       slaVenceEn: extra.slaVenceEn?.toISOString() ?? null,
       cola: (extra.cola as ColaAsesor | null) ?? null,
     };
   }
+}
+
+function rememberPerfil(
+  state: ConversacionState,
+  input: { perfilNombre?: string | null; perfilWaId?: string | null },
+): void {
+  const nombre = input.perfilNombre?.trim() || null;
+  const waId = input.perfilWaId?.trim() || null;
+  if (!nombre && !waId) return;
+  const prev = state.perfilCanal ?? {};
+  state.perfilCanal = {
+    nombre: prev.nombre?.trim() || nombre,
+    waId: prev.waId?.trim() || waId,
+    psid: prev.psid ?? null,
+  };
 }
 
 function camposFromJson(json: unknown): CamposCapturados {

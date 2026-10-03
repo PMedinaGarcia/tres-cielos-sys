@@ -65,6 +65,17 @@ describe("cliente-identity", () => {
     expect(mapCanalCrm("messenger")).toBe("facebook");
   });
 
+  it("toma el wa_id del perfil y el correo del guion", () => {
+    const ids = identifiersFromThread({
+      canal: "whatsapp",
+      externalThreadId: "wa:+525512345678",
+      perfil: { nombre: "Ana", waId: "5215512345678" },
+      campos: { email: "Ana@Tres.mx" },
+    });
+    expect(ids.map((i) => i.tipo).sort()).toEqual(["email", "telefono", "wa_id"]);
+    expect(ids.find((i) => i.tipo === "email")?.valor).toBe("ana@tres.mx");
+  });
+
   it("sandbox con teléfono en el hilo también produce identificador telefono", () => {
     const ids = identifiersFromThread({
       canal: "web",

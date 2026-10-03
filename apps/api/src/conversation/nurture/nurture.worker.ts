@@ -1,9 +1,10 @@
-import { Injectable, Logger, Optional } from "@nestjs/common";
+import { Injectable, Logger, OnModuleInit, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
   COPY_V3_NUTRICION_T24,
   COPY_V3_NUTRICION_T7,
 } from "../script/script-v2.copy";
+import { ClienteMemoriaService } from "../memoria/cliente-memoria.service";
 
 export interface NurtureJob {
   conversacionId: string;
@@ -20,11 +21,35 @@ export interface NurtureJob {
  * si el paquete no está instalado.
  */
 @Injectable()
-export class NurtureWorkerService {
+export class NurtureWorkerService implements OnModuleInit {
   private readonly logger = new Logger(NurtureWorkerService.name);
   private readonly jobs = new Map<string, NurtureJob[]>();
 
-  constructor(@Optional() private readonly config?: ConfigService) {}
+  constructor(
+    @Optional() private readonly config?: ConfigService,
+    @Optional() private readonly memoria?: ClienteMemoriaService,
+  ) {}
+
+  async onModuleInit(): Promise<void> {
+    const rows = await this.memoria?.hidratarSeguimientos();
+    if (!rows?.length) return;
+    for (const row of rows) {
+      const scheduledFor = new Date(row.disparaEn);
+      const current = this.jobs.get(row.conversacionId) ?? [];
+      if (current.some((job) => job.plantillaId === (row.tipo === "nutricion_t24" ? "t24" : "t7"))) {
+        continue;
+      }
+      current.push({
+        conversacionId: row.conversacionId,
+        toque: row.tipo === "nutricion_t24" ? 1 : 2,
+        scheduledFor,
+        nombre: row.nombre,
+        cancelado: false,
+        plantillaId: row.tipo === "nutricion_t24" ? "t24" : "t7",
+      });
+      this.jobs.set(row.conversacionId, current);
+    }
+  }
 
   driver(): "inline" | "bullmq" {
     const raw =
@@ -60,6 +85,11 @@ export class NurtureWorkerService {
       plantillaId: "t7",
     };
     this.jobs.set(input.conversacionId, [t1, t2]);
+    this.memoria?.programarNutricion({
+      conversacionId: input.conversacionId,
+      nombre: input.nombre,
+      now,
+    });
     this.logger.debug(
       `nurture programada ${input.conversacionId} driver=${this.driver()}`,
     );
@@ -68,9 +98,11 @@ export class NurtureWorkerService {
 
   cancel(conversacionId: string): void {
     const list = this.jobs.get(conversacionId);
-    if (!list) return;
-    for (const j of list) j.cancelado = true;
-    this.jobs.delete(conversacionId);
+    if (list) {
+      for (const j of list) j.cancelado = true;
+      this.jobs.delete(conversacionId);
+    }
+    this.memoria?.cancelarNutricion(conversacionId);
   }
 
   list(conversacionId: string): NurtureJob[] {
@@ -84,15 +116,40 @@ export class NurtureWorkerService {
   }
 
   processDue(now = new Date()): Array<{ job: NurtureJob; texto: string }> {
+    this.pullFromMemoria();
     const due: Array<{ job: NurtureJob; texto: string }> = [];
     for (const list of this.jobs.values()) {
       for (const job of list) {
         if (job.cancelado || job.scheduledFor > now) continue;
         due.push({ job, texto: this.copyFor(job) });
         job.cancelado = true;
+        this.memoria?.marcarDisparado(
+          job.conversacionId,
+          job.plantillaId === "t24" ? "nutricion_t24" : "nutricion_t7",
+        );
       }
     }
     return due;
+  }
+
+  private pullFromMemoria(): void {
+    const rows = this.memoria?.listarSeguimientosActivos() ?? [];
+    for (const row of rows) {
+      const current = this.jobs.get(row.conversacionId) ?? [];
+      const plantillaId = row.tipo === "nutricion_t24" ? "t24" : "t7";
+      if (current.some((job) => job.plantillaId === plantillaId && !job.cancelado)) {
+        continue;
+      }
+      current.push({
+        conversacionId: row.conversacionId,
+        toque: row.tipo === "nutricion_t24" ? 1 : 2,
+        scheduledFor: new Date(row.disparaEn),
+        nombre: row.nombre,
+        cancelado: false,
+        plantillaId,
+      });
+      this.jobs.set(row.conversacionId, current);
+    }
   }
 
   clear(): void {

@@ -1,4 +1,5 @@
 import {
+  anioTarifaPublicada,
   HABLAR_ASESOR_PAYLOAD,
   HABLAR_ASESOR_TITLE,
   HABLAR_ASESOR_TEXTO,
@@ -64,10 +65,24 @@ export const ACLARACION_NO_BUTTON: WaButton = {
   title: "Buscamos algo menor",
 };
 
+const ANIO_TARIFA = anioTarifaPublicada();
+
 export const FECHA_VENTANA_ITEMS: WaListItem[] = [
-  { id: "fecha.ene_may", title: "Ene-May" },
-  { id: "fecha.jun_sep", title: "Jun-Sep" },
-  { id: "fecha.oct_dic", title: "Oct-Dic" },
+  {
+    id: "fecha.ene_may",
+    title: `Ene-May ${ANIO_TARIFA}`,
+    description: "De enero a mayo",
+  },
+  {
+    id: "fecha.jun_sep",
+    title: `Jun-Sep ${ANIO_TARIFA}`,
+    description: "De junio a septiembre",
+  },
+  {
+    id: "fecha.oct_dic",
+    title: `Oct-Dic ${ANIO_TARIFA}`,
+    description: "De octubre a diciembre",
+  },
   {
     id: "fecha.anio_2028",
     title: "2028",
@@ -76,8 +91,16 @@ export const FECHA_VENTANA_ITEMS: WaListItem[] = [
 ];
 
 export const ACCION_CTA_ITEMS: WaListItem[] = [
-  { id: "accion.visita", title: "Agendar Visita" },
-  { id: "accion.ejecutivo", title: "Hablar con un ejecutivo" },
+  {
+    id: "accion.visita",
+    title: "Conocer Tres Cielos",
+    description: "Quiero conocer Tres Cielos.",
+  },
+  {
+    id: "accion.ejecutivo",
+    title: "Tengo dudas",
+    description: "Tengo dudas, quiero hablar con un ejecutivo.",
+  },
   {
     id: "accion.fuera_presupuesto",
     title: "Fuera de presupuesto",
@@ -86,8 +109,16 @@ export const ACCION_CTA_ITEMS: WaListItem[] = [
 ];
 
 export const PRESUPUESTO_FUERA_ITEMS: WaListItem[] = [
-  { id: "presupuesto.r200_250", title: "200-250 mil" },
-  { id: "presupuesto.r250_300", title: "250-300 mil" },
+  {
+    id: "presupuesto.r200_250",
+    title: "200-250 mil",
+    description: "Entre 200 y 250 mil",
+  },
+  {
+    id: "presupuesto.r250_300",
+    title: "250-300 mil",
+    description: "Entre 250 y 300 mil",
+  },
   {
     id: "presupuesto.fuera_rango",
     title: "Fuera de Rango",
@@ -115,12 +146,12 @@ export const WA_PAYLOAD_TEXTO: Record<string, string> = {
   "inversion.por_definir": "aún por definir",
   "aclaracion.si": "sí",
   "aclaracion.no": "Buscamos algo menor",
-  "fecha.ene_may": "Ene-May",
-  "fecha.jun_sep": "Jun-Sep",
-  "fecha.oct_dic": "Oct-Dic",
+  "fecha.ene_may": `Ene-May ${ANIO_TARIFA}`,
+  "fecha.jun_sep": `Jun-Sep ${ANIO_TARIFA}`,
+  "fecha.oct_dic": `Oct-Dic ${ANIO_TARIFA}`,
   "fecha.anio_2028": "2028",
-  "accion.visita": "Agendar visita",
-  "accion.ejecutivo": "Hablar con un ejecutivo",
+  "accion.visita": "Conocer Tres Cielos",
+  "accion.ejecutivo": "Tengo dudas",
   "accion.fuera_presupuesto": "Estamos fuera de tu presupuesto",
   "presupuesto.r200_250": "200-250 mil",
   "presupuesto.r250_300": "250-300 mil",

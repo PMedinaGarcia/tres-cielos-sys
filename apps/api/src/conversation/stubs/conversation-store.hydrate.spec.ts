@@ -2,6 +2,46 @@ import { ConversationStoreService } from "./conversation-store.service";
 import { flowConfig } from "../__tests__/flow-config";
 import type { PrismaService } from "../../prisma/prisma.service";
 
+describe("ConversationStoreService perfil de canal", () => {
+  it("guarda el nombre de perfil sin usarlo como nombre del guion y rellena huecos", async () => {
+    const store = new ConversationStoreService();
+    const first = await store.resolveOrCreate({
+      canal: "whatsapp",
+      externalThreadId: "wa:+525512345678",
+      perfilNombre: "Ana García",
+      perfilWaId: "5215512345678",
+    });
+    expect(first.camposCapturados.nombre).toBeNull();
+    expect(first.perfilCanal).toEqual({
+      nombre: "Ana García",
+      waId: "5215512345678",
+      psid: null,
+    });
+
+    const kept = await store.resolveOrCreate({
+      canal: "whatsapp",
+      externalThreadId: "wa:+525512345678",
+      perfilNombre: "Otra Persona",
+    });
+    expect(kept.perfilCanal?.nombre).toBe("Ana García");
+
+    const gap = await store.resolveOrCreate({
+      canal: "whatsapp",
+      externalThreadId: "wa:+525500000000",
+      perfilWaId: "525500000000",
+    });
+    const filled = await store.resolveOrCreate({
+      canal: "whatsapp",
+      externalThreadId: "wa:+525500000000",
+      perfilNombre: "Luis Pérez",
+    });
+    expect(gap.id).toBe(filled.id);
+    expect(filled.perfilCanal?.nombre).toBe("Luis Pérez");
+    expect(filled.perfilCanal?.waId).toBe("525500000000");
+    expect(filled.camposCapturados.nombre).toBeNull();
+  });
+});
+
 describe("ConversationStoreService hidratación Prisma", () => {
   it("reconstruye paso y campos desde el expediente cuando el mapa está vacío", async () => {
     const findUnique = jest.fn(async () => ({

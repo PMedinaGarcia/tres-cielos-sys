@@ -1,6 +1,7 @@
 import { Injectable, Optional } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { mapCanalCrm } from "../crm/cliente-identity";
+import { ClienteMemoriaService } from "../conversation/memoria/cliente-memoria.service";
 import type { Canal, EstadoBot } from "./types/inbound-message";
 
 export interface ConversacionState {
@@ -24,7 +25,10 @@ export interface ConversacionState {
 export class ConversationStateStore {
   private readonly byThread = new Map<string, ConversacionState>();
 
-  constructor(@Optional() private readonly prisma?: PrismaService) {}
+  constructor(
+    @Optional() private readonly prisma?: PrismaService,
+    @Optional() private readonly memoria?: ClienteMemoriaService,
+  ) {}
 
   private key(canal: Canal, externalThreadId: string): string {
     return `${canal}::${externalThreadId}`;
@@ -50,6 +54,12 @@ export class ConversationStateStore {
     externalThreadId: string,
   ): Promise<ConversacionState> {
     const mem = this.getOrCreate(canal, externalThreadId);
+    const perfil = await this.memoria?.buscarEstado(canal, externalThreadId);
+    if (perfil) {
+      mem.estadoBot = perfil.estadoBot;
+      mem.oportunidadId = perfil.oportunidadId ?? mem.oportunidadId;
+      if (perfil.cola) mem.cola = perfil.cola;
+    }
     if (!this.prisma || !process.env.DATABASE_URL) return mem;
     try {
       const row = await this.prisma.conversacion.findUnique({
@@ -62,7 +72,7 @@ export class ConversationStateStore {
       });
       if (!row) return mem;
       mem.id = row.id;
-      mem.estadoBot = row.estadoBot;
+      if (!perfil) mem.estadoBot = row.estadoBot;
       mem.asesorLockId =
         (row as { asesorLockId?: string | null }).asesorLockId ?? null;
       const cola = (row as { cola?: string | null }).cola;

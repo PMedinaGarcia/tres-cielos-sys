@@ -109,6 +109,7 @@ export async function extractScriptPasoWithLlm(input: {
   paso: PasoGuion;
   campos: CamposCapturados;
   now?: Date;
+  contexto?: string;
 }): Promise<LlmPasoExtract | null> {
   const now = input.now ?? new Date();
   const hoy = todayPartsMexico(now).iso;
@@ -139,6 +140,7 @@ export async function extractScriptPasoWithLlm(input: {
             paso: input.paso,
             texto: input.texto,
             camposYaCapturados: input.campos,
+            ...(input.contexto ? { memoria: input.contexto } : {}),
           }),
         },
       ],

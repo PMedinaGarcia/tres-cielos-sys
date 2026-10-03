@@ -104,8 +104,9 @@ export function ensureWhatsappFrom(from: string): string {
 }
 
 /**
- * Parte un turno en mensajes de WhatsApp: los PDF y después
- * la lista o el texto. Una lista con ContentSid no repite el body.
+ * Parte un turno en mensajes de WhatsApp.
+ * Con documentos: texto (plantilla o body), luego el PDF y al final el enlace.
+ * Una lista con ContentSid no repite el body.
  */
 export function buildTwilioForms(input: {
   from: string;
@@ -120,20 +121,12 @@ export function buildTwilioForms(input: {
     : wa?.document
       ? [wa.document]
       : [];
-  for (const document of documents) {
-    if (!document.url) continue;
-    if (document.delivery === "link") {
-      forms.push({
-        From: from,
-        To: to,
-        Body: `${document.filename.trim()}\n${document.url}`,
-      });
-      continue;
-    }
-    const form: TwilioForm = { From: from, To: to, MediaUrl: document.url };
-    if (document.filename.trim()) form.Body = document.filename.trim();
-    forms.push(form);
-  }
+  const media = documents.filter(
+    (document) => document.url && document.delivery !== "link",
+  );
+  const links = documents.filter(
+    (document) => document.url && document.delivery === "link",
+  );
   const interactive =
     wa && (wa.kind === "list-picker" || wa.kind === "quick-reply");
   if (interactive && wa.contentSid) {
@@ -146,10 +139,22 @@ export function buildTwilioForms(input: {
       form.ContentVariables = JSON.stringify(wa.contentVariables);
     }
     forms.push(form);
-    return forms;
+  } else {
+    const body = (wa?.body || input.texto || "").trim();
+    if (body) forms.push({ From: from, To: to, Body: body });
   }
-  const body = (wa?.body || input.texto || "").trim();
-  if (body) forms.push({ From: from, To: to, Body: body });
+  for (const document of media) {
+    const form: TwilioForm = { From: from, To: to, MediaUrl: document.url };
+    if (document.filename.trim()) form.Body = document.filename.trim();
+    forms.push(form);
+  }
+  for (const document of links) {
+    forms.push({
+      From: from,
+      To: to,
+      Body: `${document.filename.trim()}\n${document.url}`,
+    });
+  }
   return forms;
 }
 

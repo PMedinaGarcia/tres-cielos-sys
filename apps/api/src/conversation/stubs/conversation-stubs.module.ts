@@ -7,6 +7,7 @@ import { RAG_PIPELINE_PORT } from "./rag-pipeline.port";
 import { StubRagPipeline } from "./stub-rag-pipeline";
 import { NurtureWorkerService } from "../nurture/nurture.worker";
 import { SlaClockService } from "../nurture/sla-clock.service";
+import { ClienteMemoriaService } from "../memoria/cliente-memoria.service";
 
 @Global()
 @Module({
@@ -17,6 +18,7 @@ import { SlaClockService } from "../nurture/sla-clock.service";
     QuotaStubService,
     NurtureWorkerService,
     SlaClockService,
+    ClienteMemoriaService,
     { provide: RAG_PIPELINE_PORT, useClass: StubRagPipeline },
   ],
   exports: [
@@ -26,6 +28,7 @@ import { SlaClockService } from "../nurture/sla-clock.service";
     QuotaStubService,
     NurtureWorkerService,
     SlaClockService,
+    ClienteMemoriaService,
     RAG_PIPELINE_PORT,
   ],
 })

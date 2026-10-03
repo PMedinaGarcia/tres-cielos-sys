@@ -20,8 +20,8 @@ import {
   COPY_V4_HANDOFF_VISITA,
   COPY_V4_NOMBRE,
   COPY_V4_PDF,
+  COPY_V4_PRESUPUESTO_CIERRE,
 } from "../script/script-v4.copy";
-import { copyMenorPisoConPisoPublicado } from "../script/script-v2.copy";
 
 function buildOrchestratorV4(opts?: { fieldTestReset?: boolean }) {
   const config = flowConfig("v4", { fieldTestReset: opts?.fieldTestReset });
@@ -145,9 +145,7 @@ describe("Orchestrator v4 (fecha → nombre → PDF → CTA)", () => {
 
     const res = await turn("m5", "250-300 mil", "presupuesto.r250_300");
     expect(res.estadoBot).toBe("activo");
-    expect(res.textoRespuesta).toBe(
-      copyMenorPisoConPisoPublicado("Paquete Estándar"),
-    );
+    expect(res.textoRespuesta).toBe(COPY_V4_PRESUPUESTO_CIERRE);
     const conv = await store.findById(res.conversacionId);
     expect(conv?.camposCapturados.rutaComercial).toBe("nutricion");
     expect(conv?.camposCapturados.encajeEconomico).toBe("no");

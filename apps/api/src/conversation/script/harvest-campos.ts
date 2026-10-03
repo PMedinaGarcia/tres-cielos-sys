@@ -620,13 +620,13 @@ export function parseFechaVentana(texto: string): FechaTentativa | null {
     anio: y,
     flexible: true,
   });
-  if (/^(fecha\.ene_may|ene-may|enero-mayo)$/.test(t)) {
+  if (/^(fecha\.ene_may|(ene-may|eneamay|enero-mayo)(\d{4})?)$/.test(t)) {
     return rango(anio, "01-01", "05-31");
   }
-  if (/^(fecha\.jun_sep|jun-sep|junio-septiembre)$/.test(t)) {
+  if (/^(fecha\.jun_sep|(jun-sep|junasep|junio-septiembre)(\d{4})?)$/.test(t)) {
     return rango(anio, "06-01", "09-30");
   }
-  if (/^(fecha\.oct_dic|oct-dic|octubre-diciembre)$/.test(t)) {
+  if (/^(fecha\.oct_dic|(oct-dic|octadic|octubre-diciembre)(\d{4})?)$/.test(t)) {
     return rango(anio, "10-01", "12-31");
   }
   if (/^(fecha\.anio_2028|2028)$/.test(t)) {
@@ -663,8 +663,12 @@ export function parseRangoPresupuestoFuera(
 
 export function parseCtaGuion(texto: string): CtaGuion | null {
   const t = stripAccents(texto.toLowerCase()).trim();
-  if (/^accion\.visita$|\b(agendar|visita|visitar)\b/.test(t)) return "visita";
-  if (/^accion\.ejecutivo$|\bejecutiv/.test(t)) return "ejecutivo";
+  if (
+    /^accion\.visita$|\b(agendar|visita|visitar)\b|\bconocer tres cielos\b/.test(t)
+  ) {
+    return "visita";
+  }
+  if (/^accion\.ejecutivo$|\bejecutiv|^tengo dudas\b/.test(t)) return "ejecutivo";
   if (
     /^accion\.fuera_presupuesto$|fuera de (tu|mi|nuestro) presupuesto|muy caro|no nos alcanza/.test(t)
   ) {

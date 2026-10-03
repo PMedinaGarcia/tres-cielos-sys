@@ -252,18 +252,21 @@ export default function SandboxChatPage() {
                     >
                       {line.text}
                     </p>
-                    {line.role === "bot" &&
-                      guionDocuments(line.waContent).map((doc) => (
-                        <a
-                          key={doc.url}
-                          href={browserGuionAssetUrl(doc.url)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-2 mr-2 inline-flex items-center gap-2 rounded-full border border-teal/30 bg-white/40 px-3 py-1.5 text-xs text-teal hover:border-teal"
-                        >
-                          PDF · {doc.filename}
-                        </a>
-                      ))}
+                    {line.role === "bot" && guionDocuments(line.waContent).length > 0 && (
+                      <div className="mt-2 flex flex-col items-start gap-2">
+                        {guionDocuments(line.waContent).map((doc) => (
+                          <a
+                            key={doc.url}
+                            href={browserGuionAssetUrl(doc.url)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex max-w-full items-center gap-2 rounded-full border border-teal/40 bg-white px-3 py-1.5 text-xs text-teal hover:border-teal"
+                          >
+                            PDF · {doc.filename}
+                          </a>
+                        ))}
+                      </div>
+                    )}
                     {line.role === "bot" && line.waContent && (
                       <span className="mt-1 inline-block text-[10px] uppercase tracking-wider text-ink/40">
                         {line.waContent.templateId} · {line.waContent.kind}

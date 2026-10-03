@@ -189,21 +189,14 @@ export class ConversationPanelController {
     }
     const orch = await this.orchStore.findById(id);
     if (orch) {
-      const campos = {
-        ...orch.camposCapturados,
-        rutaComercial: "nutricion" as const,
-        consentimientoSeguimiento: true,
-      };
       await this.orchStore.update(id, {
         estadoBot: "activo",
         asesorLockId: null,
         slaVenceEn: null,
-        pasoGuion: "faq_libre",
-        camposCapturados: campos,
       });
       this.nurture?.schedule({
         conversacionId: id,
-        nombre: campos.nombre,
+        nombre: orch.camposCapturados.nombre,
         consentimiento: true,
       });
     }

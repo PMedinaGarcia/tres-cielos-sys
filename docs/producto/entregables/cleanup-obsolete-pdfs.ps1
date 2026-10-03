@@ -12,8 +12,9 @@ Get-ChildItem -Path $here -Filter '*.pdf' -File | Where-Object { $keep -notconta
   Write-Host "Eliminado: $($_.Name)"
 }
 $staging = Join-Path $here '_flujo-v4-guion-completo.pdf'
+$definitivo = Join-Path $here 'flujo-v4-guion-completo.pdf'
 if (Test-Path $staging) {
-  Move-Item -LiteralPath $staging -Destination (Join-Path $here 'flujo-v4-guion-completo.pdf') -Force
+  Move-Item -LiteralPath $staging -Destination $definitivo -Force
   Write-Host 'Renombrado _flujo-v4-guion-completo.pdf -> flujo-v4-guion-completo.pdf'
 }
 Write-Host 'Listo.'

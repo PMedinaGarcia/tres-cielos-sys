@@ -194,6 +194,21 @@ export interface ConversacionState {
   asesorLockId?: string | null;
   slaVenceEn?: string | null;
   cola?: ColaAsesor | null;
+  /** Resumen durable del perfil de cliente. */
+  resumenMemoria?: string | null;
+  /** Últimos mensajes de la oportunidad, de cualquier canal. */
+  ventanaContexto?: Array<{
+    autor: "prospecto" | "bot" | "asesor";
+    contenido: string;
+  }>;
+  /** El turno abre con saludo y sigue en el paso guardado. */
+  reanudarSesion?: boolean;
+  /** Nombre y wa_id del perfil de WhatsApp. No sustituye el nombre dicho en el guion. */
+  perfilCanal?: {
+    nombre?: string | null;
+    psid?: string | null;
+    waId?: string | null;
+  };
 }
 
 export interface MensajeRecord {

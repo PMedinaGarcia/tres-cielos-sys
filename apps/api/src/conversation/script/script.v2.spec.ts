@@ -131,7 +131,7 @@ describe("ScriptService v2", () => {
     expect(r.pasoGuion).toBe("accion");
     expect(r.textoRespuesta).toBe(COPY_V4_PDF("Ana"));
     expect(r.adjuntoGuion).toBe(GUION_ADJUNTO_PAQUETE_BODAS);
-    expect(r.textoRespuesta).toMatch(/PDF/);
+    expect(r.textoRespuesta).toMatch(/pdf/i);
     expect(r.textoRespuesta).not.toMatch(/cuántas personas/);
   });
 

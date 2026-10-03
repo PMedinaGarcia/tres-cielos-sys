@@ -84,6 +84,7 @@ import {
 import {
   COPY_V4_HANDOFF_EJECUTIVO,
   COPY_V4_HANDOFF_VISITA,
+  COPY_V4_PRESUPUESTO_CIERRE,
 } from "../script/script-v4.copy";
 import { IntentClassifierService } from "./intent-classifier.service";
 import {
@@ -138,6 +139,10 @@ import {
 } from "../../ports/storage-prefixes";
 import { isObjectStorageLive } from "../../config/ai-mode";
 import { normalizeTipoEventoArg } from "../../tools-catalog/catalog-search.util";
+import {
+  formatMemoriaParaModelo,
+  resumeGreeting,
+} from "../memoria/cliente-memoria.logic";
 
 @Injectable()
 export class OrchestratorService {
@@ -766,7 +771,12 @@ export class OrchestratorService {
         messages: [
           {
             role: "system",
-            content: catalogSystemPrompt(conv.camposCapturados),
+            content: [
+              catalogSystemPrompt(conv.camposCapturados),
+              formatMemoriaParaModelo(conv),
+            ]
+              .filter((part) => part.trim().length > 0)
+              .join("\n\n"),
           },
           { role: "user", content: texto },
         ],
@@ -1212,7 +1222,9 @@ export class OrchestratorService {
     ) {
       texto = COPY_NUTRICION_T24_INMEDIATO;
     }
-    if (motivo === "menor_piso" && this.catalogTools) {
+    if (campos.rangoPresupuestoFuera) {
+      texto = COPY_V4_PRESUPUESTO_CIERRE;
+    } else if (motivo === "menor_piso" && this.catalogTools) {
       try {
         const alt = await this.catalogTools.findSkuBajoPiso();
         if (alt) {
@@ -1438,10 +1450,20 @@ export class OrchestratorService {
     adjuntoGuion?: string | null;
   }): Promise<TurnResponse> {
     this.quota.consumeMessaging(1);
+    const convPrev = await this.store.findById(input.conversacionId);
+    let texto = input.texto;
+    if (convPrev?.reanudarSesion && texto.trim()) {
+      texto = `${resumeGreeting({
+        nombre: convPrev.camposCapturados.nombre,
+        pasoGuion: convPrev.pasoGuion,
+        campos: convPrev.camposCapturados,
+      })}\n\n${texto}`;
+      convPrev.reanudarSesion = false;
+    }
     const msgOut = await this.store.appendMensaje(input.conversacionId, {
       direccion: "saliente",
       autor: "bot",
-      contenido: input.texto,
+      contenido: texto,
       timestamp: new Date().toISOString(),
       ruta: input.ruta,
       consumioCupo: true,
@@ -1504,7 +1526,7 @@ export class OrchestratorService {
       {
         conversacionId: input.conversacionId,
         mensajeSalienteId: msgOut.id,
-        textoRespuesta: input.texto,
+        textoRespuesta: texto,
         ruta: input.ruta,
         estadoBot: input.estadoBot ?? conv.estadoBot,
         eventoOperativoId: evento.id,

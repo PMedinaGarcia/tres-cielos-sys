@@ -196,7 +196,13 @@ enum PasoGuion {
   aforo_inversion
   aclaracion_piso
   accion
+  presupuesto_fuera
   faq_libre
+}
+
+enum TipoSeguimiento {
+  nutricion_t24
+  nutricion_t7
 }
 
 enum EncajeEconomico {
@@ -477,6 +483,8 @@ model Cliente {
   actualizadoEn        DateTime        @updatedAt @map("actualizado_en")
 
   identificadores      IdentificadorCliente[]
+  memoria              MemoriaCliente?
+  seguimientos         SeguimientoProgramado[]
   tags                 ClienteTag[]
   notas                NotaCliente[]
   interacciones        Interaccion[]
@@ -491,6 +499,55 @@ model Cliente {
   @@index([asesorAsignadoId])
   @@index([sedeInteresId])
   @@map("clientes")
+}
+
+/// Perfil canónico que el guion lee. El hilo de canal no es el dueño de los slots.
+model MemoriaCliente {
+  id                   String            @id @default(cuid())
+  clienteId            String            @unique @map("cliente_id")
+  cliente              Cliente           @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  campos               Json              @default("{}")
+  pasoGuion            PasoGuion         @default(saludo) @map("paso_guion")
+  guionVersion         String?           @map("guion_version")
+  rutaComercial        RutaComercial?    @map("ruta_comercial")
+  estadoBot            EstadoBot         @default(activo) @map("estado_bot")
+  resumen              String            @default("")
+  resumenActualizadoEn DateTime?         @map("resumen_actualizado_en")
+  ultimoTurnoEn        DateTime?         @map("ultimo_turno_en")
+  oportunidadAbiertaId String?           @map("oportunidad_abierta_id")
+  asesorLockId         String?           @map("asesor_lock_id")
+  slaVenceEn           DateTime?         @map("sla_vence_en")
+  cola                 String?
+  motivoHandoff        MotivoHandoff?    @map("motivo_handoff")
+  escaladoEn           DateTime?         @map("escalado_en")
+  ultimaRuta           RutaOrquestador?  @map("ultima_ruta")
+  paqueteTentativoId   String?           @map("paquete_tentativo_id")
+  pedidoCotizacion     Boolean?          @map("pedido_cotizacion")
+  pedidoCotizacionFuente String?         @map("pedido_cotizacion_fuente")
+  creadoEn             DateTime          @default(now()) @map("creado_en")
+  actualizadoEn        DateTime          @updatedAt @map("actualizado_en")
+
+  @@index([estadoBot])
+  @@index([oportunidadAbiertaId])
+  @@map("memorias_cliente")
+}
+
+model SeguimientoProgramado {
+  id             String           @id @default(cuid())
+  clienteId      String           @map("cliente_id")
+  cliente        Cliente          @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  oportunidadId  String?          @map("oportunidad_id")
+  conversacionId String?          @map("conversacion_id")
+  tipo           TipoSeguimiento
+  disparaEn      DateTime         @map("dispara_en")
+  nombre         String?
+  cancelado      Boolean          @default(false)
+  disparadoEn    DateTime?        @map("disparado_en")
+  creadoEn       DateTime         @default(now()) @map("creado_en")
+
+  @@index([clienteId, cancelado])
+  @@index([disparaEn, cancelado])
+  @@map("seguimientos_programados")
 }
 
 model IdentificadorCliente {

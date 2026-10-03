@@ -32,6 +32,7 @@ import {
   type IdentificadorCandidato,
 } from "./cliente-identity";
 import { IdentidadService } from "./identidad.service";
+import { ClienteMemoriaService } from "../conversation/memoria/cliente-memoria.service";
 import {
   derivarInteligencia,
   nextEtapaPipeline,
@@ -66,6 +67,7 @@ export class ExpedientePersistService {
     @Optional() private readonly prisma?: PrismaService,
     @Optional() private readonly assignment?: AssignmentService,
     @Optional() identidad?: IdentidadService,
+    @Optional() private readonly memoria?: ClienteMemoriaService,
   ) {
     this.identidad = identidad ?? (prisma ? new IdentidadService(prisma) : undefined);
   }
@@ -78,8 +80,12 @@ export class ExpedientePersistService {
     try {
       await this.upsert(conv, extras);
     } catch (err) {
-      this.logger.warn(
-        `No se pudo persistir expediente ${conv.id}: ${
+      const waId =
+        conv.perfilCanal?.waId ??
+        conv.camposCapturados.telefono ??
+        conv.externalThreadId;
+      this.logger.error(
+        `No se pudo persistir expediente ${conv.id} hilo=${conv.externalThreadId} wa_id=${waId}: ${
           err instanceof Error ? err.message : String(err)
         }`,
       );
@@ -102,6 +108,14 @@ export class ExpedientePersistService {
       await prisma.conversacion.update({
         where: { id: conv.id },
         data: { estadoBot: "humano", asesorLockId: input.usuarioId },
+      });
+      await this.syncEstadoBotCliente(conv.clienteId, {
+        estadoBot: "humano",
+        asesorLockId: input.usuarioId,
+      });
+      this.memoria?.syncEstado(conv.clienteId, {
+        estadoBot: "humano",
+        asesorLockId: input.usuarioId,
       });
       await this.syncEstadoAtencion(conv.clienteId, "en_atencion", {
         conversacionId: conv.id,
@@ -152,6 +166,10 @@ export class ExpedientePersistService {
   }): Promise<void> {
     if (!this.canWrite()) return;
     try {
+      const conv = await this.prisma!.conversacion.findUnique({
+        where: { id: input.conversacionId },
+        select: { clienteId: true },
+      });
       await this.prisma!.conversacion.update({
         where: { id: input.conversacionId },
         data: {
@@ -160,6 +178,18 @@ export class ExpedientePersistService {
           slaVenceEn: null,
         },
       });
+      if (conv?.clienteId) {
+        await this.syncEstadoBotCliente(conv.clienteId, {
+          estadoBot: "activo",
+          asesorLockId: null,
+          slaVenceEn: null,
+        });
+        this.memoria?.syncEstado(conv.clienteId, {
+          estadoBot: "activo",
+          asesorLockId: null,
+          slaVenceEn: null,
+        });
+      }
     } catch (err) {
       this.logger.warn(
         `No se pudo devolver a bot ${input.conversacionId}: ${
@@ -182,13 +212,17 @@ export class ExpedientePersistService {
     const campos = conv.camposCapturados;
     const telefono =
       normalizeTelefono(campos.telefono) ??
-      resolveTelefonoCanal({ externalThreadId: conv.externalThreadId });
+      resolveTelefonoCanal({
+        waId: conv.perfilCanal?.waId,
+        externalThreadId: conv.externalThreadId,
+      });
     const fechaIso = fechaTentativaToIso(campos.fechaTentativa ?? null);
     const tipoEvento = mapTipoEvento(campos.tipoEvento);
     const estadoAtencion = mapEstadoAtencion(conv.estadoBot);
     const identifiers = identifiersFromThread({
       canal: conv.canal,
       externalThreadId: conv.externalThreadId,
+      perfil: conv.perfilCanal,
       campos,
     });
 
@@ -206,6 +240,10 @@ export class ExpedientePersistService {
       campos.nombre && looksLikePersonName(campos.nombre)
         ? campos.nombre
         : null;
+    const perfilRaw = conv.perfilCanal?.nombre?.trim() || null;
+    const perfilNombre =
+      perfilRaw && looksLikePersonName(perfilRaw) ? perfilRaw : null;
+    const correo = identifiers.find((i) => i.tipo === "email")?.valor ?? null;
 
     const resolved = await this.resolveCliente({
       existingClienteId:
@@ -214,13 +252,16 @@ export class ExpedientePersistService {
       display: {
         nombre: nombreValido,
         telefono: telefono ? telefono : null,
-        nombrePerfilCanal: null,
+        nombrePerfilCanal: perfilNombre,
+        correo,
         canalOrigen: canal,
         sedeInteresId: campos.sedeId ?? null,
       },
       conversacionId: existing?.id ?? conv.id,
       oportunidadId: existing?.oportunidadId ?? conv.oportunidadId,
       isNewThread: !existing,
+      hilo: conv.externalThreadId,
+      waId: conv.perfilCanal?.waId ?? telefono,
     });
     const cliente = resolved.cliente;
 
@@ -294,19 +335,28 @@ export class ExpedientePersistService {
         },
       });
     } else {
-      const opp = await prisma.oportunidad.create({
-        data: {
-          id: conv.oportunidadId,
-          clienteId: cliente.id,
-          ...oppData,
-        },
-      });
-      oportunidadId = opp.id;
+      const abierta = await this.oportunidadAbierta(prisma, cliente.id);
+      if (abierta) {
+        oportunidadId = abierta.id;
+        await prisma.oportunidad.update({
+          where: { id: abierta.id },
+          data: oppData,
+        });
+      } else {
+        const opp = await prisma.oportunidad.create({
+          data: {
+            id: conv.oportunidadId,
+            clienteId: cliente.id,
+            ...oppData,
+          },
+        });
+        oportunidadId = opp.id;
+      }
       const created = await prisma.conversacion.create({
         data: {
           id: conv.id,
           clienteId: cliente.id,
-          oportunidadId: opp.id,
+          oportunidadId,
           canal,
           externalThreadId: conv.externalThreadId,
           estadoBot: conv.estadoBot,
@@ -326,6 +376,13 @@ export class ExpedientePersistService {
       });
       conversacionId = created.id;
     }
+
+    await this.syncEstadoBotCliente(cliente.id, { estadoBot: conv.estadoBot });
+    await this.memoria?.flush(cliente.id, {
+      ...conv,
+      oportunidadId,
+      id: conversacionId,
+    });
 
     await this.syncEstadoAtencion(cliente.id, estadoAtencion, {
       conversacionId,
@@ -389,12 +446,15 @@ export class ExpedientePersistService {
       nombre: string | null;
       telefono: string | null;
       nombrePerfilCanal: string | null;
+      correo: string | null;
       canalOrigen: Canal;
       sedeInteresId: string | null;
     };
     conversacionId: string;
     oportunidadId: string;
     isNewThread: boolean;
+    hilo: string;
+    waId: string | null;
   }) {
     const prisma = this.prisma!;
     const matchedIds = await this.identidad?.findMatchingClienteIds(
@@ -407,7 +467,15 @@ export class ExpedientePersistService {
         ),
       ),
     ];
-    const canonical = await this.identidad?.pickCanonical(candidateIds);
+    let canonical = await this.identidad?.pickCanonical(candidateIds);
+    if (!canonical) {
+      const ownerIds = await this.ownerIds(input.identifiers);
+      if (ownerIds.length) {
+        canonical =
+          (await this.identidad?.pickCanonical(ownerIds)) ??
+          (await this.loadIdentity(ownerIds[0]));
+      }
+    }
     const duplicados: Array<{
       tipo: string;
       valor: string;
@@ -416,9 +484,17 @@ export class ExpedientePersistService {
 
     let cliente;
     let reused = false;
+    let createdFresh = false;
     let prevUltimo: Date | null = null;
     let prevEstado: string | null = null;
     let priorHilos = 0;
+    const sedeInteresId = await this.safeSedeId(input.display.sedeInteresId);
+    const identity = buildIdentityWrite(
+      canonical ? "update" : "create",
+      canonical ?? null,
+      input.display,
+    );
+    const correoOcupado = canonical?.correo?.trim().toLowerCase() || null;
 
     if (canonical) {
       reused = true;
@@ -430,25 +506,23 @@ export class ExpedientePersistService {
           id: { not: input.conversacionId },
         },
       });
-      const sedeInteresId = await this.safeSedeId(input.display.sedeInteresId);
       cliente = await prisma.cliente.update({
         where: { id: canonical.id },
         data: {
-          nombre: input.display.nombre,
-          telefono: input.display.telefono ?? undefined,
-          nombrePerfilCanal: input.display.nombrePerfilCanal ?? undefined,
+          ...identity,
           canalOrigen: input.display.canalOrigen,
           sedeInteresId: sedeInteresId ?? undefined,
           ultimoContactoEn: new Date(),
         },
       });
     } else {
-      const sedeInteresId = await this.safeSedeId(input.display.sedeInteresId);
+      createdFresh = true;
       cliente = await prisma.cliente.create({
         data: {
-          nombre: input.display.nombre,
-          telefono: input.display.telefono,
-          nombrePerfilCanal: input.display.nombrePerfilCanal,
+          nombre: identity.nombre ?? null,
+          telefono: identity.telefono ?? null,
+          correo: identity.correo ?? null,
+          nombrePerfilCanal: identity.nombrePerfilCanal ?? null,
           canalOrigen: input.display.canalOrigen,
           fuenteAlta: "bot",
           sedeInteresId,
@@ -458,6 +532,13 @@ export class ExpedientePersistService {
     }
 
     for (const ident of input.identifiers) {
+      if (
+        ident.tipo === "email" &&
+        ((correoOcupado && correoOcupado !== ident.valorNormalizado) ||
+          (!correoOcupado && !input.display.correo))
+      ) {
+        continue;
+      }
       const owned = await prisma.identificadorCliente.findUnique({
         where: {
           tipo_valorNormalizado: {
@@ -467,15 +548,69 @@ export class ExpedientePersistService {
         },
       });
       if (!owned) {
-        await prisma.identificadorCliente.create({
-          data: {
-            clienteId: cliente.id,
-            tipo: ident.tipo as TipoIdentificadorCliente,
-            valor: ident.valor,
-            valorNormalizado: ident.valorNormalizado,
-          },
-        });
+        try {
+          await prisma.identificadorCliente.create({
+            data: {
+              clienteId: cliente.id,
+              tipo: ident.tipo as TipoIdentificadorCliente,
+              valor: ident.valor,
+              valorNormalizado: ident.valorNormalizado,
+            },
+          });
+        } catch (err) {
+          const again = await prisma.identificadorCliente.findUnique({
+            where: {
+              tipo_valorNormalizado: {
+                tipo: ident.tipo as TipoIdentificadorCliente,
+                valorNormalizado: ident.valorNormalizado,
+              },
+            },
+          });
+          if (again && again.clienteId !== cliente.id && createdFresh) {
+            const adopted = await this.adoptOwner(
+              again.clienteId,
+              cliente.id,
+              input,
+              sedeInteresId,
+            );
+            if (adopted) {
+              cliente = adopted.cliente;
+              createdFresh = false;
+              reused = true;
+              prevUltimo = adopted.prevUltimo;
+              prevEstado = adopted.prevEstado;
+              priorHilos = adopted.priorHilos;
+              continue;
+            }
+          }
+          this.logger.error(
+            `No se pudo guardar identificador ${ident.tipo} hilo=${input.hilo} wa_id=${input.waId ?? "sin-wa"}: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+          throw err;
+        }
       } else if (owned.clienteId !== cliente.id) {
+        if (createdFresh) {
+          const adopted = await this.adoptOwner(
+            owned.clienteId,
+            cliente.id,
+            input,
+            sedeInteresId,
+          );
+          if (adopted) {
+            cliente = adopted.cliente;
+            createdFresh = false;
+            reused = true;
+            prevUltimo = adopted.prevUltimo;
+            prevEstado = adopted.prevEstado;
+            priorHilos = adopted.priorHilos;
+            continue;
+          }
+          this.logger.error(
+            `Identificador ${ident.tipo} pertenece a ${owned.clienteId} y no se pudo reutilizar hilo=${input.hilo} wa_id=${input.waId ?? "sin-wa"}`,
+          );
+        }
         duplicados.push({
           tipo: ident.tipo,
           valor: ident.valorNormalizado,
@@ -550,6 +685,88 @@ export class ExpedientePersistService {
     }
 
     return { cliente };
+  }
+
+  private async ownerIds(
+    identifiers: IdentificadorCandidato[],
+  ): Promise<string[]> {
+    const prisma = this.prisma!;
+    const ids: string[] = [];
+    for (const ident of identifiers) {
+      const owned = await prisma.identificadorCliente.findUnique({
+        where: {
+          tipo_valorNormalizado: {
+            tipo: ident.tipo as TipoIdentificadorCliente,
+            valorNormalizado: ident.valorNormalizado,
+          },
+        },
+        select: { clienteId: true },
+      });
+      if (owned) ids.push(owned.clienteId);
+    }
+    return [...new Set(ids)];
+  }
+
+  private loadIdentity(id: string) {
+    return this.prisma!.cliente.findUnique({ where: { id } });
+  }
+
+  private async adoptOwner(
+    ownerId: string,
+    orphanId: string,
+    input: {
+      display: {
+        nombre: string | null;
+        telefono: string | null;
+        nombrePerfilCanal: string | null;
+        correo: string | null;
+        canalOrigen: Canal;
+        sedeInteresId: string | null;
+      };
+      conversacionId: string;
+      hilo: string;
+      waId: string | null;
+    },
+    sedeInteresId: string | null,
+  ) {
+    const owner = await this.loadIdentity(ownerId);
+    if (!owner) {
+      this.logger.error(
+        `Identificador apunta a cliente ausente ${ownerId} hilo=${input.hilo} wa_id=${input.waId ?? "sin-wa"}`,
+      );
+      return null;
+    }
+    const identity = buildIdentityWrite("update", owner, input.display);
+    const cliente = await this.prisma!.cliente.update({
+      where: { id: owner.id },
+      data: {
+        ...identity,
+        canalOrigen: input.display.canalOrigen,
+        sedeInteresId: sedeInteresId ?? undefined,
+        ultimoContactoEn: new Date(),
+      },
+    });
+    try {
+      await this.prisma!.cliente.delete({ where: { id: orphanId } });
+    } catch (err) {
+      this.logger.error(
+        `Alta huérfana ${orphanId} hilo=${input.hilo} wa_id=${input.waId ?? "sin-wa"}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+    const priorHilos = await this.prisma!.conversacion.count({
+      where: {
+        clienteId: owner.id,
+        id: { not: input.conversacionId },
+      },
+    });
+    return {
+      cliente,
+      prevUltimo: owner.ultimoContactoEn,
+      prevEstado: owner.estadoAtencion,
+      priorHilos,
+    };
   }
 
   private async safeSedeId(sedeId: string | null): Promise<string | null> {
@@ -858,6 +1075,46 @@ export class ExpedientePersistService {
     return { id: created.id, created: true };
   }
 
+  private async oportunidadAbierta(
+    prisma: PrismaService,
+    clienteId: string,
+  ): Promise<{ id: string } | null> {
+    const finder = (
+      prisma.oportunidad as unknown as {
+        findFirst?: (args: unknown) => Promise<{ id: string } | null>;
+      }
+    ).findFirst;
+    if (typeof finder !== "function") return null;
+    return finder({
+      where: {
+        clienteId,
+        etapa: { notIn: ["ganado", "perdido"] },
+      },
+      orderBy: { actualizadoEn: "desc" },
+      select: { id: true },
+    });
+  }
+
+  private async syncEstadoBotCliente(
+    clienteId: string,
+    data: {
+      estadoBot: "activo" | "escalado" | "humano";
+      asesorLockId?: string | null;
+      slaVenceEn?: Date | null;
+    },
+  ): Promise<void> {
+    const updateMany = (
+      this.prisma!.conversacion as unknown as {
+        updateMany?: (args: unknown) => Promise<unknown>;
+      }
+    ).updateMany;
+    if (typeof updateMany !== "function") return;
+    await updateMany({
+      where: { clienteId },
+      data,
+    });
+  }
+
   private async syncEstadoAtencion(
     clienteId: string,
     siguiente: EstadoAtencion,
@@ -1022,6 +1279,54 @@ type OppPrevLite = {
   calificacion?: string;
 } | null;
 
+function buildIdentityWrite(
+  mode: "create" | "update",
+  existing: {
+    nombre?: string | null;
+    telefono?: string | null;
+    correo?: string | null;
+    nombrePerfilCanal?: string | null;
+  } | null | undefined,
+  display: {
+    nombre: string | null;
+    telefono: string | null;
+    nombrePerfilCanal: string | null;
+    correo: string | null;
+  },
+): {
+  nombre?: string | null;
+  telefono?: string | null;
+  correo?: string | null;
+  nombrePerfilCanal?: string | null;
+} {
+  const current = existing ?? null;
+  const harvested = display.nombre;
+  const perfil = display.nombrePerfilCanal;
+  const existingNombre = current?.nombre?.trim() || null;
+  let nombre: string | null | undefined;
+  if (harvested) nombre = harvested;
+  else if (existingNombre) nombre = mode === "update" ? undefined : existingNombre;
+  else if (perfil) nombre = perfil;
+  else nombre = mode === "update" ? undefined : null;
+
+  const fields: {
+    nombre?: string | null;
+    telefono?: string | null;
+    correo?: string | null;
+    nombrePerfilCanal?: string | null;
+  } = {};
+  if (nombre !== undefined) fields.nombre = nombre;
+  if (perfil) fields.nombrePerfilCanal = perfil;
+  else if (mode === "create") fields.nombrePerfilCanal = null;
+  if (display.telefono) fields.telefono = display.telefono;
+  else if (mode === "create") fields.telefono = null;
+
+  const existingCorreo = current?.correo?.trim() || null;
+  if (display.correo && !existingCorreo) fields.correo = display.correo;
+  else if (mode === "create") fields.correo = display.correo;
+  return fields;
+}
+
 function comercialFromTurn(input: {
   conv: ConversacionState;
   prev: OppPrevLite;
@@ -1124,6 +1429,8 @@ function camposToJson(campos: CamposCapturados): Prisma.InputJsonValue {
     email: campos.email ?? null,
     pdfEnviado: campos.pdfEnviado ?? null,
     adjuntoReintentos: campos.adjuntoReintentos ?? null,
+    ctaGuion: campos.ctaGuion ?? null,
+    rangoPresupuestoFuera: campos.rangoPresupuestoFuera ?? null,
   } as Prisma.InputJsonValue;
 }
 

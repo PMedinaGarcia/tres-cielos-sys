@@ -1,4 +1,10 @@
 import { composeWaContent } from "../wa-content.composer";
+import {
+  COPY_V4_B1_RETRY,
+  COPY_V4_CTA_RETRY,
+  COPY_V4_PDF,
+  COPY_V4_PRESUPUESTO_FUERA_RETRY,
+} from "../../conversation/script/script-v4.copy";
 
 describe("composeWaContent", () => {
   it("nombre / fecha / aforo son texto sin hablar_asesor en la burbuja", () => {
@@ -137,9 +143,9 @@ describe("composeWaContent", () => {
     expect(b1?.kind).toBe("list-picker");
     expect(b1?.templateId).toBe("guion.nombre_fecha");
     expect(b1?.list?.items.map((i) => i.title)).toEqual([
-      "Ene-May",
-      "Jun-Sep",
-      "Oct-Dic",
+      "Ene-May 2027",
+      "Jun-Sep 2027",
+      "Oct-Dic 2027",
       "2028",
     ]);
     const b1SoloNombre = composeWaContent({
@@ -204,9 +210,9 @@ describe("composeWaContent", () => {
     expect(wa?.kind).toBe("list-picker");
     expect(wa?.templateId).toBe("guion.fecha_ventana");
     expect(wa?.list?.items.map((i) => i.title)).toEqual([
-      "Ene-May",
-      "Jun-Sep",
-      "Oct-Dic",
+      "Ene-May 2027",
+      "Jun-Sep 2027",
+      "Oct-Dic 2027",
       "2028",
     ]);
   });
@@ -254,5 +260,41 @@ describe("composeWaContent", () => {
       "250-300 mil",
       "Fuera de Rango",
     ]);
+  });
+
+  it("reintentos v4 usan otro templateId y la CTA primera lleva el nombre", () => {
+    const temporada = composeWaContent({
+      texto: COPY_V4_B1_RETRY,
+      ruta: "guion",
+      pasoGuion: "fecha_ventana",
+    });
+    expect(temporada?.templateId).toBe("guion.fecha_ventana_retry");
+
+    const cta = composeWaContent({
+      texto: COPY_V4_PDF("Ana"),
+      ruta: "guion",
+      pasoGuion: "accion",
+      accionModo: "cta_v4",
+      nombre: "Ana",
+    });
+    expect(cta?.templateId).toBe("guion.accion_cta");
+    expect(cta?.contentVariables).toEqual({ "1": "Ana" });
+
+    const ctaRetry = composeWaContent({
+      texto: COPY_V4_CTA_RETRY,
+      ruta: "guion",
+      pasoGuion: "accion",
+      accionModo: "cta_v4",
+      nombre: "Ana",
+    });
+    expect(ctaRetry?.templateId).toBe("guion.accion_cta_retry");
+    expect(ctaRetry?.contentVariables).toBeUndefined();
+
+    const rango = composeWaContent({
+      texto: COPY_V4_PRESUPUESTO_FUERA_RETRY,
+      ruta: "guion",
+      pasoGuion: "presupuesto_fuera",
+    });
+    expect(rango?.templateId).toBe("guion.presupuesto_fuera_retry");
   });
 });

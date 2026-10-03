@@ -22,6 +22,7 @@ import type {
   PasoGuion,
 } from "../types";
 import { extractScriptPasoWithLlm } from "./script-llm.extract";
+import { formatMemoriaParaModelo } from "../memoria/cliente-memoria.logic";
 import {
   assignSedeUnica,
   harvestCamposLexical,
@@ -129,7 +130,7 @@ export class ScriptService {
       isLiveAiProviders(this.config) &&
       shouldCallLlmHarvest(trimmed, harvest, focused)
     ) {
-      const llm = await this.llmExtract(focused, trimmed, campos);
+      const llm = await this.llmExtract(conv, focused, trimmed, campos);
       if (llm) {
         const merged = mergeLlmExtract(campos, llm, trimmed, {
           focusedPaso: focused,
@@ -215,16 +216,19 @@ export class ScriptService {
   }
 
   private async llmExtract(
+    conv: ConversacionState,
     paso: PasoGuion,
     texto: string,
     campos: CamposCapturados,
   ) {
+    const contexto = formatMemoriaParaModelo(conv);
     if (!this.llm || !isLiveAiProviders(this.config)) return null;
     return extractScriptPasoWithLlm({
       llm: this.llm,
       texto,
       paso,
       campos,
+      contexto,
     });
   }
 }

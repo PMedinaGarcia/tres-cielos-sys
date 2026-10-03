@@ -55,17 +55,18 @@ describe("buildTwilioForms", () => {
       },
     });
     expect(forms.map((f) => f.MediaUrl ?? f.ContentSid ?? "text")).toEqual([
-      "text",
-      "https://api.example/tarifas.pdf",
       "HXaccion",
+      "https://api.example/tarifas.pdf",
+      "text",
     ]);
-    expect(forms[0]?.Body).toBe(
+    expect(forms[0]?.ContentVariables).toBe(JSON.stringify({ "1": "Ana" }));
+    expect(forms[0]?.Body).toBeUndefined();
+    expect(forms[1]?.Body).toBe("Tarifas 2027 - Tres Cielos.pdf");
+    expect(forms[1]?.MediaUrl).toBe("https://api.example/tarifas.pdf");
+    expect(forms[2]?.Body).toBe(
       "Experiencia boda de tres días - 2027.pdf\nhttps://api.example/experiencia.pdf",
     );
-    expect(forms[0]?.MediaUrl).toBeUndefined();
-    expect(forms[1]?.Body).toBe("Tarifas 2027 - Tres Cielos.pdf");
-    expect(forms[2]?.ContentVariables).toBe(JSON.stringify({ "1": "Ana" }));
-    expect(forms[2]?.Body).toBeUndefined();
+    expect(forms[2]?.MediaUrl).toBeUndefined();
     expect(forms.some((f) => f.MediaUrl?.includes("cards"))).toBe(false);
   });
 
@@ -163,9 +164,9 @@ describe("OutboundService.send Twilio", () => {
     expect(result).toEqual({ ok: true, providerMessageId: "SM2" });
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const firstBody = String(fetchMock.mock.calls[0]?.[1]?.body);
-    expect(firstBody).toContain("MediaUrl=");
+    expect(firstBody).toContain("ContentSid=HXfecha");
     const secondBody = String(fetchMock.mock.calls[1]?.[1]?.body);
-    expect(secondBody).toContain("ContentSid=HXfecha");
+    expect(secondBody).toContain("MediaUrl=");
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
       "/Accounts/ACtest/Messages.json",
     );

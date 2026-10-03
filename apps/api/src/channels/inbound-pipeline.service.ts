@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
 import { TURN_HANDLER, type TurnHandler } from "./turn-handler";
 import { IdempotencyService } from "./idempotency.service";
 import { OutboundService } from "./outbound.service";
@@ -7,6 +7,7 @@ import { ChannelAttachmentService } from "./attachments/channel-attachment.servi
 import { AuditService } from "../audit/audit.service";
 import { QuotaService } from "../quota/quota.service";
 import { CrmCalificacionService } from "../crm/calificacion.service";
+import { ClienteMemoriaService } from "../conversation/memoria/cliente-memoria.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { AssignmentService } from "../assignment/assignment.service";
 import type { InboundMessage, TurnResult } from "./types/inbound-message";
@@ -21,6 +22,7 @@ import { SAFE_COPY_BOT_SILENCIADO } from "../conversation/handoff/safe-copy";
 @Injectable()
 export class InboundPipelineService {
   private readonly logger = new Logger(InboundPipelineService.name);
+  private readonly threadTails = new Map<string, Promise<unknown>>();
 
   constructor(
     private readonly idempotency: IdempotencyService,
@@ -33,9 +35,28 @@ export class InboundPipelineService {
     private readonly notifications: NotificationsService,
     private readonly assignment: AssignmentService,
     @Inject(TURN_HANDLER) private readonly turnHandler: TurnHandler,
+    @Optional() private readonly memoria?: ClienteMemoriaService,
   ) {}
 
-  async process(message: InboundMessage): Promise<TurnResult | { duplicate: true }> {
+  async process(
+    message: InboundMessage,
+  ): Promise<TurnResult | { duplicate: true }> {
+    const key = `${message.canal}::${message.externalThreadId}`;
+    const previous = this.threadTails.get(key) ?? Promise.resolve();
+    const run = previous
+      .catch(() => undefined)
+      .then(() => this.processBody(message));
+    this.threadTails.set(key, run);
+    try {
+      return await run;
+    } finally {
+      if (this.threadTails.get(key) === run) this.threadTails.delete(key);
+    }
+  }
+
+  private async processBody(
+    message: InboundMessage,
+  ): Promise<TurnResult | { duplicate: true }> {
     const interactive = resolveInteractiveInbound({
       texto: message.texto,
       buttonPayload: message.buttonPayload,
@@ -47,8 +68,16 @@ export class InboundPipelineService {
     };
 
     if (!this.idempotency.tryClaim(message.canal, message.externalMessageId)) {
-      this.logger.debug(`duplicate ${message.externalMessageId}`);
-      return { duplicate: true };
+      const durable = await this.idempotency.isDurable(
+        message.canal,
+        message.externalMessageId,
+      );
+      if (durable !== false) {
+        this.logger.debug(`duplicate ${message.externalMessageId}`);
+        return { duplicate: true };
+      }
+      this.idempotency.release(message.canal, message.externalMessageId);
+      this.idempotency.tryClaim(message.canal, message.externalMessageId);
     }
 
     const conv = await this.conversations.overlayFromPrisma(
@@ -85,6 +114,12 @@ export class InboundPipelineService {
 
     // D-BOT-6: humano → silencio (sin LLM / sin reply bot)
     if (conv.estadoBot === "humano") {
+      await this.memoria?.recordHumanInbound({
+        canal: message.canal,
+        externalThreadId: message.externalThreadId,
+        texto: message.texto ?? "",
+        telefono: message.perfilCanal?.waId ?? null,
+      });
       const safe = {
         conversacionId: conv.id,
         textoRespuesta: SAFE_COPY_BOT_SILENCIADO,
@@ -134,6 +169,7 @@ export class InboundPipelineService {
       result = attachWaContent(await this.turnHandler.handleTurn(message));
     } catch (err) {
       this.logger.error(`turn failed: ${String(err)}`);
+      this.idempotency.release(message.canal, message.externalMessageId);
       result = attachWaContent({
         conversacionId: conv.id,
         textoRespuesta:

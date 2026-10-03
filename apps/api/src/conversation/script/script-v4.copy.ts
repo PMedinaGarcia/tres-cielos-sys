@@ -23,6 +23,9 @@ export const COPY_V4_PRESUPUESTO_FUERA =
 export const COPY_V4_PRESUPUESTO_FUERA_RETRY =
   "Elige el rango que más se acerca a su presupuesto: 200-250 mil, 250-300 mil o Fuera de Rango.";
 
+export const COPY_V4_PRESUPUESTO_CIERRE =
+  "Gracias por compartirlo, un ejecutivo se pondrá en contacto contigo.";
+
 export const COPY_V4_HANDOFF_VISITA = (nombre?: string | null): string =>
   `${nombre ? `Perfecto, ${nombre}.` : "Perfecto."} Un asesor te contacta para agendar tu visita al jardín (15–30 min).`;
 

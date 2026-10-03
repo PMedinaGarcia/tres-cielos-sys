@@ -67,7 +67,7 @@ export function composeWaContent(input: {
   if (!content) return undefined;
   let merged = content;
   if (input.documents?.length) {
-    merged = { ...merged, documents: input.documents };
+    merged = { ...merged, documents: input.documents, document: input.documents[0] };
   } else if (input.document) {
     merged = { ...merged, document: input.document };
   }

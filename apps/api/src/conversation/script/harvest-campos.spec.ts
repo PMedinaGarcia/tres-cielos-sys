@@ -8,6 +8,7 @@ import {
   looksLikePersonName,
   nextPasoGuion,
   parseAforo,
+  parseCtaGuion,
 } from "./harvest-campos";
 import type { CamposCapturados } from "../types";
 
@@ -67,6 +68,25 @@ describe("harvestCamposLexical", () => {
     });
     expect(eneMayNombreFecha.campos.fechaTentativa).toBeTruthy();
     expect(eneMayNombreFecha.campos.nombre).toBeFalsy();
+    for (const titulo of ["Ene-May 2027", "Ene a May 2027"]) {
+      const conAnio = harvestCamposLexical(titulo, {}, {
+        now: NOW,
+        focusedPaso: "fecha_ventana",
+      });
+      expect(conAnio.campos.fechaTentativa).toMatchObject({
+        desde: "2027-01-01",
+        hasta: "2027-05-31",
+      });
+      expect(conAnio.campos.nombre).toBeFalsy();
+    }
+    const octDic = harvestCamposLexical("Oct-Dic 2027", {}, {
+      now: NOW,
+      focusedPaso: "fecha_ventana",
+    });
+    expect(octDic.campos.fechaTentativa).toMatchObject({
+      desde: "2027-10-01",
+      hasta: "2027-12-31",
+    });
     const sinFoco = harvestCamposLexical("2028", {}, { now: NOW });
     expect(sinFoco.campos.fechaTentativa).toBeFalsy();
   });
@@ -415,6 +435,18 @@ describe("evaluarPedidoCotizacion", () => {
   it("composePedidoCatalogoFromCampos usa cotizar + slots", () => {
     expect(composePedidoCatalogoFromCampos(PERFIL_LISTO)).toBe(
       "Cotizar paquetes de boda para 150 invitados el 2027-12-22",
+    );
+  });
+
+  it("parseCtaGuion reconoce títulos y descripciones de la lista v4", () => {
+    expect(parseCtaGuion("Conocer Tres Cielos")).toBe("visita");
+    expect(parseCtaGuion("Quiero conocer Tres Cielos.")).toBe("visita");
+    expect(parseCtaGuion("Tengo dudas")).toBe("ejecutivo");
+    expect(
+      parseCtaGuion("Tengo dudas, quiero hablar con un ejecutivo."),
+    ).toBe("ejecutivo");
+    expect(parseCtaGuion("Estamos fuera de tu presupuesto")).toBe(
+      "fuera_presupuesto",
     );
   });
 });

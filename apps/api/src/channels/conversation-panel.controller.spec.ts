@@ -78,10 +78,14 @@ describe("ConversationPanelController v3", () => {
   });
 
   it("devolver-a-bot 200 con asesor_libera agenda nutrición", async () => {
-    const { ctrl, nurture } = buildPanel();
+    const { ctrl, nurture, orchStore } = buildPanel();
     const res = await ctrl.devolverABot("c1", { motivo: "asesor_libera" });
     expect(res.estadoBot).toBe("activo");
     expect(nurture.list("c1")).toHaveLength(2);
+    expect(orchStore.update).toHaveBeenCalledWith(
+      "c1",
+      expect.not.objectContaining({ pasoGuion: "faq_libre" }),
+    );
   });
 
   it("devolver-a-bot sin motivo válido sigue 409", async () => {

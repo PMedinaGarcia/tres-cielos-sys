@@ -95,6 +95,7 @@ export function identifiersFromThread(input: {
 
   add(normalizeIdentificador("wa_id", input.perfil?.waId ?? null));
   add(normalizeIdentificador("telefono", input.campos?.telefono ?? null));
+  add(normalizeIdentificador("email", input.campos?.email ?? null));
   add(normalizeIdentificador("meta_psid", input.perfil?.psid ?? null));
 
   return [...found.values()];
