@@ -1459,6 +1459,7 @@ export class OrchestratorService {
         campos: convPrev.camposCapturados,
       })}\n\n${texto}`;
       convPrev.reanudarSesion = false;
+      this.store.marcarReanudacionSaludada(input.conversacionId);
     }
     const msgOut = await this.store.appendMensaje(input.conversacionId, {
       direccion: "saliente",
