@@ -4,19 +4,19 @@ describe("buildTwilioForms", () => {
   const from = "whatsapp:+15044147172";
   const to = "whatsapp:+5215512345678";
 
-  it("texto de sesión es un solo Body", () => {
+  it("texto de sesiÃ³n es un solo Body", () => {
     const forms = buildTwilioForms({
       from,
       to,
-      texto: "¡Perfecto! ¿Con quién tenemos el gusto?",
+      texto: "Â¡Perfecto! Â¿Con quiÃ©n tenemos el gusto?",
       wa: {
         templateId: "guion.nombre",
         kind: "text",
-        body: "¡Perfecto! ¿Con quién tenemos el gusto?",
+        body: "Â¡Perfecto! Â¿Con quiÃ©n tenemos el gusto?",
       },
     });
     expect(forms).toEqual([
-      { From: from, To: to, Body: "¡Perfecto! ¿Con quién tenemos el gusto?" },
+      { From: from, To: to, Body: "Â¡Perfecto! Â¿Con quiÃ©n tenemos el gusto?" },
     ]);
   });
 
@@ -36,11 +36,11 @@ describe("buildTwilioForms", () => {
           items: [{ id: "accion.visita", title: "Conocer Tres Cielos" }],
         },
         images: [
-          { url: "https://api.example/cards/01.jpg", caption: "Jardín" },
+          { url: "https://api.example/cards/01.jpg", caption: "JardÃ­n" },
         ],
         documents: [
           {
-            filename: "Experiencia boda de tres días - 2027.pdf",
+            filename: "Experiencia boda de tres dÃ­as - 2027.pdf",
             mime: "application/pdf",
             url: "https://api.example/experiencia.pdf",
             delivery: "link",
@@ -64,7 +64,7 @@ describe("buildTwilioForms", () => {
     expect(forms[1]?.Body).toBe("Tarifas 2027 - Tres Cielos.pdf");
     expect(forms[1]?.MediaUrl).toBe("https://api.example/tarifas.pdf");
     expect(forms[2]?.Body).toBe(
-      "Experiencia boda de tres días - 2027.pdf\nhttps://api.example/experiencia.pdf",
+      "Experiencia boda de tres dÃ­as - 2027.pdf\nhttps://api.example/experiencia.pdf",
     );
     expect(forms[2]?.MediaUrl).toBeUndefined();
     expect(forms.some((f) => f.MediaUrl?.includes("cards"))).toBe(false);
@@ -74,11 +74,11 @@ describe("buildTwilioForms", () => {
     const forms = buildTwilioForms({
       from,
       to,
-      texto: "¿Cómo prefieres seguir?",
+      texto: "Â¿CÃ³mo prefieres seguir?",
       wa: {
         templateId: "guion.accion_cta_retry",
         kind: "list-picker",
-        body: "¿Cómo prefieres seguir?",
+        body: "Â¿CÃ³mo prefieres seguir?",
         contentSid: "HXretry",
         list: {
           button: "Ver opciones",
@@ -125,7 +125,7 @@ describe("OutboundService.send Twilio", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("posta cada parte y devuelve el último SID", async () => {
+  it("posta cada parte y devuelve el Ãºltimo SID", async () => {
     process.env.TWILIO_ACCOUNT_SID = "ACtest";
     process.env.TWILIO_AUTH_TOKEN = "token";
     process.env.TWILIO_WHATSAPP_FROM = "whatsapp:+15044147172";

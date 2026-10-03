@@ -13,17 +13,17 @@ const PASO_LABEL: Record<string, string> = {
   nombre_fecha: "el nombre y la fecha",
   fecha: "la fecha",
   fecha_ventana: "la ventana de fecha",
-  aforo: "el número de invitados",
-  aforo_inversion: "invitados e inversión",
-  aclaracion_piso: "el piso de inversión",
-  accion: "la siguiente acción",
+  aforo: "el nÃºmero de invitados",
+  aforo_inversion: "invitados e inversiÃ³n",
+  aclaracion_piso: "el piso de inversiÃ³n",
+  accion: "la siguiente acciÃ³n",
   presupuesto: "el presupuesto",
   presupuesto_fuera: "el rango de presupuesto",
-  intencion: "la intención",
+  intencion: "la intenciÃ³n",
   faq_libre: "las preguntas abiertas",
 };
 
-/** Un valor vacío no borra un dato ya capturado. `boda` por defecto no pisa otro tipo de evento. */
+/** Un valor vacÃ­o no borra un dato ya capturado. `boda` por defecto no pisa otro tipo de evento. */
 export function mergeCampos(
   base: CamposCapturados,
   incoming: CamposCapturados,
@@ -97,13 +97,13 @@ export function buildResumen(input: {
     partes.push(`Fecha: ${cuando}.`);
   }
   if (c.aforo) partes.push(`Invitados: ${c.aforo}.`);
-  if (c.rangoInversion) partes.push(`Inversión: ${c.rangoInversion}.`);
+  if (c.rangoInversion) partes.push(`InversiÃ³n: ${c.rangoInversion}.`);
   if (c.rangoPresupuestoFuera) {
     partes.push(`Presupuesto fuera de piso: ${c.rangoPresupuestoFuera}.`);
   }
   if (c.ctaGuion) partes.push(`CTA: ${c.ctaGuion}.`);
   partes.push(`Paso: ${PASO_LABEL[input.pasoGuion] ?? input.pasoGuion}.`);
-  if (input.ultimaRuta) partes.push(`Última ruta: ${input.ultimaRuta}.`);
+  if (input.ultimaRuta) partes.push(`Ãšltima ruta: ${input.ultimaRuta}.`);
   const notas = (input.notasHandoff ?? []).filter((n) => n.trim()).slice(-3);
   if (notas.length) {
     partes.push(`Con el asesor: ${notas.join(" | ")}.`);
@@ -118,16 +118,16 @@ export function resumeGreeting(input: {
 }): string {
   const nombre = input.nombre?.trim();
   const who = nombre
-    ? `¡${nombre}, qué gusto leerte de nuevo! ??`
-    : "¡Qué gusto leerte de nuevo! ??";
+    ? `Â¡${nombre}, quÃ© gusto leerte de nuevo! â¤ï¸`
+    : "Â¡QuÃ© gusto leerte de nuevo! â¤ï¸";
   const datos: string[] = [];
   if (input.campos.fechaTentativa) datos.push("la temporada de tu boda");
-  if (input.campos.aforo) datos.push("el número de invitados");
+  if (input.campos.aforo) datos.push("el nÃºmero de invitados");
   if (input.campos.rangoInversion || input.campos.rangoPresupuestoFuera) {
     datos.push("el presupuesto");
   }
   if (datos.length === 0) {
-    return `${who} Seguimos con la planeación de tu boda justo donde nos quedamos.`;
+    return `${who} Seguimos con la planeaciÃ³n de tu boda justo donde nos quedamos.`;
   }
   return `${who} Ya tengo ${listaNatural(datos)} y seguimos justo donde nos quedamos.`;
 }
@@ -138,7 +138,7 @@ function listaNatural(partes: string[]): string {
   return `${partes.slice(0, -1).join(", ")} y ${partes[partes.length - 1]}`;
 }
 
-/** El perfil en proceso gana si su último turno es igual o posterior al de la fila guardada. */
+/** El perfil en proceso gana si su Ãºltimo turno es igual o posterior al de la fila guardada. */
 export function perfilLocalEsMasReciente(
   localEn: string | null | undefined,
   remotoEn: string | null | undefined,
@@ -150,7 +150,7 @@ export function perfilLocalEsMasReciente(
   return localMs >= remotoMs;
 }
 
-/** El saludo de esta vuelta ya se dijo mientras la hora de sesión no avance. */
+/** El saludo de esta vuelta ya se dijo mientras la hora de sesiÃ³n no avance. */
 export function reanudacionYaSaludada(input: {
   ultimoTurnoEn: string | null;
   consumidaHasta: string | null | undefined;
