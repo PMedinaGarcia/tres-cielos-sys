@@ -391,7 +391,7 @@ export function harvestCamposLexical(
     if (next.intencionCotizar == null) next.intencionCotizar = true;
   }
 
-  const nombre = extractNombre(trimmed, {
+  const nombre = extraerNombreResiliente(trimmed, {
     nombreExistente: next.nombre,
     focusedPaso: focused,
   });
@@ -423,7 +423,7 @@ export function mergeLlmExtract(
     !next.nombre &&
     extracted.nombre &&
     looksLikePersonName(extracted.nombre) &&
-    extractNombre(texto, {
+    extraerNombreResiliente(texto, {
       nombreExistente: next.nombre,
       focusedPaso: opts?.focusedPaso,
     })
@@ -536,6 +536,45 @@ export function looksLikePersonName(value: string): boolean {
     nameTokens += 1;
   }
   return nameTokens >= 1;
+}
+
+/**
+ * Nombre del paso enfocado, o el mensaje completo cuando es solo una persona.
+ * Así “Patricio” se guarda aunque el paso se haya revertido a la fecha.
+ */
+export function extraerNombreResiliente(
+  texto: string,
+  opts?: { nombreExistente?: string | null; focusedPaso?: PasoGuion },
+): string | null {
+  const directo = extractNombre(texto, opts);
+  if (directo) return directo;
+  if (opts?.nombreExistente) return null;
+  return nombreSiElMensajeEsSoloEso(texto);
+}
+
+function nombreSiElMensajeEsSoloEso(texto: string): string | null {
+  const trimmed = texto.trim();
+  if (!trimmed) return null;
+  if (parseFechaVentana(trimmed)) return null;
+  if (extractSiNo(trimmed) != null) return null;
+  if (isFrasePeticionOInteres(trimmed)) return null;
+  if (extractTipoEvento(trimmed)) return null;
+
+  let cleaned = trimmed;
+  for (let i = 0; i < 3; i += 1) {
+    const next = cleaned.replace(
+      /^(hola|ola|hey|buenas?|qu[eé] tal|que tal|k tal)[\s,!.]*/i,
+      "",
+    );
+    if (next === cleaned) break;
+    cleaned = next;
+  }
+  cleaned = cleaned.replace(/[.,!?]+$/g, "").trim().replace(/\s+/g, " ");
+  if (!cleaned || /^(hola|ola|hey|buenas|si|sí|no|ok)$/i.test(cleaned)) {
+    return null;
+  }
+  if (!looksLikePersonName(cleaned)) return null;
+  return cleaned;
 }
 
 export function extractNombre(

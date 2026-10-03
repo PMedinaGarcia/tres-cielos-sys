@@ -337,6 +337,46 @@ describe("extractNombre / looksLikePersonName", () => {
     expect(looksLikePersonName("Quiero reservar")).toBe(false);
     expect(extractNombre("Paty", { focusedPaso: "fecha" })).toBeNull();
   });
+
+  it("captura un nombre suelto aunque el paso se haya revertido a la fecha", () => {
+    const fecha = {
+      tipoEvento: "boda" as const,
+      fechaTentativa: {
+        tipo: "rango" as const,
+        desde: "2027-06-01",
+        hasta: "2027-09-30",
+        anio: 2027,
+        flexible: true,
+      },
+    };
+    const patricio = harvestCamposLexical("Patricio", fecha, {
+      focusedPaso: "fecha_ventana",
+    });
+    expect(patricio.campos.nombre).toBe("Patricio");
+    expect(patricio.filled).toContain("nombre");
+
+    const compuesto = harvestCamposLexical("Patricio Medina", fecha, {
+      focusedPaso: "fecha_ventana",
+    });
+    expect(compuesto.campos.nombre).toBe("Patricio Medina");
+
+    const cue = harvestCamposLexical("me llamo Patricio", fecha, {
+      focusedPaso: "fecha_ventana",
+    });
+    expect(cue.campos.nombre).toBe("Patricio");
+
+    const conSaludo = harvestCamposLexical("Hola Patricio", fecha, {
+      focusedPaso: "fecha_ventana",
+    });
+    expect(conSaludo.campos.nombre).toBe("Patricio");
+  });
+
+  it("temporada, hola y quiero reservar no se guardan como nombre", () => {
+    for (const texto of ["Jun-Sep 2027", "hola", "quiero reservar"]) {
+      const r = harvestCamposLexical(texto, {}, { focusedPaso: "fecha_ventana" });
+      expect(r.campos.nombre).toBeFalsy();
+    }
+  });
 });
 
 const PERFIL_LISTO: CamposCapturados = {

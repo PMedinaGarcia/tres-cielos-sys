@@ -70,6 +70,26 @@ describe("ScriptService v4", () => {
     });
   });
 
+  it("Patricio con el paso revertido a la fecha igual abre el PDF", async () => {
+    const conv = baseConv({
+      pasoGuion: "fecha_ventana",
+      camposCapturados: {
+        tipoEvento: "boda",
+        fechaTentativa: {
+          tipo: "rango",
+          desde: "2027-06-01",
+          hasta: "2027-09-30",
+          anio: 2027,
+          flexible: true,
+        },
+      },
+    });
+    const r = await script.handleTurn(conv, "Patricio");
+    expect(r.camposCapturados.nombre).toBe("Patricio");
+    expect(r.pasoGuion).toBe("accion");
+    expect(r.textoRespuesta).toBe(COPY_V4_PDF("Patricio"));
+  });
+
   it("nombre → PDF personalizado y paso accion", async () => {
     const conv = baseConv({
       pasoGuion: "nombre",

@@ -117,16 +117,49 @@ export function resumeGreeting(input: {
   campos: CamposCapturados;
 }): string {
   const nombre = input.nombre?.trim();
-  const who = nombre ? `Hola de nuevo, ${nombre}.` : "Hola de nuevo.";
-  const paso = PASO_LABEL[input.pasoGuion] ?? "el mismo punto";
+  const who = nombre
+    ? `¡${nombre}, qué gusto leerte de nuevo! ??`
+    : "¡Qué gusto leerte de nuevo! ??";
   const datos: string[] = [];
-  if (input.campos.fechaTentativa) datos.push("la fecha");
-  if (input.campos.aforo) datos.push("los invitados");
+  if (input.campos.fechaTentativa) datos.push("la temporada de tu boda");
+  if (input.campos.aforo) datos.push("el número de invitados");
   if (input.campos.rangoInversion || input.campos.rangoPresupuestoFuera) {
     datos.push("el presupuesto");
   }
-  const extra = datos.length ? ` Ya tengo ${datos.join(", ")}.` : "";
-  return `${who} Retomamos ${paso}.${extra}`;
+  if (datos.length === 0) {
+    return `${who} Seguimos con la planeación de tu boda justo donde nos quedamos.`;
+  }
+  return `${who} Ya tengo ${listaNatural(datos)} y seguimos justo donde nos quedamos.`;
+}
+
+function listaNatural(partes: string[]): string {
+  if (partes.length <= 1) return partes[0] ?? "";
+  if (partes.length === 2) return `${partes[0]} y ${partes[1]}`;
+  return `${partes.slice(0, -1).join(", ")} y ${partes[partes.length - 1]}`;
+}
+
+/** El perfil en proceso gana si su último turno es igual o posterior al de la fila guardada. */
+export function perfilLocalEsMasReciente(
+  localEn: string | null | undefined,
+  remotoEn: string | null | undefined,
+): boolean {
+  const localMs = localEn ? Date.parse(localEn) : Number.NaN;
+  if (!Number.isFinite(localMs)) return false;
+  const remotoMs = remotoEn ? Date.parse(remotoEn) : Number.NaN;
+  if (!Number.isFinite(remotoMs)) return true;
+  return localMs >= remotoMs;
+}
+
+/** El saludo de esta vuelta ya se dijo mientras la hora de sesión no avance. */
+export function reanudacionYaSaludada(input: {
+  ultimoTurnoEn: string | null;
+  consumidaHasta: string | null | undefined;
+}): boolean {
+  if (!input.consumidaHasta || !input.ultimoTurnoEn) return false;
+  const consumida = Date.parse(input.consumidaHasta);
+  const ultimo = Date.parse(input.ultimoTurnoEn);
+  if (!Number.isFinite(consumida) || !Number.isFinite(ultimo)) return false;
+  return consumida >= ultimo;
 }
 
 export function debeReanudar(input: {

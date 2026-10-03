@@ -22,6 +22,8 @@ import {
   canonicalCamposJson,
   debeReanudar,
   mergeCampos,
+  perfilLocalEsMasReciente,
+  reanudacionYaSaludada,
   ultimasLineas,
   type LineaMemoria,
 } from "./cliente-memoria.logic";
@@ -57,6 +59,8 @@ interface PerfilMemoria {
   paqueteTentativoId: string | null;
   pedidoCotizacion: boolean | null;
   pedidoCotizacionFuente: string | null;
+  /** Hora de sesión que ya recibió el saludo de vuelta. */
+  reanudacionConsumidaHasta: string | null;
   notasHandoff: string[];
   recientes: LineaMemoria[];
   seguimientos: SeguimientoMemoria[];
@@ -405,6 +409,20 @@ export class ClienteMemoriaService {
     return this.findPerfil(this.keysFor(state as ConversacionState, null));
   }
 
+  /** Marca la hora de sesión que ya recibió el saludo de vuelta. */
+  marcarReanudacionSaludada(
+    state: Pick<ConversacionState, "canal" | "externalThreadId" | "camposCapturados">,
+  ): void {
+    const perfil = this.perfilDe(state);
+    if (!perfil?.ultimoTurnoEn) return;
+    const actual = perfil.reanudacionConsumidaHasta;
+    const ultimo = Date.parse(perfil.ultimoTurnoEn);
+    const previa = actual ? Date.parse(actual) : Number.NaN;
+    if (!Number.isFinite(previa) || ultimo >= previa) {
+      perfil.reanudacionConsumidaHasta = perfil.ultimoTurnoEn;
+    }
+  }
+
   private overlay(state: ConversacionState, perfil: PerfilMemoria, ahora: Date): void {
     state.camposCapturados = mergeCampos(perfil.campos, state.camposCapturados);
     state.pasoGuion = perfil.pasoGuion || state.pasoGuion;
@@ -422,11 +440,17 @@ export class ClienteMemoriaService {
     state.pedidoCotizacionFuente = perfil.pedidoCotizacionFuente;
     state.resumenMemoria = perfil.resumen;
     state.ventanaContexto = perfil.recientes;
-    state.reanudarSesion = debeReanudar({
+    const gap = debeReanudar({
       ultimoTurnoEn: perfil.ultimoTurnoEn,
       ahora,
       gapMs: this.sessionGapMs(),
     });
+    state.reanudarSesion =
+      gap &&
+      !reanudacionYaSaludada({
+        ultimoTurnoEn: perfil.ultimoTurnoEn,
+        consumidaHasta: perfil.reanudacionConsumidaHasta,
+      });
     if (perfil.campos.rutaComercial && !state.camposCapturados.rutaComercial) {
       state.camposCapturados.rutaComercial = perfil.rutaComercial;
     }
@@ -454,6 +478,7 @@ export class ClienteMemoriaService {
       paqueteTentativoId: state.paqueteTentativoId ?? null,
       pedidoCotizacion: state.pedidoCotizacion ?? null,
       pedidoCotizacionFuente: state.pedidoCotizacionFuente ?? null,
+      reanudacionConsumidaHasta: null,
       notasHandoff: [],
       recientes: ultimasLineas(state),
       seguimientos: [],
@@ -476,18 +501,25 @@ export class ClienteMemoriaService {
       this.index(remoto, keys);
       return remoto;
     }
+    const localReciente = perfilLocalEsMasReciente(
+      local.ultimoTurnoEn,
+      remoto.ultimoTurnoEn,
+    );
     local.campos = mergeCampos(remoto.campos, local.campos);
     local.clienteId = remoto.clienteId ?? local.clienteId;
-    local.pasoGuion = remoto.pasoGuion;
-    local.estadoBot = remoto.estadoBot;
-    local.resumen = remoto.resumen || local.resumen;
-    local.ultimoTurnoEn = remoto.ultimoTurnoEn ?? local.ultimoTurnoEn;
+    if (!localReciente) {
+      local.pasoGuion = remoto.pasoGuion;
+      local.estadoBot = remoto.estadoBot;
+      local.resumen = remoto.resumen || local.resumen;
+      local.ultimoTurnoEn = remoto.ultimoTurnoEn ?? local.ultimoTurnoEn;
+      local.guionVersion =
+        (remoto.guionVersion as GuionVersion | null) ?? local.guionVersion;
+      local.pedidoCotizacion = remoto.pedidoCotizacion;
+      local.pedidoCotizacionFuente = remoto.pedidoCotizacionFuente;
+      if (remoto.recientes.length) local.recientes = remoto.recientes;
+    }
     local.oportunidadAbiertaId =
       remoto.oportunidadAbiertaId ?? local.oportunidadAbiertaId;
-    local.guionVersion = (remoto.guionVersion as GuionVersion | null) ?? local.guionVersion;
-    local.pedidoCotizacion = remoto.pedidoCotizacion;
-    local.pedidoCotizacionFuente = remoto.pedidoCotizacionFuente;
-    if (remoto.recientes.length) local.recientes = remoto.recientes;
     this.index(local, keys);
     return local;
   }

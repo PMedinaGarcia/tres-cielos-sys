@@ -128,6 +128,12 @@ export class ConversationStoreService {
     return this.memoria.aplicar(state, { perfilWaId });
   }
 
+  marcarReanudacionSaludada(conversacionId: string): void {
+    const conv = this.byId.get(conversacionId);
+    if (!conv) return;
+    this.memoria?.marcarReanudacionSaludada(conv);
+  }
+
   async findById(id: string): Promise<ConversacionState | null> {
     const mem = this.byId.get(id);
     if (mem) return mem;

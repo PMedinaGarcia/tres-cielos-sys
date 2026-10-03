@@ -7,6 +7,7 @@ import {
   mergeCampos,
   resumeGreeting,
 } from "./cliente-memoria.logic";
+import type { PrismaService } from "../../prisma/prisma.service";
 
 const TEL = "+5215512345678";
 
@@ -146,7 +147,141 @@ describe("memoria por cliente", () => {
         pasoGuion: later.pasoGuion,
         campos: later.camposCapturados,
       }),
-    ).toMatch(/Hola de nuevo, Ana/);
+    ).toBe(
+      "¡Ana, qué gusto leerte de nuevo! ?? Seguimos con la planeación de tu boda justo donde nos quedamos.",
+    );
+  });
+
+  it("el saludo de vuelta nombra la temporada ya capturada", () => {
+    expect(
+      resumeGreeting({
+        pasoGuion: "nombre",
+        campos: {
+          fechaTentativa: {
+            tipo: "rango",
+            desde: "2027-06-01",
+            hasta: "2027-09-30",
+            flexible: true,
+          },
+        },
+      }),
+    ).toBe(
+      "¡Qué gusto leerte de nuevo! ?? Ya tengo la temporada de tu boda y seguimos justo donde nos quedamos.",
+    );
+    expect(
+      resumeGreeting({
+        nombre: "Ana",
+        pasoGuion: "accion",
+        campos: {
+          fechaTentativa: {
+            tipo: "rango",
+            desde: "2027-06-01",
+            hasta: "2027-09-30",
+            flexible: true,
+          },
+          aforo: 120,
+          rangoInversion: "r250_349",
+        },
+      }),
+    ).toBe(
+      "¡Ana, qué gusto leerte de nuevo! ?? Ya tengo la temporada de tu boda, el número de invitados y el presupuesto y seguimos justo donde nos quedamos.",
+    );
+  });
+
+  it("el saludo de vuelta no se repite hasta que la hora de sesión avance", async () => {
+    const memoria = new ClienteMemoriaService();
+    const first = state({
+      pasoGuion: "nombre",
+      camposCapturados: { nombre: "Ana" },
+    });
+    await memoria.aplicar(first, { now: new Date("2026-10-01T10:00:00.000Z") });
+    memoria.commitFromState(first, new Date("2026-10-01T10:00:00.000Z"));
+
+    const later = state({ id: "conv-later-saludo", pasoGuion: "saludo" });
+    await memoria.aplicar(later, { now: new Date("2026-10-02T10:00:00.000Z") });
+    expect(later.reanudarSesion).toBe(true);
+    memoria.marcarReanudacionSaludada(later);
+
+    const seguido = state({ id: "conv-seguido", pasoGuion: "saludo" });
+    await memoria.aplicar(seguido, { now: new Date("2026-10-02T10:01:00.000Z") });
+    expect(seguido.reanudarSesion).toBe(false);
+
+    memoria.commitFromState(seguido, new Date("2026-10-02T10:01:00.000Z"));
+    const otroDia = state({ id: "conv-otro-dia", pasoGuion: "saludo" });
+    await memoria.aplicar(otroDia, { now: new Date("2026-10-03T12:00:00.000Z") });
+    expect(otroDia.reanudarSesion).toBe(true);
+  });
+
+  it("un perfil local más nuevo no pierde el paso ni la hora frente a una fila vieja", async () => {
+    const reciente = "2026-10-03T14:38:00.000Z";
+    let filaVieja = false;
+    const prisma = {
+      identificadorCliente: {
+        findMany: async () => (filaVieja ? [{ clienteId: "cli-1" }] : []),
+      },
+      memoriaCliente: {
+        findUnique: async () =>
+          filaVieja
+            ? {
+                clienteId: "cli-1",
+                campos: {
+                  tipoEvento: "boda",
+                  fechaTentativa: {
+                    tipo: "rango",
+                    desde: "2027-06-01",
+                    hasta: "2027-09-30",
+                    flexible: true,
+                  },
+                },
+                pasoGuion: "fecha_ventana",
+                guionVersion: "v4",
+                rutaComercial: null,
+                estadoBot: "escalado",
+                resumen: "fila vieja",
+                ultimoTurnoEn: new Date("2026-10-01T10:00:00.000Z"),
+                oportunidadAbiertaId: "opp-1",
+                asesorLockId: null,
+                slaVenceEn: null,
+                cola: null,
+                motivoHandoff: null,
+                escaladoEn: null,
+                ultimaRuta: null,
+                paqueteTentativoId: null,
+                pedidoCotizacion: null,
+                pedidoCotizacionFuente: null,
+              }
+            : null,
+      },
+    };
+    const prevDb = process.env.DATABASE_URL;
+    process.env.DATABASE_URL = prevDb || "postgres://test";
+    try {
+      const memoria = new ClienteMemoriaService(prisma as unknown as PrismaService);
+      const local = state({
+        pasoGuion: "nombre",
+        camposCapturados: {
+          fechaTentativa: {
+            tipo: "rango",
+            desde: "2027-06-01",
+            hasta: "2027-09-30",
+            flexible: true,
+          },
+        },
+      });
+      await memoria.aplicar(local, { now: new Date(reciente) });
+      memoria.commitFromState(local, new Date(reciente));
+      filaVieja = true;
+
+      const otraVez = state({ id: "conv-stale", pasoGuion: "saludo" });
+      await memoria.aplicar(otraVez, { now: new Date("2026-10-03T14:39:00.000Z") });
+      expect(otraVez.pasoGuion).toBe("nombre");
+      expect(otraVez.estadoBot).toBe("activo");
+      expect(memoria.perfilDe(otraVez)?.ultimoTurnoEn).toBe(reciente);
+      expect(otraVez.reanudarSesion).toBe(false);
+    } finally {
+      if (prevDb == null) delete process.env.DATABASE_URL;
+      else process.env.DATABASE_URL = prevDb;
+    }
   });
 
   it("guarda el mensaje del cliente mientras el bot está en silencio", async () => {

@@ -103,6 +103,30 @@ describe("Orchestrator v4 (fecha → nombre → PDF → CTA)", () => {
     expect(conv?.camposCapturados.pdfEnviado).toBe(true);
   });
 
+  it("tras la temporada, Patricio abre el PDF y no vuelve a pedir el nombre", async () => {
+    const { orch } = buildOrchestratorV4();
+    const temporada = await orch.handleTurn({
+      canal: "whatsapp",
+      externalThreadId: "v4-patricio",
+      externalMessageId: "p1",
+      texto: "Jun-Sep 2027",
+      buttonPayload: "fecha.jun_sep",
+      recibidoEn: new Date().toISOString(),
+    });
+    const nombre = await orch.handleTurn({
+      canal: "whatsapp",
+      externalThreadId: "v4-patricio",
+      externalMessageId: "p2",
+      texto: "Patricio",
+      recibidoEn: new Date().toISOString(),
+    });
+    expect(temporada.pasoGuion).toBe("nombre");
+    expect(temporada.textoRespuesta).toBe(COPY_V4_NOMBRE);
+    expect(nombre.pasoGuion).toBe("accion");
+    expect(nombre.textoRespuesta).toBe(COPY_V4_PDF("Patricio"));
+    expect(nombre.textoRespuesta).not.toContain("¿Con quién tenemos el gusto?");
+  });
+
   it("Conocer Tres Cielos → handoff comercial con intención de visita", async () => {
     const { orch, store } = buildOrchestratorV4();
     const { turn } = await hastaCta(orch, "v4-visita");
