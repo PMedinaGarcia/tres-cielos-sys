@@ -26,10 +26,10 @@ export const COPY_V4_PRESUPUESTO_FUERA_RETRY =
 export const COPY_V4_PRESUPUESTO_CIERRE =
   "Gracias por compartirlo, un ejecutivo se pondrá en contacto contigo.";
 
-const HANDOFF_VISITA_CUERPO =
+export const HANDOFF_VISITA_CUERPO =
   "Un ejecutivo te contactará a la brevedad posible para agendar tu visita.";
 
-const HANDOFF_EJECUTIVO_CUERPO =
+export const HANDOFF_EJECUTIVO_CUERPO =
   "Te conecto con un ejecutivo; en breve te atenderá.";
 
 export const COPY_V4_HANDOFF_VISITA = (nombre?: string | null): string =>

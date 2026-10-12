@@ -127,15 +127,31 @@ describe("composeWaContent", () => {
   });
 
   it("handoff v4 de visita y ejecutivo ofrece volver al inicio", () => {
-    for (const texto of [
-      COPY_V4_HANDOFF_VISITA("Ana"),
-      COPY_V4_HANDOFF_VISITA(null),
-      COPY_V4_HANDOFF_EJECUTIVO("Ana"),
-      COPY_V4_HANDOFF_EJECUTIVO(),
-    ]) {
-      const wa = composeWaContent({ texto, ruta: "handoff" });
+    const casos = [
+      {
+        texto: COPY_V4_HANDOFF_VISITA("Ana"),
+        templateId: "canal.handoff_visita",
+        contentVariables: { "1": "Ana" },
+      },
+      {
+        texto: COPY_V4_HANDOFF_VISITA(null),
+        templateId: "canal.handoff_visita_base",
+      },
+      {
+        texto: COPY_V4_HANDOFF_EJECUTIVO("Ana"),
+        templateId: "canal.handoff_ejecutivo",
+        contentVariables: { "1": "Ana" },
+      },
+      {
+        texto: COPY_V4_HANDOFF_EJECUTIVO(),
+        templateId: "canal.handoff_ejecutivo_base",
+      },
+    ];
+    for (const caso of casos) {
+      const wa = composeWaContent({ texto: caso.texto, ruta: "handoff" });
       expect(wa?.kind).toBe("quick-reply");
-      expect(wa?.templateId).toBe("canal.handoff");
+      expect(wa?.templateId).toBe(caso.templateId);
+      expect(wa?.contentVariables).toEqual(caso.contentVariables);
       expect(wa?.buttons).toEqual([
         { id: "flujo.reiniciar", title: "Volver al inicio" },
       ]);
