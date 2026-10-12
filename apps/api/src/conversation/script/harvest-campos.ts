@@ -1,4 +1,9 @@
-import { anioTarifaPublicada, SEDE_ID, SEDE_NOMBRE } from "@tres-cielos/shared";
+import {
+  anioTarifaPublicada,
+  REINICIO_GUION_PAYLOAD,
+  SEDE_ID,
+  SEDE_NOMBRE,
+} from "@tres-cielos/shared";
 import {
   aforoBandaFrom,
   fechaEstadoFrom,
@@ -700,6 +705,18 @@ export function parseRangoPresupuestoFuera(
   return null;
 }
 
+/** Reinicio explícito del guion v4 ya escalado. No matchea frases más largas. */
+export function isReinicioGuion(
+  texto: string,
+  buttonPayload?: string | null,
+): boolean {
+  if (buttonPayload?.trim() === REINICIO_GUION_PAYLOAD) return true;
+  const t = stripAccents(texto.trim().toLowerCase())
+    .replace(/[.!?]+$/g, "")
+    .trim();
+  return t === "inicio" || t === "volver al inicio";
+}
+
 export function parseCtaGuion(texto: string): CtaGuion | null {
   const t = stripAccents(texto.toLowerCase()).trim();
   if (
@@ -709,7 +726,7 @@ export function parseCtaGuion(texto: string): CtaGuion | null {
   }
   if (/^accion\.ejecutivo$|\bejecutiv|^tengo dudas\b/.test(t)) return "ejecutivo";
   if (
-    /^accion\.fuera_presupuesto$|fuera de (tu|mi|nuestro) presupuesto|muy caro|no nos alcanza/.test(t)
+    /^accion\.fuera_presupuesto$|fuera de (tu |mi |nuestro )?presupuesto|quiero ver mas opciones|muy caro|no nos alcanza/.test(t)
   ) {
     return "fuera_presupuesto";
   }

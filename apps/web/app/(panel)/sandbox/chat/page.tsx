@@ -5,6 +5,7 @@ import {
   HABLAR_ASESOR_PAYLOAD,
   HABLAR_ASESOR_TEXTO,
   HABLAR_ASESOR_TITLE,
+  REINICIO_GUION_PAYLOAD,
   REASONING_LEVELS,
   type ReasoningStep,
   type WaButton,
@@ -89,6 +90,13 @@ export default function SandboxChatPage() {
     lastBot?.turn?.ruta === "handoff" ||
     lastBot?.turn?.estadoBot === "escalado" ||
     lastBot?.turn?.estadoBot === "humano";
+  const reinicioLineId = [...lines]
+    .reverse()
+    .find((line) =>
+      line.waContent?.buttons?.some((btn) => btn.id === REINICIO_GUION_PAYLOAD),
+    )?.id;
+  const puedeReiniciar =
+    Boolean(reinicioLineId) && lastBot?.turn?.estadoBot === "escalado";
 
   const mutation = useMutation({
     mutationFn: async (input: { texto: string; buttonPayload?: string }) => {
@@ -198,7 +206,9 @@ export default function SandboxChatPage() {
             {lastBot?.turn?.motivoHandoff
               ? ` · ${lastBot.turn.motivoHandoff}`
               : ""}
-            . El bot no responde más en este hilo.
+            {puedeReiniciar
+              ? ". Puedes volver al inicio o esperar al ejecutivo."
+              : ". El bot no responde más en este hilo."}
           </div>
         )}
 
@@ -209,11 +219,14 @@ export default function SandboxChatPage() {
             </p>
           )}
           {lines.map((line, i) => {
+            const esReinicio =
+              puedeReiniciar &&
+              line.id === reinicioLineId &&
+              !mutation.isPending;
             const interactive =
               line.role === "bot" &&
-              lastLine?.id === line.id &&
-              botActivo &&
-              !mutation.isPending;
+              !mutation.isPending &&
+              ((lastLine?.id === line.id && botActivo) || esReinicio);
             return (
               <div
                 key={line.id}

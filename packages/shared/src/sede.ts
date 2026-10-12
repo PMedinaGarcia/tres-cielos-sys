@@ -48,15 +48,28 @@ export const GUION_FLUJO_PDFS = [
     slug: "experiencia-boda-tres-dias-2027",
     filename: "Experiencia boda de tres días - 2027.pdf",
     publicPath: "/public/guion/experiencia-boda-tres-dias-2027.pdf",
+    /** Enlace que ve el prospecto. El path largo sigue sirviendo el mismo archivo. */
+    shortPath: "/g/exp",
     delivery: "link",
   },
   {
     slug: "tarifas-2027-tres-cielos",
     filename: "Tarifas 2027 - Tres Cielos.pdf",
     publicPath: "/public/guion/tarifas-2027-tres-cielos.pdf",
+    shortPath: null,
     delivery: "media",
   },
 ] as const;
+
+/** URL que viaja en el texto de WhatsApp. El `url` del documento sigue siendo el path largo. */
+export function guionWhatsappLinkUrl(url: string): string {
+  for (const pdf of GUION_FLUJO_PDFS) {
+    if (pdf.shortPath && url.includes(pdf.publicPath)) {
+      return url.replace(pdf.publicPath, pdf.shortPath);
+    }
+  }
+  return url;
+}
 
 export type GuionFlujoPdf = (typeof GUION_FLUJO_PDFS)[number];
 export type GuionFlujoPdfSlug = GuionFlujoPdf["slug"];

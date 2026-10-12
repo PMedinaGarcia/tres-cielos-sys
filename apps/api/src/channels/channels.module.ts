@@ -12,7 +12,10 @@ import { MetaWebhookController } from "./meta.webhook.controller";
 import { TwilioWebhookController } from "./twilio.webhook.controller";
 import { ConversationPanelController } from "./conversation-panel.controller";
 import { ChannelSandboxController } from "./channel-sandbox.controller";
-import { GuionAssetsController } from "./guion-assets.controller";
+import {
+  GuionAssetsController,
+  GuionShortLinkController,
+} from "./guion-assets.controller";
 import { MessageNormalizerService } from "./message-normalizer.service";
 import { OutboundService } from "./outbound.service";
 import { IdempotencyService } from "./idempotency.service";
@@ -51,6 +54,7 @@ import { AuthModule } from "../auth/auth.module";
     ConversationPanelController,
     ChannelSandboxController,
     GuionAssetsController,
+    GuionShortLinkController,
   ],
   providers: [
     MessageNormalizerService,

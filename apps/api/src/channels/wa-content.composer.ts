@@ -10,6 +10,7 @@ import {
   COPY_V4_B1_RETRY,
   COPY_V4_CTA_RETRY,
   COPY_V4_PRESUPUESTO_FUERA_RETRY,
+  esHandoffV4ConReinicio,
 } from "../conversation/script/script-v4.copy";
 import {
   ACCION_CTA_ITEMS,
@@ -21,6 +22,7 @@ import {
   INTENCION_SI_BUTTON,
   INVERSION_ITEMS,
   OCASION_ITEMS,
+  VOLVER_INICIO_BUTTON,
   WA_LIST_OPEN_BUTTON,
   contentSidFor,
 } from "./wa-templates.catalog";
@@ -43,7 +45,9 @@ export function composeWaContent(input: {
 
   let content: WaContent | undefined;
   if (input.ruta === "handoff") {
-    content = textTemplate("canal.handoff", body);
+    content = esHandoffV4ConReinicio(body)
+      ? quickReply("canal.handoff", body, [VOLVER_INICIO_BUTTON])
+      : textTemplate("canal.handoff", body);
   } else if (input.ruta === "catalogo") {
     content = textTemplate("canal.catalogo", body);
   } else if (input.ruta === "rag") {

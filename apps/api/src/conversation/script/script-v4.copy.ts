@@ -26,8 +26,22 @@ export const COPY_V4_PRESUPUESTO_FUERA_RETRY =
 export const COPY_V4_PRESUPUESTO_CIERRE =
   "Gracias por compartirlo, un ejecutivo se pondrá en contacto contigo.";
 
+const HANDOFF_VISITA_CUERPO =
+  "Un ejecutivo te contactará a la brevedad posible para agendar tu visita.";
+
+const HANDOFF_EJECUTIVO_CUERPO =
+  "Te conecto con un ejecutivo; en breve te atenderá.";
+
 export const COPY_V4_HANDOFF_VISITA = (nombre?: string | null): string =>
-  `${nombre ? `Perfecto, ${nombre}.` : "Perfecto."} Un asesor te contacta para agendar tu visita al jardín (15–30 min).`;
+  `${nombre ? `Perfecto, ${nombre}.` : "Perfecto."} ${HANDOFF_VISITA_CUERPO}`;
 
 export const COPY_V4_HANDOFF_EJECUTIVO = (nombre?: string | null): string =>
-  `${nombre ? `Con gusto, ${nombre}.` : "Con gusto."} Te conecto con un ejecutivo; en breve te atiende (15–30 min).`;
+  `${nombre ? `Con gusto, ${nombre}.` : "Con gusto."} ${HANDOFF_EJECUTIVO_CUERPO}`;
+
+/** Handoff comercial v4 (visita o ejecutivo), aunque el saludo lleve nombre. */
+export function esHandoffV4ConReinicio(texto: string): boolean {
+  return (
+    texto.endsWith(HANDOFF_VISITA_CUERPO) ||
+    texto.endsWith(HANDOFF_EJECUTIVO_CUERPO)
+  );
+}

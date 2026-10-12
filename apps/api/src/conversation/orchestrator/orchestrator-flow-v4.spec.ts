@@ -194,11 +194,35 @@ describe("Orchestrator v4 (fecha → nombre → PDF → CTA)", () => {
   it("sin FIELD_TEST_RESET, tras la visita el hilo queda en silencio", async () => {
     const { orch } = buildOrchestratorV4();
     const { turn } = await hastaCta(orch, "v4-silencio-visita");
-    await turn("m4", "Conocer Tres Cielos", "accion.visita");
+    const handoff = await turn("m4", "Conocer Tres Cielos", "accion.visita");
+    expect(handoff.waContent?.kind).toBe("quick-reply");
+    expect(handoff.waContent?.buttons?.map((b) => b.id)).toEqual([
+      "flujo.reiniciar",
+    ]);
     const again = await turn("m5", "hola");
     expect(again.ruta).toBe("silencio");
     expect(again.textoRespuesta).toBe("");
     expect(again.estadoBot).toBe("escalado");
+  });
+
+  it("tras el handoff, «inicio» o el botón vuelven al saludo", async () => {
+    const { orch, store } = buildOrchestratorV4();
+    const { turn } = await hastaCta(orch, "v4-reinicio-visita");
+    await turn("m4", "Conocer Tres Cielos", "accion.visita");
+    const again = await turn("m5", "inicio");
+    expect(again.estadoBot).toBe("activo");
+    expect(again.textoRespuesta).toBe(COPY_V4_B1);
+    expect(again.waContent?.templateId).toBe("guion.fecha_ventana");
+    expect(again.pasoGuion).toBe("fecha_ventana");
+    const conv = await store.findById(again.conversacionId);
+    expect(conv?.camposCapturados.nombre).toBeFalsy();
+    expect(conv?.camposCapturados.ctaGuion).toBeFalsy();
+
+    const { turn: turnBtn } = await hastaCta(orch, "v4-reinicio-boton");
+    await turnBtn("m4", "Tengo dudas", "accion.ejecutivo");
+    const desdeBoton = await turnBtn("m5", "Volver al inicio", "flujo.reiniciar");
+    expect(desdeBoton.textoRespuesta).toBe(COPY_V4_B1);
+    expect(desdeBoton.estadoBot).toBe("activo");
   });
 
   it("con FIELD_TEST_RESET, tras el rango fuera de presupuesto vuelve el saludo", async () => {
