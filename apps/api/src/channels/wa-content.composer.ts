@@ -10,7 +10,8 @@ import {
   COPY_V4_B1_RETRY,
   COPY_V4_CTA_RETRY,
   COPY_V4_PRESUPUESTO_FUERA_RETRY,
-  esHandoffV4ConReinicio,
+  HANDOFF_EJECUTIVO_CUERPO,
+  HANDOFF_VISITA_CUERPO,
 } from "../conversation/script/script-v4.copy";
 import {
   ACCION_CTA_ITEMS,
@@ -45,9 +46,7 @@ export function composeWaContent(input: {
 
   let content: WaContent | undefined;
   if (input.ruta === "handoff") {
-    content = esHandoffV4ConReinicio(body)
-      ? quickReply("canal.handoff", body, [VOLVER_INICIO_BUTTON])
-      : textTemplate("canal.handoff", body);
+    content = composeHandoff(body);
   } else if (input.ruta === "catalogo") {
     content = textTemplate("canal.catalogo", body);
   } else if (input.ruta === "rag") {
@@ -217,6 +216,37 @@ export function attachWaContent<
   });
   if (!waContent) return rest;
   return { ...rest, waContent };
+}
+
+function composeHandoff(body: string): WaContent {
+  const visita = parseHandoff(body, "Perfecto", HANDOFF_VISITA_CUERPO);
+  const ejecutivo = parseHandoff(body, "Con gusto", HANDOFF_EJECUTIVO_CUERPO);
+  const parsed = visita ?? ejecutivo;
+  if (!parsed) return textTemplate("canal.handoff", body);
+  const templateId = visita
+    ? parsed.nombre
+      ? "canal.handoff_visita"
+      : "canal.handoff_visita_base"
+    : parsed.nombre
+      ? "canal.handoff_ejecutivo"
+      : "canal.handoff_ejecutivo_base";
+  const content = quickReply(templateId, body, [VOLVER_INICIO_BUTTON]);
+  if (!parsed.nombre) return content;
+  return { ...content, contentVariables: { "1": parsed.nombre } };
+}
+
+function parseHandoff(
+  body: string,
+  saludo: string,
+  cuerpo: string,
+): { nombre: string | null } | null {
+  if (body === `${saludo}. ${cuerpo}`) return { nombre: null };
+  const prefix = `${saludo}, `;
+  const suffix = `. ${cuerpo}`;
+  if (!body.startsWith(prefix) || !body.endsWith(suffix)) return null;
+  const nombre = body.slice(prefix.length, body.length - suffix.length).trim();
+  if (!nombre) return null;
+  return { nombre };
 }
 
 function textTemplate(templateId: string, body: string): WaContent {
