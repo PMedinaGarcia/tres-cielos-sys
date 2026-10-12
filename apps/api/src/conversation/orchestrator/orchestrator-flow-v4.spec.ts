@@ -15,6 +15,10 @@ import { NurtureWorkerService } from "../nurture/nurture.worker";
 import type { CatalogToolsService } from "../../tools-catalog/catalog-tools.service";
 import { flowConfig } from "../__tests__/flow-config";
 import {
+  REINICIAR_FLUJO_LINEA,
+  REINICIAR_FLUJO_PAYLOAD,
+} from "@tres-cielos/shared";
+import {
   COPY_V4_B1,
   COPY_V4_HANDOFF_EJECUTIVO,
   COPY_V4_HANDOFF_VISITA,
@@ -179,8 +183,14 @@ describe("Orchestrator v4 (fecha → nombre → PDF → CTA)", () => {
   it("con FIELD_TEST_RESET, tras la visita el siguiente mensaje abre el saludo", async () => {
     const { orch, store } = buildOrchestratorV4({ fieldTestReset: true });
     const { turn } = await hastaCta(orch, "v4-reset-visita");
-    await turn("m4", "Conocer Tres Cielos", "accion.visita");
-    const again = await turn("m5", "hola");
+    const cierre = await turn("m4", "Conocer Tres Cielos", "accion.visita");
+    expect(cierre.textoRespuesta).toContain(COPY_V4_HANDOFF_VISITA("Ana"));
+    expect(cierre.textoRespuesta).toContain(REINICIAR_FLUJO_LINEA);
+    expect(cierre.waContent?.kind).toBe("quick-reply");
+    expect(cierre.waContent?.buttons?.map((btn) => btn.id)).toEqual([
+      REINICIAR_FLUJO_PAYLOAD,
+    ]);
+    const again = await turn("m5", "REINICIAR");
     expect(again.estadoBot).toBe("activo");
     expect(again.textoRespuesta).toBe(COPY_V4_B1);
     expect(again.waContent?.templateId).toBe("guion.fecha_ventana");
@@ -205,8 +215,13 @@ describe("Orchestrator v4 (fecha → nombre → PDF → CTA)", () => {
     const { orch, store } = buildOrchestratorV4({ fieldTestReset: true });
     const { turn } = await hastaCta(orch, "v4-reset-nutricion");
     await turn("m4", "Estamos fuera de tu presupuesto", "accion.fuera_presupuesto");
-    await turn("m5", "250-300 mil", "presupuesto.r250_300");
-    const again = await turn("m6", "hola");
+    const cierre = await turn("m5", "250-300 mil", "presupuesto.r250_300");
+    expect(cierre.textoRespuesta).toContain(COPY_V4_PRESUPUESTO_CIERRE);
+    expect(cierre.textoRespuesta).toContain(REINICIAR_FLUJO_LINEA);
+    expect(cierre.waContent?.buttons?.map((btn) => btn.id)).toContain(
+      REINICIAR_FLUJO_PAYLOAD,
+    );
+    const again = await turn("m6", "Reiniciar prueba", REINICIAR_FLUJO_PAYLOAD);
     expect(again.textoRespuesta).toBe(COPY_V4_B1);
     expect(again.waContent?.templateId).toBe("guion.fecha_ventana");
     expect(again.estadoBot).toBe("activo");

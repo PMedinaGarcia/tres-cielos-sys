@@ -5,6 +5,7 @@ import {
   HABLAR_ASESOR_PAYLOAD,
   HABLAR_ASESOR_TEXTO,
   HABLAR_ASESOR_TITLE,
+  REINICIAR_FLUJO_PAYLOAD,
   REASONING_LEVELS,
   type ReasoningStep,
   type WaButton,
@@ -34,6 +35,12 @@ function formatTime(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function offersReinicio(content: WaContent | null | undefined): boolean {
+  return Boolean(
+    content?.buttons?.some((btn) => btn.id === REINICIAR_FLUJO_PAYLOAD),
+  );
 }
 
 function guionDocuments(content: WaContent | null | undefined) {
@@ -194,11 +201,13 @@ export default function SandboxChatPage() {
 
         {enrutado && (
           <div className="mx-6 mb-2 rounded-xl border border-teal/25 bg-white/50 px-3 py-2 text-sm text-teal">
-            Enrutado a asesor
-            {lastBot?.turn?.motivoHandoff
-              ? ` · ${lastBot.turn.motivoHandoff}`
-              : ""}
-            . El bot no responde más en este hilo.
+            {offersReinicio(lastBot?.waContent)
+              ? "Flujo cerrado. Reiniciar prueba vuelve a empezar este hilo."
+              : `Enrutado a asesor${
+                  lastBot?.turn?.motivoHandoff
+                    ? ` · ${lastBot.turn.motivoHandoff}`
+                    : ""
+                }. El bot no responde más en este hilo.`}
           </div>
         )}
 
@@ -212,8 +221,8 @@ export default function SandboxChatPage() {
             const interactive =
               line.role === "bot" &&
               lastLine?.id === line.id &&
-              botActivo &&
-              !mutation.isPending;
+              !mutation.isPending &&
+              (botActivo || offersReinicio(line.waContent));
             return (
               <div
                 key={line.id}

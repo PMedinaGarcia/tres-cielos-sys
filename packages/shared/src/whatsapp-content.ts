@@ -9,6 +9,19 @@ export const HABLAR_ASESOR_TITLE = "Hablar con asesor";
 /** Texto inbound que también matchea el regex de pedido humano. */
 export const HABLAR_ASESOR_TEXTO = "Hablar con un asesor";
 
+/** Payload del reinicio de prueba (Twilio ButtonPayload). */
+export const REINICIAR_FLUJO_PAYLOAD = "reiniciar_flujo";
+
+/** Título de botón WhatsApp (máx. 20 caracteres). */
+export const REINICIAR_FLUJO_TITLE = "Reiniciar prueba";
+
+/** Texto inbound canónico cuando llega el payload o la palabra clave. */
+export const REINICIAR_FLUJO_TEXTO = "REINICIAR";
+
+/** Línea que se agrega al cierre para que la prueba se pueda repetir por texto. */
+export const REINICIAR_FLUJO_LINEA =
+  "Para volver a probar el flujo, responde REINICIAR.";
+
 export const WA_BUTTON_TITLE_MAX = 20;
 export const WA_LIST_ITEM_TITLE_MAX = 24;
 export const WA_QUICK_REPLY_MAX = 3;

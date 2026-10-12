@@ -143,7 +143,9 @@ export class ClienteMemoriaService {
     state.camposCapturados = { ...perfil.campos };
     perfil.pasoGuion = state.pasoGuion;
     perfil.guionVersion = state.guionVersion ?? perfil.guionVersion;
-    perfil.rutaComercial = state.camposCapturados.rutaComercial ?? perfil.rutaComercial;
+    perfil.rutaComercial = replace
+      ? (state.camposCapturados.rutaComercial ?? null)
+      : (state.camposCapturados.rutaComercial ?? perfil.rutaComercial);
     perfil.estadoBot = state.estadoBot;
     perfil.asesorLockId = state.asesorLockId ?? null;
     perfil.slaVenceEn = state.slaVenceEn ?? null;

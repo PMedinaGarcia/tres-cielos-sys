@@ -489,12 +489,24 @@ export function nextPasoGuionV4(campos: CamposCapturados): PasoGuion {
   return "faq_libre";
 }
 
-/** Hilo v4 que ya no captura: handoff o nutrición cerrada. */
-export function isHiloV4Terminado(
+const RUTAS_FLUJO_CERRADO = new Set<RutaComercial>([
+  "handoff",
+  "nutricion",
+  "seguimiento",
+  "cierre",
+]);
+
+/**
+ * El guion ya no captura: escalado a asesor, o ruta comercial de cierre.
+ * Un hilo en atención humana no se reinicia.
+ */
+export function isHiloTerminado(
   conv: Pick<ConversacionState, "estadoBot" | "camposCapturados">,
 ): boolean {
+  if (conv.estadoBot === "humano") return false;
   if (conv.estadoBot === "escalado") return true;
-  return conv.camposCapturados.rutaComercial === "nutricion";
+  const ruta = conv.camposCapturados.rutaComercial;
+  return ruta != null && RUTAS_FLUJO_CERRADO.has(ruta);
 }
 
 export function isCapturaPendienteV4(conv: ConversacionState): boolean {

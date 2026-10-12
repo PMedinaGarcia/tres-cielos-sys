@@ -54,7 +54,8 @@ import {
   deriveEncaje,
   deriveEncajeV3,
   effectiveConversationFlow,
-  isHiloV4Terminado,
+  initialPasoGuion,
+  isHiloTerminado,
   isV2Plus,
   nextPasoGuionV2,
   nextPasoGuionV3,
@@ -120,7 +121,10 @@ import {
 } from "./catalog-copy";
 import { ReasoningTraceService } from "../reasoning/reasoning-trace.service";
 import { ExpedientePersistService } from "../../crm/expediente-persist.service";
-import { attachWaContent } from "../../channels/wa-content.composer";
+import {
+  appendReinicioPruebaLine,
+  attachWaContent,
+} from "../../channels/wa-content.composer";
 import { guionFlujoDocuments } from "../../channels/guion-assets";
 import {
   canonicalizeSku,
@@ -272,15 +276,15 @@ export class OrchestratorService {
       await this.store.update(conv.id, { guionVersion: assigned });
     }
     const flow = this.flowOf(conv);
-    const fieldReset =
-      this.fieldTestReset() && flow === "v4" && isHiloV4Terminado(conv);
+    const fieldReset = this.fieldTestReset() && isHiloTerminado(conv);
     if (fieldReset) {
+      const pasoGuion = initialPasoGuion(flow);
       const campos: CamposCapturados = {
         telefono: conv.camposCapturados.telefono ?? null,
-        tipoEvento: "boda",
+        ...(flow === "v1" ? {} : { tipoEvento: "boda" as const }),
       };
       conv.estadoBot = "activo";
-      conv.pasoGuion = "fecha_ventana";
+      conv.pasoGuion = pasoGuion;
       conv.camposCapturados = campos;
       conv.motivoHandoff = null;
       conv.escaladoEn = null;
@@ -288,7 +292,7 @@ export class OrchestratorService {
       conv.slaVenceEn = null;
       await this.store.update(conv.id, {
         estadoBot: "activo",
-        pasoGuion: "fecha_ventana",
+        pasoGuion,
         camposCapturados: campos,
         motivoHandoff: null,
         escaladoEn: null,
@@ -1163,6 +1167,7 @@ export class OrchestratorService {
           ruta: "catalogo",
           mensajeEntranteId,
           pasoGuion: "faq_libre",
+          reinicioPrueba: this.fieldTestReset(),
         });
       }
       return this.finishReply({
@@ -1172,6 +1177,7 @@ export class OrchestratorService {
         ruta: "safe",
         mensajeEntranteId,
         pasoGuion: "faq_libre",
+        reinicioPrueba: this.fieldTestReset(),
       });
     }
 
@@ -1251,6 +1257,7 @@ export class OrchestratorService {
       ruta: "safe",
       mensajeEntranteId,
       pasoGuion: "faq_libre",
+      reinicioPrueba: this.fieldTestReset(),
     });
   }
 
@@ -1308,6 +1315,7 @@ export class OrchestratorService {
       ruta: "guion",
       mensajeEntranteId,
       pasoGuion: "faq_libre",
+      reinicioPrueba: this.fieldTestReset(),
     });
   }
 
@@ -1412,6 +1420,7 @@ export class OrchestratorService {
       estadoBot: "escalado",
       adjuntoGuion:
         comercial && encajeV3 !== "no" ? GUION_ADJUNTO_PAQUETE_BODAS : undefined,
+      reinicioPrueba: this.fieldTestReset(),
     });
   }
 
@@ -1448,10 +1457,14 @@ export class OrchestratorService {
     listoParaCotizar?: boolean;
     estadoBot?: TurnResponse["estadoBot"];
     adjuntoGuion?: string | null;
+    reinicioPrueba?: boolean;
   }): Promise<TurnResponse> {
     this.quota.consumeMessaging(1);
     const convPrev = await this.store.findById(input.conversacionId);
     let texto = input.texto;
+    if (input.reinicioPrueba) {
+      texto = appendReinicioPruebaLine(texto);
+    }
     if (convPrev?.reanudarSesion && texto.trim()) {
       texto = `${resumeGreeting({
         nombre: convPrev.camposCapturados.nombre,
@@ -1537,6 +1550,7 @@ export class OrchestratorService {
         pasoGuion: input.pasoGuion ?? conv.pasoGuion,
       },
       input.adjuntoGuion,
+      input.reinicioPrueba,
     );
 
     const persisted = await this.store.findById(input.conversacionId);
@@ -1571,6 +1585,7 @@ export class OrchestratorService {
   private async attachTrace(
     res: TurnResponse,
     adjuntoGuion?: string | null,
+    reinicioPrueba?: boolean,
   ): Promise<TurnResponse> {
     const finished = this.reasoning.finish({
       ruta: res.ruta,
@@ -1615,6 +1630,7 @@ export class OrchestratorService {
       accionModo:
         flow === "v4" || res.pasoGuion === "accion" ? "cta_v4" : "legacy",
       nombre: convForPdf?.camposCapturados.nombre ?? null,
+      reinicioPrueba,
     });
   }
 
