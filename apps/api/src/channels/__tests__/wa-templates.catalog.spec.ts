@@ -43,6 +43,10 @@ describe("resolveInteractiveInbound", () => {
       expect(WA_PAYLOAD_TEXTO[item.id]).toBeTruthy();
       expect(item.title.length).toBeLessThanOrEqual(WA_LIST_ITEM_TITLE_MAX);
     }
+    expect(
+      ACCION_CTA_ITEMS.find((item) => item.id === "accion.fuera_presupuesto")
+        ?.description,
+    ).toBe("Ver mas opciones");
   });
 
   it("reiniciar_flujo usa la palabra clave REINICIAR", () => {

@@ -490,6 +490,7 @@ describe("evaluarPedidoCotizacion", () => {
       "fuera_presupuesto",
     );
     expect(parseCtaGuion("Fuera de presupuesto")).toBe("fuera_presupuesto");
+    expect(parseCtaGuion("Ver mas opciones")).toBe("fuera_presupuesto");
     expect(parseCtaGuion("Quiero ver más opciones")).toBe("fuera_presupuesto");
   });
 
