@@ -18,6 +18,30 @@ import {
 import { GuionAssetsService } from "./guion-assets.service";
 import { paqueteCardContentType, resolvePaqueteCardPath } from "./guion-assets";
 
+@Controller("g")
+export class GuionShortLinkController {
+  constructor(
+    @Inject(GuionAssetsService) private readonly guion: GuionAssetsService,
+  ) {}
+
+  @Public()
+  @Get("exp")
+  async experiencia(): Promise<StreamableFile> {
+    const pdf = GUION_FLUJO_PDFS.find((item) => item.shortPath === "/g/exp");
+    if (!pdf) {
+      throw new NotFoundException("PDF del guion no encontrado");
+    }
+    const file = await this.guion.loadPdfBytes(pdf.slug);
+    if (!file) {
+      throw new NotFoundException("PDF del guion no encontrado");
+    }
+    return new StreamableFile(file.body, {
+      type: file.contentType,
+      disposition: contentDispositionInline(pdf.filename),
+    });
+  }
+}
+
 @Controller("public/guion")
 export class GuionAssetsController {
   constructor(

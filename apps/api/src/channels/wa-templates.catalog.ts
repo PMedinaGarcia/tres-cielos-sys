@@ -5,6 +5,8 @@ import {
   HABLAR_ASESOR_TEXTO,
   REINICIAR_FLUJO_PAYLOAD,
   REINICIAR_FLUJO_TEXTO,
+  REINICIO_GUION_PAYLOAD,
+  REINICIO_GUION_TITLE,
   type WaButton,
   type WaListItem,
 } from "@tres-cielos/shared";
@@ -12,6 +14,11 @@ import {
 export const HABLAR_ASESOR_BUTTON: WaButton = {
   id: HABLAR_ASESOR_PAYLOAD,
   title: HABLAR_ASESOR_TITLE,
+};
+
+export const VOLVER_INICIO_BUTTON: WaButton = {
+  id: REINICIO_GUION_PAYLOAD,
+  title: REINICIO_GUION_TITLE,
 };
 
 export const WA_LIST_OPEN_BUTTON = "Ver opciones";
@@ -88,7 +95,7 @@ export const FECHA_VENTANA_ITEMS: WaListItem[] = [
   {
     id: "fecha.anio_2028",
     title: "2028",
-    description: "Planeo en este año",
+    description: "Busco fechas en 2028",
   },
 ];
 
@@ -106,7 +113,7 @@ export const ACCION_CTA_ITEMS: WaListItem[] = [
   {
     id: "accion.fuera_presupuesto",
     title: "Fuera de presupuesto",
-    description: "Estamos fuera de tu presupuesto",
+    description: "Quiero ver más opciones",
   },
 ];
 
@@ -155,7 +162,7 @@ export const WA_PAYLOAD_TEXTO: Record<string, string> = {
   "fecha.anio_2028": "2028",
   "accion.visita": "Conocer Tres Cielos",
   "accion.ejecutivo": "Tengo dudas",
-  "accion.fuera_presupuesto": "Estamos fuera de tu presupuesto",
+  "accion.fuera_presupuesto": "Fuera de presupuesto",
   "presupuesto.r200_250": "200-250 mil",
   "presupuesto.r250_300": "250-300 mil",
   "presupuesto.fuera_rango": "Fuera de Rango",

@@ -7,6 +7,7 @@ import {
   isRecotizarPorSlots,
   looksLikePersonName,
   nextPasoGuion,
+  isReinicioGuion,
   parseAforo,
   parseCtaGuion,
 } from "./harvest-campos";
@@ -488,5 +489,15 @@ describe("evaluarPedidoCotizacion", () => {
     expect(parseCtaGuion("Estamos fuera de tu presupuesto")).toBe(
       "fuera_presupuesto",
     );
+    expect(parseCtaGuion("Fuera de presupuesto")).toBe("fuera_presupuesto");
+    expect(parseCtaGuion("Quiero ver más opciones")).toBe("fuera_presupuesto");
+  });
+
+  it("isReinicioGuion solo acepta la frase exacta o el payload", () => {
+    expect(isReinicioGuion("inicio")).toBe(true);
+    expect(isReinicioGuion("Inicio.")).toBe(true);
+    expect(isReinicioGuion("Volver al inicio")).toBe(true);
+    expect(isReinicioGuion("quiero el inicio de la visita")).toBe(false);
+    expect(isReinicioGuion("hola", "flujo.reiniciar")).toBe(true);
   });
 });

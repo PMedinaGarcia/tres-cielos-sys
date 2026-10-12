@@ -66,6 +66,27 @@ describe("buildTwilioForms", () => {
     expect(forms[2]?.Body).toBe(
       "Experiencia boda de tres días - 2027.pdf\nhttps://api.example/experiencia.pdf",
     );
+    const corto = buildTwilioForms({
+      from,
+      to,
+      texto: "pdf",
+      wa: {
+        templateId: "guion.accion_cta",
+        kind: "text",
+        body: "pdf",
+        documents: [
+          {
+            filename: "Experiencia boda de tres días - 2027.pdf",
+            mime: "application/pdf",
+            url: "https://api.trescielos.test/public/guion/experiencia-boda-tres-dias-2027.pdf",
+            delivery: "link",
+          },
+        ],
+      },
+    });
+    expect(corto[1]?.Body).toBe(
+      "Experiencia boda de tres días - 2027.pdf\nhttps://api.trescielos.test/g/exp",
+    );
     expect(forms[2]?.MediaUrl).toBeUndefined();
     expect(forms.some((f) => f.MediaUrl?.includes("cards"))).toBe(false);
   });

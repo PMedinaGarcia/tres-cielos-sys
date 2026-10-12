@@ -6,6 +6,7 @@ import {
   HABLAR_ASESOR_TEXTO,
   HABLAR_ASESOR_TITLE,
   REINICIAR_FLUJO_PAYLOAD,
+  REINICIO_GUION_PAYLOAD,
   REASONING_LEVELS,
   type ReasoningStep,
   type WaButton,
@@ -38,6 +39,15 @@ function formatTime(iso: string): string {
 }
 
 function offersReinicio(content: WaContent | null | undefined): boolean {
+  return Boolean(
+    content?.buttons?.some(
+      (btn) =>
+        btn.id === REINICIAR_FLUJO_PAYLOAD || btn.id === REINICIO_GUION_PAYLOAD,
+    ),
+  );
+}
+
+function offersReinicioPrueba(content: WaContent | null | undefined): boolean {
   return Boolean(
     content?.buttons?.some((btn) => btn.id === REINICIAR_FLUJO_PAYLOAD),
   );
@@ -96,6 +106,13 @@ export default function SandboxChatPage() {
     lastBot?.turn?.ruta === "handoff" ||
     lastBot?.turn?.estadoBot === "escalado" ||
     lastBot?.turn?.estadoBot === "humano";
+  const reinicioLineId = [...lines]
+    .reverse()
+    .find((line) =>
+      line.waContent?.buttons?.some((btn) => btn.id === REINICIO_GUION_PAYLOAD),
+    )?.id;
+  const puedeReiniciar =
+    Boolean(reinicioLineId) && lastBot?.turn?.estadoBot === "escalado";
 
   const mutation = useMutation({
     mutationFn: async (input: { texto: string; buttonPayload?: string }) => {
@@ -201,13 +218,17 @@ export default function SandboxChatPage() {
 
         {enrutado && (
           <div className="mx-6 mb-2 rounded-xl border border-teal/25 bg-white/50 px-3 py-2 text-sm text-teal">
-            {offersReinicio(lastBot?.waContent)
+            {offersReinicioPrueba(lastBot?.waContent)
               ? "Flujo cerrado. Reiniciar prueba vuelve a empezar este hilo."
               : `Enrutado a asesor${
                   lastBot?.turn?.motivoHandoff
                     ? ` · ${lastBot.turn.motivoHandoff}`
                     : ""
-                }. El bot no responde más en este hilo.`}
+                }${
+                  puedeReiniciar
+                    ? ". Puedes volver al inicio o esperar al ejecutivo."
+                    : ". El bot no responde más en este hilo."
+                }`}
           </div>
         )}
 
@@ -218,11 +239,16 @@ export default function SandboxChatPage() {
             </p>
           )}
           {lines.map((line, i) => {
+            const esReinicio =
+              puedeReiniciar &&
+              line.id === reinicioLineId &&
+              !mutation.isPending;
             const interactive =
               line.role === "bot" &&
-              lastLine?.id === line.id &&
               !mutation.isPending &&
-              (botActivo || offersReinicio(line.waContent));
+              ((lastLine?.id === line.id &&
+                (botActivo || offersReinicio(line.waContent))) ||
+                esReinicio);
             return (
               <div
                 key={line.id}

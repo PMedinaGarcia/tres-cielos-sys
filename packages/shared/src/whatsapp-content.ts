@@ -22,6 +22,10 @@ export const REINICIAR_FLUJO_TEXTO = "REINICIAR";
 export const REINICIAR_FLUJO_LINEA =
   "Para volver a probar el flujo, responde REINICIAR.";
 
+/** Quick-reply del handoff v4. El título cabe en el límite de 20 caracteres. */
+export const REINICIO_GUION_PAYLOAD = "flujo.reiniciar";
+export const REINICIO_GUION_TITLE = "Volver al inicio";
+
 export const WA_BUTTON_TITLE_MAX = 20;
 export const WA_LIST_ITEM_TITLE_MAX = 24;
 export const WA_QUICK_REPLY_MAX = 3;
