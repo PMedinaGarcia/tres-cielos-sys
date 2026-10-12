@@ -24,11 +24,18 @@ import {
   copyMenorPisoConPisoPublicado,
 } from "../script/script-v2.copy";
 import { fichaPaquetePorSku } from "./commercial-faq.copy";
-import { SKU_PAQUETE_ESTANDAR } from "@tres-cielos/shared";
+import {
+  REINICIAR_FLUJO_LINEA,
+  REINICIAR_FLUJO_PAYLOAD,
+  SKU_PAQUETE_ESTANDAR,
+} from "@tres-cielos/shared";
 import type { PrismaService } from "../../prisma/prisma.service";
 
-function buildOrchestratorV2(prisma?: PrismaService) {
-  const config = flowConfig("v2");
+function buildOrchestratorV2(
+  prisma?: PrismaService,
+  opts?: { fieldTestReset?: boolean },
+) {
+  const config = flowConfig("v2", { fieldTestReset: opts?.fieldTestReset });
   const store = new ConversationStoreService(prisma, config);
   const audit = new AuditEventoService();
   const script = new ScriptService(undefined, config);
@@ -374,5 +381,41 @@ describe("Orchestrator v2 (V2.8)", () => {
     const conv = await store.findById(res.conversacionId);
     expect(conv?.camposCapturados.ctaGuion).toBe("visita");
     expect(conv?.cola).toBe("comercial");
+  });
+
+  it("con FIELD_TEST_RESET, tras el handoff el siguiente mensaje abre el saludo", async () => {
+    const { orch, store } = buildOrchestratorV2(undefined, {
+      fieldTestReset: true,
+    });
+    const cierre = await orch.handleTurn({
+      canal: "whatsapp",
+      externalThreadId: "v2-reset-handoff",
+      externalMessageId: "m1",
+      texto:
+        "Soy Ana Ruiz, cotización para una boda el 22 de diciembre de 2027 para 150 invitados, presupuesto 350 mil, quiero visitar",
+      recibidoEn: new Date().toISOString(),
+    });
+    expect(cierre.ruta).toBe("handoff");
+    expect(cierre.textoRespuesta).toContain(COPY_PISO_VISITA);
+    expect(cierre.textoRespuesta).toContain(REINICIAR_FLUJO_LINEA);
+    expect(cierre.waContent?.buttons?.map((btn) => btn.id)).toContain(
+      REINICIAR_FLUJO_PAYLOAD,
+    );
+
+    const again = await orch.handleTurn({
+      canal: "whatsapp",
+      externalThreadId: "v2-reset-handoff",
+      externalMessageId: "m2",
+      texto: "REINICIAR",
+      recibidoEn: new Date().toISOString(),
+    });
+    expect(again.ruta).not.toBe("silencio");
+    expect(again.estadoBot).toBe("activo");
+    expect(again.pasoGuion).toBe("nombre_fecha");
+    expect(again.textoRespuesta).toBe(COPY_V2_B1);
+    const conv = await store.findById(again.conversacionId);
+    expect(conv?.camposCapturados.nombre).toBeFalsy();
+    expect(conv?.camposCapturados.rutaComercial).toBeFalsy();
+    expect(conv?.estadoBot).toBe("activo");
   });
 });

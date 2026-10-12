@@ -1,9 +1,12 @@
-import type {
-  WaButton,
-  WaContent,
-  WaDocument,
-  WaImage,
-  WaListItem,
+import {
+  REINICIAR_FLUJO_LINEA,
+  REINICIAR_FLUJO_PAYLOAD,
+  REINICIAR_FLUJO_TITLE,
+  type WaButton,
+  type WaContent,
+  type WaDocument,
+  type WaImage,
+  type WaListItem,
 } from "@tres-cielos/shared";
 import type { FechaTentativa } from "../conversation/types";
 import {
@@ -165,6 +168,37 @@ function composeGuionPaso(
   }
 }
 
+export function appendReinicioPruebaLine(texto: string): string {
+  if (texto.includes(REINICIAR_FLUJO_LINEA)) return texto;
+  const body = texto.trim();
+  return body ? `${body}\n\n${REINICIAR_FLUJO_LINEA}` : REINICIAR_FLUJO_LINEA;
+}
+
+/** Cierre de prueba: botón de reinicio y, sin Content SID, el texto de sesión. */
+export function withReinicioPrueba(content: WaContent): WaContent {
+  const body = appendReinicioPruebaLine(content.body);
+  const button: WaButton = {
+    id: REINICIAR_FLUJO_PAYLOAD,
+    title: REINICIAR_FLUJO_TITLE,
+  };
+  if (content.kind === "list-picker") {
+    return { ...content, body };
+  }
+  const existing = content.buttons ?? [];
+  const buttons = existing.some((item) => item.id === button.id)
+    ? existing
+    : existing.length >= 3
+      ? existing
+      : [...existing, button];
+  return {
+    ...content,
+    kind: "quick-reply",
+    body,
+    buttons,
+    contentSid: undefined,
+  };
+}
+
 export function attachWaContent<
   T extends {
     textoRespuesta: string;
@@ -179,6 +213,7 @@ export function attachWaContent<
     accionModo?: AccionModo;
     images?: WaImage[];
     nombre?: string | null;
+    reinicioPrueba?: boolean;
   },
 >(result: T): Omit<
   T,
@@ -189,7 +224,8 @@ export function attachWaContent<
   | "accionModo"
   | "images"
   | "nombre"
-> {
+  | "reinicioPrueba"
+> & { waContent?: WaContent | null } {
   const {
     document,
     documents,
@@ -198,12 +234,13 @@ export function attachWaContent<
     accionModo,
     images: _fotosNoCompartidas,
     nombre,
+    reinicioPrueba,
     ...rest
   } = result;
   void _fotosNoCompartidas;
   if (rest.waContent) return rest;
   if (rest.silencio || !rest.textoRespuesta) return rest;
-  const waContent = composeWaContent({
+  const composed = composeWaContent({
     texto: rest.textoRespuesta,
     ruta: rest.ruta,
     pasoGuion: rest.pasoGuion,
@@ -214,8 +251,13 @@ export function attachWaContent<
     accionModo,
     nombre,
   });
-  if (!waContent) return rest;
-  return { ...rest, waContent };
+  if (!composed) return rest;
+  if (!reinicioPrueba) return { ...rest, waContent: composed };
+  return {
+    ...rest,
+    textoRespuesta: appendReinicioPruebaLine(rest.textoRespuesta),
+    waContent: withReinicioPrueba(composed),
+  };
 }
 
 function composeHandoff(body: string): WaContent {

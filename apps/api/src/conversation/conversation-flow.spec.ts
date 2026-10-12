@@ -6,6 +6,7 @@ import {
   hashCanaryBucket,
   isCalificadoV3,
   isPrequalificadoV2,
+  isHiloTerminado,
   nextPasoGuionV2,
   nextPasoGuionV3,
   resolveConversationFlow,
@@ -137,6 +138,42 @@ describe("v3 score y fecha", () => {
         fechaEstado: "sin_definir",
       }),
     ).toBe(true);
+  });
+
+  it("un hilo cerrado se puede reiniciar, salvo si ya lo tomó un humano", () => {
+    expect(
+      isHiloTerminado({
+        estadoBot: "escalado",
+        camposCapturados: { rutaComercial: "handoff" },
+      }),
+    ).toBe(true);
+    expect(
+      isHiloTerminado({
+        estadoBot: "activo",
+        camposCapturados: { rutaComercial: "nutricion" },
+      }),
+    ).toBe(true);
+    expect(
+      isHiloTerminado({
+        estadoBot: "activo",
+        camposCapturados: { rutaComercial: "seguimiento" },
+      }),
+    ).toBe(true);
+    expect(
+      isHiloTerminado({
+        estadoBot: "activo",
+        camposCapturados: { rutaComercial: "cierre" },
+      }),
+    ).toBe(true);
+    expect(
+      isHiloTerminado({
+        estadoBot: "humano",
+        camposCapturados: { rutaComercial: "handoff" },
+      }),
+    ).toBe(false);
+    expect(
+      isHiloTerminado({ estadoBot: "activo", camposCapturados: {} }),
+    ).toBe(false);
   });
 
   it("v3 con nombre y fecha va a accion para paquete comercial", () => {

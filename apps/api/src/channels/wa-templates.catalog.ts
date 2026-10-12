@@ -3,6 +3,8 @@ import {
   HABLAR_ASESOR_PAYLOAD,
   HABLAR_ASESOR_TITLE,
   HABLAR_ASESOR_TEXTO,
+  REINICIAR_FLUJO_PAYLOAD,
+  REINICIAR_FLUJO_TEXTO,
   REINICIO_GUION_PAYLOAD,
   REINICIO_GUION_TITLE,
   type WaButton,
@@ -139,6 +141,7 @@ export const PRESUPUESTO_FUERA_ITEMS: WaListItem[] = [
  */
 export const WA_PAYLOAD_TEXTO: Record<string, string> = {
   [HABLAR_ASESOR_PAYLOAD]: HABLAR_ASESOR_TEXTO,
+  [REINICIAR_FLUJO_PAYLOAD]: REINICIAR_FLUJO_TEXTO,
   "ocasion.boda": "boda",
   "ocasion.xv": "xv",
   "ocasion.corporativo": "corporativo",

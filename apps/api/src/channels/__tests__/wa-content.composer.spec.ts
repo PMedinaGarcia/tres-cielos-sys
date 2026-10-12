@@ -1,4 +1,8 @@
-import { composeWaContent } from "../wa-content.composer";
+import {
+  REINICIAR_FLUJO_LINEA,
+  REINICIAR_FLUJO_PAYLOAD,
+} from "@tres-cielos/shared";
+import { attachWaContent, composeWaContent } from "../wa-content.composer";
 import {
   COPY_V4_B1_RETRY,
   COPY_V4_CTA_RETRY,
@@ -331,5 +335,20 @@ describe("composeWaContent", () => {
       pasoGuion: "presupuesto_fuera",
     });
     expect(rango?.templateId).toBe("guion.presupuesto_fuera_retry");
+  });
+
+  it("el cierre de prueba agrega la bandera de reinicio sin Content SID", () => {
+    const out = attachWaContent({
+      textoRespuesta: "Un asesor te contacta para agendar tu visita.",
+      ruta: "handoff",
+      reinicioPrueba: true,
+    });
+    expect(out.textoRespuesta).toContain(REINICIAR_FLUJO_LINEA);
+    expect(out.waContent?.kind).toBe("quick-reply");
+    expect(out.waContent?.buttons?.map((btn) => btn.id)).toEqual([
+      REINICIAR_FLUJO_PAYLOAD,
+    ]);
+    expect(out.waContent?.contentSid).toBeUndefined();
+    expect(out.waContent?.body).toContain(REINICIAR_FLUJO_LINEA);
   });
 });

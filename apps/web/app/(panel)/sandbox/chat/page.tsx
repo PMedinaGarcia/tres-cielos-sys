@@ -5,6 +5,7 @@ import {
   HABLAR_ASESOR_PAYLOAD,
   HABLAR_ASESOR_TEXTO,
   HABLAR_ASESOR_TITLE,
+  REINICIAR_FLUJO_PAYLOAD,
   REINICIO_GUION_PAYLOAD,
   REASONING_LEVELS,
   type ReasoningStep,
@@ -35,6 +36,21 @@ function formatTime(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function offersReinicio(content: WaContent | null | undefined): boolean {
+  return Boolean(
+    content?.buttons?.some(
+      (btn) =>
+        btn.id === REINICIAR_FLUJO_PAYLOAD || btn.id === REINICIO_GUION_PAYLOAD,
+    ),
+  );
+}
+
+function offersReinicioPrueba(content: WaContent | null | undefined): boolean {
+  return Boolean(
+    content?.buttons?.some((btn) => btn.id === REINICIAR_FLUJO_PAYLOAD),
+  );
 }
 
 function guionDocuments(content: WaContent | null | undefined) {
@@ -202,13 +218,17 @@ export default function SandboxChatPage() {
 
         {enrutado && (
           <div className="mx-6 mb-2 rounded-xl border border-teal/25 bg-white/50 px-3 py-2 text-sm text-teal">
-            Enrutado a asesor
-            {lastBot?.turn?.motivoHandoff
-              ? ` · ${lastBot.turn.motivoHandoff}`
-              : ""}
-            {puedeReiniciar
-              ? ". Puedes volver al inicio o esperar al ejecutivo."
-              : ". El bot no responde más en este hilo."}
+            {offersReinicioPrueba(lastBot?.waContent)
+              ? "Flujo cerrado. Reiniciar prueba vuelve a empezar este hilo."
+              : `Enrutado a asesor${
+                  lastBot?.turn?.motivoHandoff
+                    ? ` · ${lastBot.turn.motivoHandoff}`
+                    : ""
+                }${
+                  puedeReiniciar
+                    ? ". Puedes volver al inicio o esperar al ejecutivo."
+                    : ". El bot no responde más en este hilo."
+                }`}
           </div>
         )}
 
@@ -226,7 +246,9 @@ export default function SandboxChatPage() {
             const interactive =
               line.role === "bot" &&
               !mutation.isPending &&
-              ((lastLine?.id === line.id && botActivo) || esReinicio);
+              ((lastLine?.id === line.id &&
+                (botActivo || offersReinicio(line.waContent))) ||
+                esReinicio);
             return (
               <div
                 key={line.id}

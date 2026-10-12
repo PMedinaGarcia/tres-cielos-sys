@@ -1,6 +1,10 @@
 import {
   HABLAR_ASESOR_PAYLOAD,
   HABLAR_ASESOR_TEXTO,
+  REINICIAR_FLUJO_PAYLOAD,
+  REINICIAR_FLUJO_TEXTO,
+  REINICIAR_FLUJO_TITLE,
+  WA_BUTTON_TITLE_MAX,
   WA_LIST_ITEM_TITLE_MAX,
 } from "@tres-cielos/shared";
 import {
@@ -43,6 +47,16 @@ describe("resolveInteractiveInbound", () => {
       ACCION_CTA_ITEMS.find((item) => item.id === "accion.fuera_presupuesto")
         ?.description,
     ).toBe("Ver mas opciones");
+  });
+
+  it("reiniciar_flujo usa la palabra clave REINICIAR", () => {
+    expect(REINICIAR_FLUJO_TITLE.length).toBeLessThanOrEqual(WA_BUTTON_TITLE_MAX);
+    const r = resolveInteractiveInbound({
+      texto: REINICIAR_FLUJO_TITLE,
+      buttonPayload: REINICIAR_FLUJO_PAYLOAD,
+    });
+    expect(r.texto).toBe(REINICIAR_FLUJO_TEXTO);
+    expect(r.buttonPayload).toBe(REINICIAR_FLUJO_PAYLOAD);
   });
 
   it("sin payload deja el texto intacto", () => {
