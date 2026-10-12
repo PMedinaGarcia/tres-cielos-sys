@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import type { WaContent } from "@tres-cielos/shared";
+import { guionWhatsappLinkUrl, type WaContent } from "@tres-cielos/shared";
 import type { OutboundMessage } from "./types/inbound-message";
 
 export interface OutboundSendResult {
@@ -152,7 +152,7 @@ export function buildTwilioForms(input: {
     forms.push({
       From: from,
       To: to,
-      Body: `${document.filename.trim()}\n${document.url}`,
+      Body: `${document.filename.trim()}\n${guionWhatsappLinkUrl(document.url)}`,
     });
   }
   return forms;

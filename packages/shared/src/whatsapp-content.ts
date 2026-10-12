@@ -9,6 +9,10 @@ export const HABLAR_ASESOR_TITLE = "Hablar con asesor";
 /** Texto inbound que también matchea el regex de pedido humano. */
 export const HABLAR_ASESOR_TEXTO = "Hablar con un asesor";
 
+/** Quick-reply del handoff v4. El título cabe en el límite de 20 caracteres. */
+export const REINICIO_GUION_PAYLOAD = "flujo.reiniciar";
+export const REINICIO_GUION_TITLE = "Volver al inicio";
+
 export const WA_BUTTON_TITLE_MAX = 20;
 export const WA_LIST_ITEM_TITLE_MAX = 24;
 export const WA_QUICK_REPLY_MAX = 3;

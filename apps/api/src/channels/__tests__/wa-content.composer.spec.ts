@@ -2,6 +2,8 @@ import { composeWaContent } from "../wa-content.composer";
 import {
   COPY_V4_B1_RETRY,
   COPY_V4_CTA_RETRY,
+  COPY_V4_HANDOFF_EJECUTIVO,
+  COPY_V4_HANDOFF_VISITA,
   COPY_V4_PDF,
   COPY_V4_PRESUPUESTO_FUERA_RETRY,
 } from "../../conversation/script/script-v4.copy";
@@ -118,6 +120,23 @@ describe("composeWaContent", () => {
     expect(wa?.templateId).toBe("canal.handoff");
     expect(wa?.buttons).toBeUndefined();
     expect(wa?.list).toBeUndefined();
+  });
+
+  it("handoff v4 de visita y ejecutivo ofrece volver al inicio", () => {
+    for (const texto of [
+      COPY_V4_HANDOFF_VISITA("Ana"),
+      COPY_V4_HANDOFF_VISITA(null),
+      COPY_V4_HANDOFF_EJECUTIVO("Ana"),
+      COPY_V4_HANDOFF_EJECUTIVO(),
+    ]) {
+      const wa = composeWaContent({ texto, ruta: "handoff" });
+      expect(wa?.kind).toBe("quick-reply");
+      expect(wa?.templateId).toBe("canal.handoff");
+      expect(wa?.buttons).toEqual([
+        { id: "flujo.reiniciar", title: "Volver al inicio" },
+      ]);
+      expect(wa?.buttons?.[0]?.title.length).toBeLessThanOrEqual(20);
+    }
   });
 
   it("silencio o body vacío no produce contenido", () => {

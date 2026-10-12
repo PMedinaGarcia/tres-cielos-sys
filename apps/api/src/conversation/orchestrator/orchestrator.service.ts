@@ -41,6 +41,7 @@ import {
   evaluarPedidoCotizacion,
   harvestCamposLexical,
   isFraseInteresCotizar,
+  isReinicioGuion,
   isGuionCompleto,
   isPerfilListo,
   isRecotizarPorSlots,
@@ -272,9 +273,13 @@ export class OrchestratorService {
       await this.store.update(conv.id, { guionVersion: assigned });
     }
     const flow = this.flowOf(conv);
+    const reinicioExplicito =
+      flow === "v4" &&
+      conv.estadoBot === "escalado" &&
+      isReinicioGuion(inbound.texto ?? "", inbound.buttonPayload);
     const fieldReset =
       this.fieldTestReset() && flow === "v4" && isHiloV4Terminado(conv);
-    if (fieldReset) {
+    if (fieldReset || reinicioExplicito) {
       const campos: CamposCapturados = {
         telefono: conv.camposCapturados.telefono ?? null,
         tipoEvento: "boda",
@@ -296,8 +301,10 @@ export class OrchestratorService {
         slaVenceEn: null,
       });
     }
-    const textoIn = fieldReset ? "" : (inbound.texto ?? "");
-    const buttonPayload = fieldReset ? undefined : inbound.buttonPayload;
+    const textoIn =
+      fieldReset || reinicioExplicito ? "" : (inbound.texto ?? "");
+    const buttonPayload =
+      fieldReset || reinicioExplicito ? undefined : inbound.buttonPayload;
 
     const intent = await this.intent.classify({
       texto: textoIn,
