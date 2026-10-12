@@ -111,7 +111,7 @@ export const ACCION_CTA_ITEMS: WaListItem[] = [
   {
     id: "accion.fuera_presupuesto",
     title: "Fuera de presupuesto",
-    description: "Quiero ver más opciones",
+    description: "Ver mas opciones",
   },
 ];
 

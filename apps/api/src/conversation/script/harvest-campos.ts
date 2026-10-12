@@ -726,7 +726,7 @@ export function parseCtaGuion(texto: string): CtaGuion | null {
   }
   if (/^accion\.ejecutivo$|\bejecutiv|^tengo dudas\b/.test(t)) return "ejecutivo";
   if (
-    /^accion\.fuera_presupuesto$|fuera de (tu |mi |nuestro )?presupuesto|quiero ver mas opciones|muy caro|no nos alcanza/.test(t)
+    /^accion\.fuera_presupuesto$|fuera de (tu |mi |nuestro )?presupuesto|ver mas opciones|muy caro|no nos alcanza/.test(t)
   ) {
     return "fuera_presupuesto";
   }
