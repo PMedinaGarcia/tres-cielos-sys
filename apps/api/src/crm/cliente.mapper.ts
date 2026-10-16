@@ -10,18 +10,29 @@ import type {
   ClienteListItem,
   InteraccionDto,
   OportunidadResumenDto,
+  UltimoMensajeDto,
   VinculoClienteDto,
 } from "@tres-cielos/shared";
 import type { CamposCapturados } from "../conversation/types";
+import { labelFechaEventoBrief } from "../conversation/script/harvest-campos";
 import {
   derivarInteligencia,
   perfilDesdeOportunidad,
 } from "./inteligencia/playbook-evento";
 
+type MensajePreview = {
+  contenido: string;
+  autor: UltimoMensajeDto["autor"];
+  direccion: UltimoMensajeDto["direccion"];
+  creadoEn: Date;
+};
+
+type ConversacionListRow = Conversacion & { mensajes?: MensajePreview[] };
+
 type ClienteListRow = Cliente & {
   tags: Array<{ tag: { nombre: string } }>;
   oportunidades?: Oportunidad[];
-  conversaciones?: Conversacion[];
+  conversaciones?: ConversacionListRow[];
 };
 
 type ClienteDetailRow = Cliente & {
@@ -64,6 +75,10 @@ export function toClienteListItem(
     encajeEconomico: conv?.encajeEconomico ?? campos.encajeEconomico ?? null,
     intencionNivel: campos.intencionNivel ?? null,
     rutaComercial: conv?.rutaComercial ?? campos.rutaComercial ?? null,
+    conversacionId: conv?.id ?? null,
+    estadoBot: conv?.estadoBot ?? null,
+    asesorLockId: conv?.asesorLockId ?? null,
+    ultimoMensaje: ultimoMensajeDe(conv),
   };
 }
 
@@ -131,15 +146,26 @@ export function toClienteDetail(
         conv: convByOpp.get(o.id),
       }),
     ),
-    conversaciones: row.conversaciones.map((c) => ({
-      id: c.id,
-      canal: c.canal,
-      externalThreadId: c.externalThreadId,
-      estadoBot: c.estadoBot,
-      encajeEconomico: c.encajeEconomico ?? null,
-      intencionNivel: camposFromJson(c.camposCapturados).intencionNivel ?? null,
-      rutaComercial: c.rutaComercial ?? null,
-    })),
+    conversaciones: row.conversaciones.map((c) => {
+      const campos = camposFromJson(c.camposCapturados);
+      return {
+        id: c.id,
+        canal: c.canal,
+        externalThreadId: c.externalThreadId,
+        estadoBot: c.estadoBot,
+        encajeEconomico: c.encajeEconomico ?? campos.encajeEconomico ?? null,
+        intencionNivel: campos.intencionNivel ?? null,
+        rutaComercial: c.rutaComercial ?? campos.rutaComercial ?? null,
+        asesorLockId: c.asesorLockId ?? null,
+        slaVenceEn: c.slaVenceEn?.toISOString() ?? null,
+        motivoHandoff: c.motivoHandoff ?? null,
+        fechaEstado: campos.fechaEstado ?? null,
+        fechaEvento: labelFechaEventoBrief(campos),
+        rangoInversion: campos.rangoInversion ?? null,
+        rangoPresupuestoFuera: campos.rangoPresupuestoFuera ?? null,
+        pdfEnviado: Boolean(campos.pdfEnviado),
+      };
+    }),
     vinculos: extras.vinculos ?? [],
     creadoEn: row.creadoEn.toISOString(),
     actualizadoEn: row.actualizadoEn.toISOString(),
@@ -217,6 +243,24 @@ function intelDe(
     ultimoContactoEn: ctx.ultimoContactoEn,
     estadoAtencion: ctx.estadoAtencion,
   });
+}
+
+function ultimoMensajeDe(
+  conv: ConversacionListRow | undefined,
+): UltimoMensajeDto | null {
+  const msg = conv?.mensajes?.[0];
+  if (!msg) return null;
+  return {
+    contenido: previewMensaje(msg.contenido),
+    autor: msg.autor,
+    direccion: msg.direccion,
+    creadoEn: msg.creadoEn.toISOString(),
+  };
+}
+
+function previewMensaje(contenido: string): string {
+  const t = contenido.replace(/\s+/g, " ").trim();
+  return t.length <= 120 ? t : `${t.slice(0, 119)}…`;
 }
 
 function camposFromJson(json: unknown): CamposCapturados {

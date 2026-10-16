@@ -210,7 +210,11 @@ export function syncCamposV2(campos: CamposCapturados): CamposCapturados {
   if (encaje === "confirmado" && next.aceptaPiso250k == null) {
     next.aceptaPiso250k = true;
   }
-  if (next.rangoInversion) {
+  if (next.rangoPresupuestoFuera) {
+    next.presupuestoOrientativo = presupuestoFromRangoPresupuestoFuera(
+      next.rangoPresupuestoFuera,
+    );
+  } else if (next.rangoInversion) {
     next.presupuestoOrientativo = presupuestoFromRango(next.rangoInversion);
   }
   if (next.intencionNivel === "alta" || next.intencionNivel === "media") {
@@ -382,7 +386,11 @@ export function syncCamposV3(campos: CamposCapturados): CamposCapturados {
   if (encaje === "confirmado" && next.aceptaPiso250k == null) {
     next.aceptaPiso250k = true;
   }
-  if (next.rangoInversion) {
+  if (next.rangoPresupuestoFuera) {
+    next.presupuestoOrientativo = presupuestoFromRangoPresupuestoFuera(
+      next.rangoPresupuestoFuera,
+    );
+  } else if (next.rangoInversion) {
     next.presupuestoOrientativo = presupuestoFromRango(next.rangoInversion);
   }
   if (next.aforo != null) {

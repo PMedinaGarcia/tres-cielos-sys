@@ -302,6 +302,18 @@ describe("memoria por cliente", () => {
     expect(perfil?.pasoGuion).toBe("accion");
   });
 
+  it("un null del asesor limpia el dato que mergeCampos conservaría", async () => {
+    const memoria = new ClienteMemoriaService();
+    const wa = state({
+      estadoBot: "humano",
+      camposCapturados: { aforo: 120, nombre: "Ana" },
+    });
+    await memoria.flush("cli-1", wa);
+    await memoria.aplicarCamposAsesor("cli-1", { aforo: null });
+    expect(memoria.perfilDe(wa)?.campos.aforo).toBeNull();
+    expect(memoria.perfilDe(wa)?.campos.nombre).toBe("Ana");
+  });
+
   it("dos turnos concurrentes del mismo cliente conservan ambos campos", async () => {
     const memoria = new ClienteMemoriaService();
     await Promise.all([

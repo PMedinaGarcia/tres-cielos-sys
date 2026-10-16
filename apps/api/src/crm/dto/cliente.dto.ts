@@ -151,4 +151,9 @@ export class HistorialQueryDto {
   @IsOptional()
   @IsString()
   tipo?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === "true" || value === "1")
+  @IsBoolean()
+  recientes?: boolean;
 }

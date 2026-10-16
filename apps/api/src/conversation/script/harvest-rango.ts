@@ -27,14 +27,19 @@ export interface RangoParseResult {
   monto?: number;
 }
 
+/** Mismo encaje que asigna el guion cuando el lead elige un rango. */
+export function encajeDeRango(rango: RangoInversion): EncajeEconomico {
+  if (rango === "menor_250") return "no";
+  if (rango === "por_definir") return "no_confirmado";
+  return "confirmado";
+}
+
 export function parseRangoInversion(texto: string): RangoParseResult | null {
   const raw = texto.trim();
   if (!raw) return null;
   const fromPayload = RANGO_POR_PAYLOAD[raw];
   if (fromPayload) {
-    return fromPayload === "por_definir"
-      ? { rango: "por_definir", encaje: "no_confirmado" }
-      : { rango: fromPayload, encaje: "confirmado" };
+    return { rango: fromPayload, encaje: encajeDeRango(fromPayload) };
   }
 
   const t = stripAccents(raw.toLowerCase());
@@ -87,6 +92,9 @@ export function rangoFromMonto(monto: number): RangoInversion {
 
 export function parseMontoMxn(texto: string): number | null {
   const t = stripAccents(texto.toLowerCase());
+  if (/\d+\s*[–\-a]\s*\d+(\s*mil\b|\s*k\b)?/.test(t)) {
+    return null;
+  }
   if (
     !/\$|mxn|pesos|presupuesto|inversion|inversión|mil\b|\bk\b/.test(t) &&
     !/\d{1,3}(?:[,\s]\d{3}){2,}/.test(t)

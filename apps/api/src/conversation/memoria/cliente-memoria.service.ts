@@ -176,6 +176,35 @@ export class ClienteMemoriaService {
     return perfil;
   }
 
+  /**
+   * Lo que captura el asesor pisa la memoria, incluidos los null explícitos.
+   * mergeCampos ignora los null y el siguiente turno del bot los recuperaría.
+   */
+  async aplicarCamposAsesor(
+    clienteId: string,
+    patch: Partial<CamposCapturados>,
+  ): Promise<void> {
+    const key = `cliente:${clienteId}`;
+    await this.exclusive(key, async () => {
+      let perfil = this.findPerfil([key]);
+      if (!perfil) {
+        const row = await this.readMemoriaRow(clienteId);
+        if (!row) return;
+        perfil = this.perfilDesdeRow(clienteId, row);
+      }
+      perfil.clienteId = clienteId;
+      perfil.campos = applyExplicit(perfil.campos, patch);
+      perfil.resumen = buildResumen({
+        campos: perfil.campos,
+        pasoGuion: perfil.pasoGuion,
+        ultimaRuta: perfil.ultimaRuta,
+        notasHandoff: perfil.notasHandoff,
+      });
+      this.index(perfil, [key]);
+      await this.persistProfile(perfil);
+    });
+  }
+
   async flush(clienteId: string, state: ConversacionState): Promise<void> {
     const perfil = this.commitFromState(state);
     perfil.clienteId = clienteId;
@@ -560,6 +589,50 @@ export class ClienteMemoriaService {
     if (perfil.clienteId) this.alias.set(`cliente:${perfil.clienteId}`, perfil.key);
   }
 
+  private async readMemoriaRow(clienteId: string): Promise<MemoriaRow | null> {
+    if (!this.canWrite()) return null;
+    const delegate = this.memoriaDelegate();
+    if (!delegate?.findUnique) return null;
+    try {
+      return (await delegate.findUnique({ where: { clienteId } })) as MemoriaRow | null;
+    } catch (err) {
+      this.logger.warn(
+        `No se pudo leer memoria ${clienteId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      return null;
+    }
+  }
+
+  private perfilDesdeRow(clienteId: string, row: MemoriaRow): PerfilMemoria {
+    const perfil = this.seed([`cliente:${clienteId}`], {
+      id: row.oportunidadAbiertaId ?? clienteId,
+      canal: "whatsapp",
+      externalThreadId: clienteId,
+      pasoGuion: row.pasoGuion as PasoGuion,
+      camposCapturados: camposFrom(row.campos),
+      estadoBot: row.estadoBot as EstadoBot,
+      oportunidadId: row.oportunidadAbiertaId ?? clienteId,
+      guionVersion: (row.guionVersion as GuionVersion | null) ?? null,
+    } as ConversacionState);
+    perfil.clienteId = clienteId;
+    perfil.resumen = row.resumen ?? "";
+    perfil.ultimoTurnoEn = row.ultimoTurnoEn?.toISOString() ?? null;
+    perfil.asesorLockId = row.asesorLockId;
+    perfil.slaVenceEn = row.slaVenceEn?.toISOString() ?? null;
+    perfil.cola = (row.cola as ColaAsesor | null) ?? null;
+    perfil.motivoHandoff = (row.motivoHandoff as MotivoHandoff | null) ?? null;
+    perfil.escaladoEn = row.escaladoEn?.toISOString() ?? null;
+    perfil.ultimaRuta = (row.ultimaRuta as RutaOrquestador | null) ?? null;
+    perfil.paqueteTentativoId = row.paqueteTentativoId;
+    perfil.pedidoCotizacion = row.pedidoCotizacion;
+    perfil.pedidoCotizacionFuente = row.pedidoCotizacionFuente;
+    perfil.rutaComercial = (row.rutaComercial as RutaComercial | null) ?? null;
+    this.index(perfil, [`cliente:${clienteId}`]);
+    return perfil;
+  }
+
   private async loadFromDb(
     keys: string[],
     state: ConversacionState,
@@ -746,6 +819,7 @@ export class ClienteMemoriaService {
         findUnique: (args: unknown) => Promise<{ id: string; canal: string } | null>;
       };
       mensaje?: { create: (args: unknown) => Promise<unknown> };
+      cliente?: { update: (args: unknown) => Promise<unknown> };
     };
     if (!prisma.conversacion?.findUnique || !prisma.mensaje?.create) return;
     try {
@@ -768,6 +842,12 @@ export class ClienteMemoriaService {
           contenido: input.texto,
         },
       });
+      if (prisma.cliente?.update && perfil.clienteId) {
+        await prisma.cliente.update({
+          where: { id: perfil.clienteId },
+          data: { ultimoContactoEn: new Date() },
+        });
+      }
     } catch (err) {
       this.logger.warn(
         `No se pudo guardar mensaje en handoff: ${err instanceof Error ? err.message : String(err)}`,
@@ -838,4 +918,17 @@ function lockKey(keys: string[], fallback: string): string {
 function camposFrom(json: unknown): CamposCapturados {
   if (!json || typeof json !== "object" || Array.isArray(json)) return {};
   return { ...(json as CamposCapturados) };
+}
+
+function applyExplicit(
+  base: CamposCapturados,
+  patch: Partial<CamposCapturados>,
+): CamposCapturados {
+  const next: CamposCapturados = { ...base };
+  for (const key of Object.keys(patch) as Array<keyof CamposCapturados>) {
+    const value = patch[key];
+    if (value === undefined) continue;
+    (next as Record<string, unknown>)[key] = value;
+  }
+  return next;
 }

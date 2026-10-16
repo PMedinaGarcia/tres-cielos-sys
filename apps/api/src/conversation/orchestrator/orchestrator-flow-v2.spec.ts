@@ -193,6 +193,13 @@ describe("Orchestrator v2 (V2.8)", () => {
     expect(t4.ruta).toBe("safe");
     const conv = await store.findById(t4.conversacionId);
     expect(conv?.camposCapturados.rangoPresupuestoFuera).toBe("r200_250");
+    expect(conv?.camposCapturados.rangoInversion).toBeUndefined();
+    expect(conv?.camposCapturados.presupuestoOrientativo).toEqual({
+      tipo: "rango",
+      min: 200_000,
+      max: 250_000,
+      moneda: "MXN",
+    });
     expect(conv?.camposCapturados.rutaComercial).toBe("nutricion");
   });
 
