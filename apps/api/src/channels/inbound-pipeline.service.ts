@@ -7,7 +7,9 @@ import { ChannelAttachmentService } from "./attachments/channel-attachment.servi
 import { AuditService } from "../audit/audit.service";
 import { QuotaService } from "../quota/quota.service";
 import { CrmCalificacionService } from "../crm/calificacion.service";
+import { mapCanalCrm } from "../crm/cliente-identity";
 import { ClienteMemoriaService } from "../conversation/memoria/cliente-memoria.service";
+import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { AssignmentService } from "../assignment/assignment.service";
 import type { InboundMessage, TurnResult } from "./types/inbound-message";
@@ -36,6 +38,7 @@ export class InboundPipelineService {
     private readonly assignment: AssignmentService,
     @Inject(TURN_HANDLER) private readonly turnHandler: TurnHandler,
     @Optional() private readonly memoria?: ClienteMemoriaService,
+    @Optional() private readonly prisma?: PrismaService,
   ) {}
 
   async process(
@@ -120,19 +123,28 @@ export class InboundPipelineService {
         texto: message.texto ?? "",
         telefono: message.perfilCanal?.waId ?? null,
       });
+      const avisar = await this.debeAvisarSilencio(conv.id);
       const safe = {
         conversacionId: conv.id,
-        textoRespuesta: SAFE_COPY_BOT_SILENCIADO,
+        textoRespuesta: avisar ? SAFE_COPY_BOT_SILENCIADO : "",
         ruta: "silencio" as const,
         estadoBot: "humano" as const,
         silencio: true,
       };
-      await this.sendOutbound(message, safe);
+      if (avisar && message.meta?.sandbox !== true) {
+        const sent = await this.outbound.send({
+          canal: message.canal,
+          externalThreadId: message.externalThreadId,
+          texto: safe.textoRespuesta,
+          inReplyToExternalMessageId: message.externalMessageId,
+        });
+        if (sent.ok) await this.guardarAvisoSilencio(conv.id, message.canal);
+      }
       await this.audit.record({
         tipo: "bot_decision",
         actor: "bot",
         conversacionId: conv.id,
-        payload: { ruta: "silencio", estadoBot: "humano" },
+        payload: { ruta: "silencio", estadoBot: "humano", aviso: avisar },
       });
       return safe;
     }
@@ -263,6 +275,54 @@ export class InboundPipelineService {
     });
     if (result.textoRespuesta) {
       await this.sendOutbound(message, result);
+    }
+  }
+
+  /** El aviso sale una sola vez, y nunca después de que el asesor ya escribió. */
+  private async debeAvisarSilencio(conversacionId: string): Promise<boolean> {
+    if (!this.prisma || !process.env.DATABASE_URL) return true;
+    try {
+      const last = await this.prisma.mensaje.findFirst({
+        where: { conversacionId, direccion: "saliente" },
+        orderBy: { creadoEn: "desc" },
+        select: { autor: true, contenido: true },
+      });
+      if (!last) return true;
+      if (last.autor === "asesor") return false;
+      if (last.contenido.trim() === SAFE_COPY_BOT_SILENCIADO) return false;
+      return true;
+    } catch (err) {
+      this.logger.warn(
+        `No se pudo revisar el aviso de silencio: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      return true;
+    }
+  }
+
+  private async guardarAvisoSilencio(
+    conversacionId: string,
+    canal: InboundMessage["canal"],
+  ): Promise<void> {
+    if (!this.prisma || !process.env.DATABASE_URL) return;
+    try {
+      await this.prisma.mensaje.create({
+        data: {
+          conversacionId,
+          direccion: "saliente",
+          autor: "bot",
+          canal: mapCanalCrm(canal),
+          contenido: SAFE_COPY_BOT_SILENCIADO,
+          ruta: "safe",
+        },
+      });
+    } catch (err) {
+      this.logger.warn(
+        `No se guardó el aviso de silencio: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
     }
   }
 

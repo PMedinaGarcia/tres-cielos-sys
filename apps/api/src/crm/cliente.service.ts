@@ -70,7 +70,13 @@ export class ClienteService {
         include: {
           tags: { include: { tag: true } },
           oportunidades: { orderBy: { actualizadoEn: "desc" as const }, take: 1 },
-          conversaciones: { orderBy: { actualizadoEn: "desc" as const }, take: 1 },
+          conversaciones: {
+            orderBy: { actualizadoEn: "desc" as const },
+            take: 1,
+            include: {
+              mensajes: { orderBy: { creadoEn: "desc" as const }, take: 1 },
+            },
+          },
         },
         orderBy: { ultimoContactoEn: "desc" },
         skip: (page - 1) * pageSize,
@@ -283,6 +289,14 @@ export class ClienteService {
       (a, b) => new Date(a.creadoEn).getTime() - new Date(b.creadoEn).getTime(),
     );
     const total = items.length;
+    if (query.recientes) {
+      const tail = query.pageSize ?? 80;
+      const start = Math.max(0, total - tail);
+      return {
+        data: items.slice(start),
+        meta: { page: 1, pageSize: tail, total },
+      };
+    }
     const start = (page - 1) * pageSize;
     return {
       data: items.slice(start, start + pageSize),

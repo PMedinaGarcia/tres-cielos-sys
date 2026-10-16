@@ -11,6 +11,7 @@ import { ChannelAttachmentJobService } from "../../knowledge-ingestion/jobs/chan
 import { InboundPipelineService } from "../inbound-pipeline.service";
 import type { TurnHandler } from "../turn-handler";
 import type { InboundMessage } from "../types/inbound-message";
+import { SAFE_COPY_BOT_SILENCIADO } from "../../conversation/handoff/safe-copy";
 import { buildTestMediaRouter } from "../../knowledge-ingestion/__tests__/build-test-media-router";
 
 function buildMedia() {
@@ -53,6 +54,72 @@ describe("D-BOT-6 silencio humano", () => {
     if (!("duplicate" in result)) {
       expect(result.ruta).toBe("silencio");
       expect(result.silencio).toBe(true);
+    }
+  });
+
+  it("avisa una sola vez y no después de un mensaje del asesor", async () => {
+    const prevDb = process.env.DATABASE_URL;
+    const prevHard = process.env.QUOTA_MSG_HARD;
+    const prevSid = process.env.TWILIO_ACCOUNT_SID;
+    process.env.DATABASE_URL = "postgresql://test";
+    delete process.env.QUOTA_MSG_HARD;
+    delete process.env.TWILIO_ACCOUNT_SID;
+    const salientes: Array<{ autor: string; contenido: string }> = [];
+    const prisma = {
+      mensaje: {
+        findFirst: jest.fn(async () => salientes.at(-1) ?? null),
+        create: jest.fn(async (args: { data: { autor: string; contenido: string } }) => {
+          salientes.push(args.data);
+          return args.data;
+        }),
+      },
+    };
+    const store = new ConversationStateStore();
+    const outbound = new OutboundService();
+    const conv = store.getOrCreate("whatsapp", "wa:+52000");
+    conv.id = "c1";
+    store.setEstadoBot("c1", "humano");
+    const pipeline = new InboundPipelineService(
+      new IdempotencyService(),
+      outbound,
+      store,
+      new ChannelAttachmentService(new ChannelAttachmentJobService(buildMedia())),
+      new AuditService(),
+      new QuotaService(),
+      new CrmCalificacionService(),
+      new NotificationsService(),
+      new AssignmentService(),
+      {
+        async handleTurn() {
+          throw new Error("no debe llamarse");
+        },
+      },
+      undefined,
+      prisma as never,
+    );
+    const msg = (id: string): InboundMessage => ({
+      canal: "whatsapp",
+      externalThreadId: "wa:+52000",
+      externalMessageId: id,
+      texto: "sigo aquí",
+      recibidoEn: new Date().toISOString(),
+    });
+    try {
+      await pipeline.process(msg("m1"));
+      expect(outbound.drain().map((m) => m.texto)).toEqual([SAFE_COPY_BOT_SILENCIADO]);
+      await pipeline.process(msg("m2"));
+      expect(outbound.drain()).toEqual([]);
+      salientes.push({ autor: "asesor", contenido: "Hola, soy el asesor" });
+      await pipeline.process(msg("m3"));
+      expect(outbound.drain()).toEqual([]);
+      expect(prisma.mensaje.create).toHaveBeenCalledTimes(1);
+    } finally {
+      if (prevDb === undefined) delete process.env.DATABASE_URL;
+      else process.env.DATABASE_URL = prevDb;
+      if (prevHard === undefined) delete process.env.QUOTA_MSG_HARD;
+      else process.env.QUOTA_MSG_HARD = prevHard;
+      if (prevSid === undefined) delete process.env.TWILIO_ACCOUNT_SID;
+      else process.env.TWILIO_ACCOUNT_SID = prevSid;
     }
   });
 });

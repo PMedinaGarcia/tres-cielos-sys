@@ -40,6 +40,13 @@ describe("harvest-rango", () => {
     });
   });
 
+  it("no interpreta rangos con guion como un solo monto", () => {
+    expect(parseMontoMxn("200-250 mil")).toBeNull();
+    expect(parseRangoInversion("200-250 mil")).toBeNull();
+    expect(parseRangoInversion("250-300 mil")).toBeNull();
+    expect(applyRangoHarvest("200-250 mil", {})).toEqual({});
+  });
+
   it("marca encaje no por debajo del piso", () => {
     expect(parseRangoInversion("presupuesto 180 mil")).toEqual({
       rango: "menor_250",

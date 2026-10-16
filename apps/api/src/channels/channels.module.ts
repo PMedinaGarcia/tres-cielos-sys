@@ -11,6 +11,7 @@ import { OrchestratorService } from "../conversation/orchestrator/orchestrator.s
 import { MetaWebhookController } from "./meta.webhook.controller";
 import { TwilioWebhookController } from "./twilio.webhook.controller";
 import { ConversationPanelController } from "./conversation-panel.controller";
+import { BandejaService } from "./bandeja.service";
 import { ChannelSandboxController } from "./channel-sandbox.controller";
 import {
   GuionAssetsController,
@@ -58,6 +59,7 @@ import { AuthModule } from "../auth/auth.module";
   ],
   providers: [
     MessageNormalizerService,
+    BandejaService,
     OutboundService,
     IdempotencyService,
     ConversationStateStore,

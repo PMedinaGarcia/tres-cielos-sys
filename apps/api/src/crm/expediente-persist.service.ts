@@ -54,6 +54,8 @@ const TIPOS_EVENTO = new Set<TipoEvento>([
 
 export interface PersistTurnExtras {
   plantillaUtilityId?: string | null;
+  /** Quién provocó el turno. El brief editado en la bandeja queda como asesor. */
+  actor?: "bot" | "asesor" | "coordinador" | "admin";
 }
 
 const RECONTACTO_MS = 24 * 60 * 60 * 1000;
@@ -421,6 +423,7 @@ export class ExpedientePersistService {
       visitaEstado: comercial.visitaEstado,
       etapaChanged: comercial.etapaChanged,
       etapa: comercial.etapa,
+      actor: extras.actor ?? "bot",
     });
 
     if (conv.estadoBot === "escalado" || conv.estadoBot === "humano") {
@@ -809,6 +812,7 @@ export class ExpedientePersistService {
     visitaEstado: VisitaEstado;
     etapaChanged: boolean;
     etapa: EtapaPipeline;
+    actor: "bot" | "asesor" | "coordinador" | "admin";
   }): Promise<void> {
     const prisma = this.prisma!;
     const prev = input.previous;
@@ -878,7 +882,7 @@ export class ExpedientePersistService {
         oportunidadId: input.oportunidadId,
         conversacionId: input.conversacionId,
         tipo: "brief_actualizado",
-        actor: "bot",
+        actor: input.actor,
         resumen: `Brief actualizado (${campos.join(", ")})`,
         payload: { campos },
       },

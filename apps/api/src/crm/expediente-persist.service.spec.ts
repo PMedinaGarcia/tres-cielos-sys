@@ -200,6 +200,88 @@ describe("ExpedientePersistService", () => {
     );
   });
 
+  it("no duplica un mensaje que ya está guardado", async () => {
+    process.env.DATABASE_URL = "postgresql://test";
+    const prisma = mockPrisma();
+    (prisma.mensaje.findUnique as jest.Mock).mockImplementation(
+      async (args: { where: { id?: string; canal_externalMessageId?: unknown } }) => {
+        if (args.where.id || args.where.canal_externalMessageId) {
+          return { id: args.where.id ?? "existente" };
+        }
+        return null;
+      },
+    );
+    const svc = new ExpedientePersistService(prisma as never);
+    await svc.persistAfterTurn(
+      baseConv({
+        mensajes: [
+          ...baseConv().mensajes,
+          {
+            id: "msg-asesor",
+            direccion: "saliente",
+            autor: "asesor",
+            contenido: "Te escribo yo",
+            timestamp: "2026-08-26T12:05:00.000Z",
+            externalMessageId: "SM-asesor",
+            consumioCupo: false,
+          },
+        ],
+      }),
+    );
+    expect(prisma.mensaje.create).not.toHaveBeenCalled();
+  });
+
+  it("el brief editado por el asesor limpia el aforo y firma el hecho", async () => {
+    process.env.DATABASE_URL = "postgresql://test";
+    const prisma = mockPrisma();
+    attachExisting(prisma);
+    prisma.conversacion.findUnique.mockResolvedValue({
+      id: "conv-1",
+      clienteId: "cli-1",
+      oportunidadId: "opp-1",
+      camposCapturados: { aforo: 120, tipoEvento: "corporativo" },
+      cliente: clienteFicha(),
+      oportunidad: {
+        clienteId: "cli-1",
+        briefJson: {},
+        calificacion: "en_exploracion",
+        listoParaCotizar: false,
+        aforo: 120,
+        tipoEvento: "corporativo",
+        visitaEstado: "no_solicitada",
+        etapa: "calificado",
+        fechaTentativa: null,
+        sede: null,
+        paqueteTentativoId: null,
+        propuestaEnviadaEn: null,
+      },
+    } as never);
+    const svc = new ExpedientePersistService(prisma as never);
+    await svc.persistAfterTurn(
+      baseConv({
+        mensajes: [],
+        camposCapturados: {
+          ...baseConv().camposCapturados,
+          aforo: null,
+        },
+      }),
+      { actor: "asesor" },
+    );
+    expect(prisma.oportunidad.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ aforo: null }),
+      }),
+    );
+    expect(prisma.interaccion.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          tipo: "brief_actualizado",
+          actor: "asesor",
+        }),
+      }),
+    );
+  });
+
   it("no persiste una frase de intención como Cliente.nombre", async () => {
     process.env.DATABASE_URL = "postgresql://test";
     const prisma = mockPrisma();

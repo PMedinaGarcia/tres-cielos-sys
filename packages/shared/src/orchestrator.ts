@@ -42,14 +42,24 @@ export type EncajeEconomico = z.infer<typeof EncajeEconomicoSchema>;
 export const IntencionNivelSchema = z.enum(["alta", "media", "baja"]);
 export type IntencionNivel = z.infer<typeof IntencionNivelSchema>;
 
-export const RangoInversionSchema = z.enum([
+export const RANGO_INVERSION = [
   "r250_349",
   "r350_499",
   "r500_mas",
   "por_definir",
   "menor_250",
-]);
+] as const;
+export const RangoInversionSchema = z.enum(RANGO_INVERSION);
 export type RangoInversion = z.infer<typeof RangoInversionSchema>;
+
+/** Rango declarado tras CTA «Fuera de presupuesto» (guion v4). */
+export const RANGO_PRESUPUESTO_FUERA = [
+  "r200_250",
+  "r250_300",
+  "fuera_rango",
+] as const;
+export const RangoPresupuestoFueraSchema = z.enum(RANGO_PRESUPUESTO_FUERA);
+export type RangoPresupuestoFuera = z.infer<typeof RangoPresupuestoFueraSchema>;
 
 export const FechaTipoSchema = z.enum(["sabado", "viernes", "otro"]);
 export type FechaTipo = z.infer<typeof FechaTipoSchema>;
@@ -63,12 +73,13 @@ export const AforoBandaSchema = z.union([
 ]);
 export type AforoBanda = z.infer<typeof AforoBandaSchema>;
 
-export const FechaEstadoSchema = z.enum([
+export const FECHA_ESTADO = [
   "definida",
   "ventana",
   "tentativa",
   "sin_definir",
-]);
+] as const;
+export const FechaEstadoSchema = z.enum(FECHA_ESTADO);
 export type FechaEstado = z.infer<typeof FechaEstadoSchema>;
 
 export const RutaComercialSchema = z.enum([
