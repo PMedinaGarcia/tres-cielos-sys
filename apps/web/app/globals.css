@@ -48,6 +48,11 @@ body {
     @apply focus:border-teal/50 focus:ring-2 focus:ring-teal/20;
   }
 
+  .glass-input-sm {
+    @apply w-full rounded-lg border border-white/70 bg-white/60 px-2.5 py-1.5 text-xs text-ink outline-none placeholder:text-ink/40;
+    @apply focus:border-teal/50 focus:ring-2 focus:ring-teal/20;
+  }
+
   .btn-teal {
     @apply inline-flex items-center justify-center rounded-xl bg-teal px-4 py-2.5 text-sm font-medium text-white shadow-glass;
     @apply transition hover:bg-teal-dark disabled:cursor-not-allowed disabled:opacity-40;
@@ -56,6 +61,22 @@ body {
   .btn-ghost {
     @apply inline-flex items-center justify-center rounded-xl border border-white/70 bg-white/30 px-4 py-2.5 text-sm text-ink;
     @apply transition hover:bg-white/50 disabled:opacity-40;
+  }
+
+  .bandeja-layout {
+    @apply grid min-h-0 flex-1 grid-cols-1 gap-2;
+  }
+
+  @media (min-width: 1024px) {
+    .bandeja-layout {
+      grid-template-columns: var(--bandeja-col, 20rem) minmax(0, 1fr);
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .bandeja-layout.bandeja-layout--datos {
+      grid-template-columns: var(--bandeja-col, 20rem) minmax(0, 1fr) var(--datos-col, 22rem);
+    }
   }
 }
 

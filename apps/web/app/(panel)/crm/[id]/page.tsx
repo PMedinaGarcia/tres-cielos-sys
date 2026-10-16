@@ -1,12 +1,10 @@
 "use client";
 
-import { BriefCard } from "@/components/ops/brief-card";
+import { BriefHero } from "@/components/crm/brief-hero";
 import { ConfirmDeleteDialog } from "@/components/crm/confirm-delete";
-import { FichaPanel } from "@/components/crm/ficha-panel";
+import { ExpedienteAside } from "@/components/crm/expediente-aside";
 import { HistorialFeed } from "@/components/crm/historial-feed";
-import { OportunidadPanel } from "@/components/crm/oportunidad-panel";
-import { displayName } from "@/components/crm/labels";
-import { GlassPanel } from "@/components/glass-panel";
+import { displayName, ESTADO_ATENCION_LABEL } from "@/components/crm/labels";
 import {
   addNotaCliente,
   deleteCliente,
@@ -102,12 +100,12 @@ export default function CrmExpedientePage() {
   if (!cliente && error) {
     return (
       <div className="mx-auto max-w-6xl px-6 py-10">
-        <GlassPanel className="px-8 py-8">
+        <div className="glass rounded-glass px-8 py-8">
           <p className="text-red-800">{error}</p>
           <Link href="/crm" className="mt-3 inline-block text-sm text-teal">
             Volver al CRM
           </Link>
-        </GlassPanel>
+        </div>
       </div>
     );
   }
@@ -121,84 +119,89 @@ export default function CrmExpedientePage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-6 py-10">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <Link href="/crm" className="text-xs uppercase tracking-wide text-teal">
+    <div className="mx-auto flex h-[calc(100dvh-7.5rem)] max-w-[90rem] flex-col px-3 py-3 lg:h-[calc(100dvh-5.75rem)] lg:px-5 lg:py-4">
+      <header className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-3 animate-rise">
+        <div className="min-w-0">
+          <Link
+            href="/crm"
+            className="text-[11px] font-medium uppercase tracking-wide text-teal"
+          >
             ← CRM
           </Link>
-          <h1 className="font-display text-3xl text-ink">
-            {displayName(cliente.nombre)}
-          </h1>
+          <div className="mt-0.5 flex flex-wrap items-center gap-2">
+            <h1 className="font-display text-2xl text-ink md:text-3xl">
+              {displayName(cliente.nombre)}
+            </h1>
+            <span className="rounded-full bg-white/60 px-2.5 py-0.5 text-[11px] text-ink/70">
+              {ESTADO_ATENCION_LABEL[cliente.estadoAtencion]}
+            </span>
+            {cliente.tieneDuplicado ? (
+              <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] text-amber-800">
+                Posible duplicado
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-0.5 text-xs text-ink/50">
+            {cliente.telefono ?? "Sin teléfono"}
+            {cliente.correo ? ` · ${cliente.correo}` : ""}
+          </p>
         </div>
-        <button
-          type="button"
-          className="rounded-xl border border-red-200 bg-white/40 px-4 py-2 text-sm text-red-800 transition hover:bg-red-50 disabled:opacity-40"
-          disabled={busy || deleting}
-          onClick={() => {
-            setDeleteError(null);
-            setConfirmOpen(true);
-          }}
-        >
-          Eliminar registro
-        </button>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-3">
-        <GlassPanel className="px-6 py-6">
-          <h2 className="mb-4 font-display text-lg text-teal">Ficha</h2>
-          <FichaPanel
-            key={`${cliente.id}-${cliente.actualizadoEn}`}
-            cliente={cliente}
-            busy={busy}
-            error={error}
-            onSaveFicha={(input) => wrap(() => patchCliente(id, input).then(() => undefined))}
-            onAddNota={(cuerpo) =>
-              wrap(() => addNotaCliente(id, { cuerpo }).then(() => undefined))
-            }
-            onSaveTags={(tags) =>
-              wrap(() => replaceTagsCliente(id, { tags }).then(() => undefined))
-            }
-          />
-        </GlassPanel>
-        <GlassPanel className="px-6 py-6">
-          <h2 className="mb-4 font-display text-lg text-teal">Brief</h2>
-          <BriefCard
-            brief={{
-              nombre: cliente.nombre,
-              ocasion: cliente.tipoEvento,
-              fechaEstado: null,
-              aforo: cliente.oportunidades[0]?.aforo ?? null,
-              rango: null,
-              encaje: cliente.conversaciones[0]?.encajeEconomico ?? null,
-              intencion: cliente.conversaciones[0]?.intencionNivel ?? null,
-              ruta: cliente.conversaciones[0]?.rutaComercial ?? null,
-              ultimaPregunta: null,
-              pdfEnviado: false,
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/bandeja?c=${cliente.id}`}
+            className="btn-teal !py-2 !text-sm"
+          >
+            Responder en bandeja
+          </Link>
+          <button
+            type="button"
+            className="rounded-xl border border-red-200/80 bg-white/30 px-4 py-2 text-sm text-red-800 transition hover:bg-red-50 disabled:opacity-40"
+            disabled={busy || deleting}
+            onClick={() => {
+              setDeleteError(null);
+              setConfirmOpen(true);
             }}
-          />
-        </GlassPanel>
-        <GlassPanel className="px-6 py-6">
-          <h2 className="mb-4 font-display text-lg text-teal">Comercial</h2>
-          <OportunidadPanel
-            cliente={cliente}
-            busy={busy}
-            onPatch={(oportunidadId, body) =>
-              wrap(() => patchOportunidad(oportunidadId, body).then(() => undefined))
-            }
-          />
-        </GlassPanel>
-        <GlassPanel className="px-6 py-6">
-          <h2 className="mb-4 font-display text-lg text-teal">Historial</h2>
+          >
+            Eliminar
+          </button>
+        </div>
+      </header>
+
+      {error ? (
+        <p className="mb-2 shrink-0 text-sm text-red-800">{error}</p>
+      ) : null}
+
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_19rem] xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="flex min-h-0 flex-col gap-3">
+          <BriefHero cliente={cliente} />
           <HistorialFeed
+            clienteId={cliente.id}
             items={historial}
             total={total}
             tipo={tipo}
             onTipo={setTipo}
             loading={histLoading}
           />
-        </GlassPanel>
+        </div>
+        <ExpedienteAside
+          cliente={cliente}
+          busy={busy}
+          error={error}
+          onSaveFicha={(input) =>
+            wrap(() => patchCliente(id, input).then(() => undefined))
+          }
+          onAddNota={(cuerpo) =>
+            wrap(() => addNotaCliente(id, { cuerpo }).then(() => undefined))
+          }
+          onSaveTags={(tags) =>
+            wrap(() => replaceTagsCliente(id, { tags }).then(() => undefined))
+          }
+          onPatchOportunidad={(oportunidadId, body) =>
+            wrap(() => patchOportunidad(oportunidadId, body).then(() => undefined))
+          }
+        />
       </div>
+
       <ConfirmDeleteDialog
         open={confirmOpen}
         title="Eliminar registro"

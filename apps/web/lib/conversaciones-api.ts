@@ -1,4 +1,9 @@
-import type { BandejaItem, BriefCardDto } from "@tres-cielos/shared";
+import type {
+  ActualizarBriefRequest,
+  BandejaItem,
+  BriefCardDto,
+  EnviarMensajeAsesorResponse,
+} from "@tres-cielos/shared";
 import { apiFetch, readJson } from "./http";
 
 export async function listBandeja(cola?: "comercial" | "atencion_general"): Promise<{
@@ -28,6 +33,28 @@ export async function tomarControl(
   const res = await apiFetch(`/conversaciones/${id}/tomar-control`, {
     method: "POST",
     body: JSON.stringify({ motivo }),
+  });
+  return readJson(res);
+}
+
+export async function enviarMensaje(
+  id: string,
+  contenido: string,
+): Promise<EnviarMensajeAsesorResponse> {
+  const res = await apiFetch(`/conversaciones/${id}/mensajes`, {
+    method: "POST",
+    body: JSON.stringify({ contenido }),
+  });
+  return readJson(res);
+}
+
+export async function actualizarBrief(
+  id: string,
+  body: ActualizarBriefRequest,
+): Promise<{ id: string }> {
+  const res = await apiFetch(`/conversaciones/${id}/brief`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
   });
   return readJson(res);
 }
