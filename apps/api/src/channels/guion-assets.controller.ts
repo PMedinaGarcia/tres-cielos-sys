@@ -17,6 +17,7 @@ import {
 } from "@tres-cielos/shared";
 import { GuionAssetsService } from "./guion-assets.service";
 import { paqueteCardContentType, resolvePaqueteCardPath } from "./guion-assets";
+import { IMAGE_INLINE_DISPOSITION, readRelayedImage } from "./wa-image-alt";
 
 @Controller("g")
 export class GuionShortLinkController {
@@ -49,6 +50,24 @@ export class GuionAssetsController {
   ) {}
 
   @Public()
+  @Get("cards/:slug")
+  async paqueteCard(@Param("slug") slug: string): Promise<StreamableFile> {
+    return readPaqueteCard(slug);
+  }
+
+  /**
+   * Misma card, sin extensión en la ruta y sin filename.
+   * WhatsApp usa ese nombre como texto debajo de la foto.
+   */
+  @Public()
+  @Get("i/:slug")
+  async paqueteCardSinNombre(
+    @Param("slug") slug: string,
+  ): Promise<StreamableFile> {
+    return readPaqueteCard(slug);
+  }
+
+  @Public()
   @Get(":slug")
   async flujoPdf(@Param("slug") slug: string): Promise<StreamableFile> {
     if (!slug.toLowerCase().endsWith(".pdf")) {
@@ -70,24 +89,38 @@ export class GuionAssetsController {
       disposition: contentDispositionInline(downloadName),
     });
   }
+}
 
+@Controller("public/wa-img")
+export class WaImageRelayController {
   @Public()
-  @Get("cards/:slug")
-  async paqueteCard(
-    @Param("slug") slug: string,
-  ): Promise<StreamableFile> {
-    const key = slug.replace(/\.(svg|jpe?g|webp|png)$/i, "") as GuionPaqueteCardSlug;
-    if (!GUION_PAQUETE_CARD_SLUGS.includes(key)) {
-      throw new NotFoundException("Card de paquete no encontrada");
-    }
-    const path = resolvePaqueteCardPath(key);
-    if (!existsSync(path)) {
-      throw new NotFoundException("Card de paquete no encontrada");
-    }
-    const body = await readFile(path);
-    const type = paqueteCardContentType(path);
-    return new StreamableFile(body, { type });
+  @Get(":id")
+  relay(@Param("id") id: string): StreamableFile {
+    const image = readRelayedImage(id);
+    if (!image) throw new NotFoundException("Imagen no encontrada");
+    return new StreamableFile(image.body, {
+      type: image.contentType,
+      disposition: IMAGE_INLINE_DISPOSITION,
+      length: image.body.length,
+    });
   }
+}
+
+async function readPaqueteCard(slug: string): Promise<StreamableFile> {
+  const key = slug.replace(/\.(svg|jpe?g|webp|png)$/i, "") as GuionPaqueteCardSlug;
+  if (!GUION_PAQUETE_CARD_SLUGS.includes(key)) {
+    throw new NotFoundException("Card de paquete no encontrada");
+  }
+  const path = resolvePaqueteCardPath(key);
+  if (!existsSync(path)) {
+    throw new NotFoundException("Card de paquete no encontrada");
+  }
+  const body = await readFile(path);
+  return new StreamableFile(body, {
+    type: paqueteCardContentType(path),
+    disposition: IMAGE_INLINE_DISPOSITION,
+    length: body.length,
+  });
 }
 
 function contentDispositionInline(filename: string): string {
