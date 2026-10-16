@@ -34,6 +34,7 @@ import {
 import { IdentidadService } from "./identidad.service";
 import { ClienteMemoriaService } from "../conversation/memoria/cliente-memoria.service";
 import { PanelRealtimeService } from "../panel-realtime/panel-realtime.service";
+import { inteligenciaInputDe } from "./inteligencia/inteligencia-input";
 import {
   derivarInteligencia,
   nextEtapaPipeline,
@@ -96,23 +97,43 @@ export class ExpedientePersistService {
     }
   }
 
+  /**
+   * Candado de hilo (bot → humano). No asigna dueño comercial; eso ocurre al primer mensaje del asesor.
+   * @returns false si otro asesor ya tiene el candado.
+   */
   async persistTomaControl(input: {
     conversacionId: string;
     usuarioId: string;
     motivo?: string | null;
-  }): Promise<void> {
-    if (!this.canWrite()) return;
+  }): Promise<boolean> {
+    if (!this.canWrite()) return true;
     const prisma = this.prisma!;
     try {
       const conv = await prisma.conversacion.findUnique({
         where: { id: input.conversacionId },
       });
-      if (!conv) return;
+      if (!conv) return false;
+      if (
+        conv.estadoBot === "humano" &&
+        conv.asesorLockId === input.usuarioId
+      ) {
+        return true;
+      }
+      if (conv.asesorLockId && conv.asesorLockId !== input.usuarioId) {
+        return false;
+      }
       const prev = conv.estadoBot;
-      await prisma.conversacion.update({
-        where: { id: conv.id },
+      const claimed = await prisma.conversacion.updateMany({
+        where: {
+          id: conv.id,
+          OR: [
+            { asesorLockId: null },
+            { asesorLockId: input.usuarioId },
+          ],
+        },
         data: { estadoBot: "humano", asesorLockId: input.usuarioId },
       });
+      if (claimed.count === 0) return false;
       await this.syncEstadoBotCliente(conv.clienteId, {
         estadoBot: "humano",
         asesorLockId: input.usuarioId,
@@ -132,26 +153,55 @@ export class ExpedientePersistService {
           motivo: input.motivo ?? null,
         },
       });
-      const cliente = await prisma.cliente.findUnique({
-        where: { id: conv.clienteId },
-      });
-      if (cliente && !cliente.asesorAsignadoId) {
-        await this.applyAsignacion({
-          clienteId: conv.clienteId,
-          oportunidadId: conv.oportunidadId,
-          asesorId: input.usuarioId,
-          regla: "manual",
-          actor: "sistema",
-          actorUsuarioId: input.usuarioId,
-          motivo: input.motivo ?? "toma_control",
-        });
-      }
+      return true;
     } catch (err) {
       this.logger.warn(
         `No se pudo persistir toma de control ${input.conversacionId}: ${
           err instanceof Error ? err.message : String(err)
         }`,
       );
+      return false;
+    }
+  }
+
+  /** Asigna cliente/oportunidad al asesor si aún no tienen dueño (primer mensaje tras el bot). */
+  async asignarSiSinDueno(input: {
+    conversacionId: string;
+    asesorId: string;
+    motivo?: string;
+  }): Promise<string | null> {
+    if (!this.canWrite()) return null;
+    const prisma = this.prisma!;
+    try {
+      const conv = await prisma.conversacion.findUnique({
+        where: { id: input.conversacionId },
+        select: { clienteId: true, oportunidadId: true },
+      });
+      if (!conv) return null;
+      const cliente = await prisma.cliente.findUnique({
+        where: { id: conv.clienteId },
+        select: { asesorAsignadoId: true },
+      });
+      if (!cliente) return null;
+      if (cliente.asesorAsignadoId) return cliente.asesorAsignadoId;
+      await this.applyAsignacion({
+        clienteId: conv.clienteId,
+        oportunidadId: conv.oportunidadId,
+        asesorId: input.asesorId,
+        regla: "manual",
+        actor: "sistema",
+        actorUsuarioId: input.asesorId,
+        motivo: input.motivo ?? "primer_mensaje_asesor",
+      });
+      this.realtime?.emit({ type: "bandeja", clienteId: conv.clienteId });
+      return input.asesorId;
+    } catch (err) {
+      this.logger.warn(
+        `No se pudo asignar por primer mensaje ${input.conversacionId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      return null;
     }
   }
 
@@ -428,20 +478,7 @@ export class ExpedientePersistService {
       actor: extras.actor ?? "bot",
     });
 
-    if (conv.estadoBot === "escalado" || conv.estadoBot === "humano") {
-      await this.assignOnHandoff({
-        clienteId: cliente.id,
-        oportunidadId,
-        conversacionId,
-        sedeId: campos.sedeId ?? null,
-        motivo: conv.motivoHandoff,
-        cola:
-          campos.rutaComercial === "atencion_general"
-            ? "atencion_general"
-            : "comercial",
-        rutaComercial: campos.rutaComercial ?? null,
-      });
-    }
+    // Dueño comercial: primer asesor que envía mensaje (BandejaService), no round-robin en handoff.
   }
 
   private async resolveCliente(input: {
@@ -1365,26 +1402,29 @@ function comercialFromTurn(input: {
     visitaEstado = "solicitada";
   }
   const etapa = nextEtapaPipeline(input.prev?.etapa, input.conv.calificado);
-  const perfilCompleto = isPerfilListo(input.conv.camposCapturados);
-  const intel = derivarInteligencia({
-    tipoEvento: input.tipoEvento,
-    calificacion: input.conv.calificado ? "calificado" : "en_exploracion",
-    listoParaCotizar: input.conv.listoParaCotizar,
-    paqueteTentativoId:
-      input.paqueteId ?? input.prev?.paqueteTentativoId ?? null,
-    etapa,
-    propuestaEnviadaEn: input.prev?.propuestaEnviadaEn ?? null,
-    visitaEstado,
-    intencionVisita,
-    motivoHandoff: input.conv.motivoHandoff,
-    ultimaRuta: input.conv.ultimaRuta,
-    pasoGuion: input.conv.pasoGuion,
-    perfilCompleto,
-    intencionCotizar: input.conv.camposCapturados.intencionCotizar ?? null,
-    pedidoCotizacion: input.conv.pedidoCotizacion ?? null,
-    ultimoContactoEn: new Date(),
-    estadoAtencion: mapEstadoAtencion(input.conv.estadoBot),
-  });
+  const intel = derivarInteligencia(
+    inteligenciaInputDe({
+      tipoEvento: input.tipoEvento,
+      calificacion: input.conv.calificado ? "calificado" : "en_exploracion",
+      listoParaCotizar: input.conv.listoParaCotizar,
+      paqueteTentativoId:
+        input.paqueteId ?? input.prev?.paqueteTentativoId ?? null,
+      etapa,
+      propuestaEnviadaEn: input.prev?.propuestaEnviadaEn ?? null,
+      visitaEstado,
+      intencionVisita,
+      fechaTentativa: input.fechaTentativa,
+      aforo: input.conv.camposCapturados.aforo ?? null,
+      sede: input.sedeNombre,
+      campos: input.conv.camposCapturados,
+      motivoHandoff: input.conv.motivoHandoff,
+      ultimaRuta: input.conv.ultimaRuta,
+      pasoGuion: input.conv.pasoGuion,
+      pedidoCotizacion: input.conv.pedidoCotizacion ?? null,
+      ultimoContactoEn: new Date(),
+      estadoAtencion: mapEstadoAtencion(input.conv.estadoBot),
+    }),
+  );
   return {
     intencionVisita,
     visitaEstado,

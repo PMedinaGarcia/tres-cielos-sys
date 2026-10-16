@@ -1,5 +1,6 @@
 import {
   anioTarifaPublicada,
+  FECHA_ESTADO_LABEL,
   REINICIO_GUION_PAYLOAD,
   SEDE_ID,
   SEDE_NOMBRE,
@@ -920,13 +921,6 @@ function validateAforoNumber(
   }
   return { ok: true, aforo: n };
 }
-
-const FECHA_ESTADO_LABEL: Record<FechaEstado, string> = {
-  definida: "Definida",
-  ventana: "Ventana",
-  tentativa: "Tentativa",
-  sin_definir: "Sin definir",
-};
 
 function ventanaComercialDesdeRango(
   desde: string,

@@ -58,6 +58,7 @@ import {
   initialPasoGuion,
   isHiloTerminado,
   isV2Plus,
+  isV4AsistenciaEnEspera,
   nextPasoGuionV2,
   nextPasoGuionV3,
   nextPasoGuionV4,
@@ -375,6 +376,7 @@ export class OrchestratorService {
       flow,
       campos: camposRuta,
       adjuntoReintentos: camposRuta.adjuntoReintentos ?? 0,
+      motivoHandoff: conv.motivoHandoff,
     });
     if (
       (harvested.filled.length > 0 || isV2Plus(flow)) &&
@@ -540,6 +542,26 @@ export class OrchestratorService {
 
     if (route.kind === "rag") {
       return this.runRag(conv.id, textoIn, msgIn.id);
+    }
+
+    if (
+      route.kind === "safe" &&
+      flow === "v4" &&
+      isV4AsistenciaEnEspera(
+        conv.camposCapturados,
+        conv.estadoBot,
+        conv.motivoHandoff,
+      )
+    ) {
+      return this.finishReply({
+        conversacionId: conv.id,
+        oportunidadId: conv.oportunidadId,
+        texto: SAFE_COPY_BOT_SILENCIADO,
+        ruta: "safe",
+        mensajeEntranteId: msgIn.id,
+        pasoGuion: conv.pasoGuion,
+        motivoHandoff: conv.motivoHandoff,
+      });
     }
 
     return this.finishSafe(conv.id, conv.oportunidadId, msgIn.id, null);
@@ -1085,6 +1107,25 @@ export class OrchestratorService {
     });
 
     if (!result.ok) {
+      if (
+        this.flowOf(conv) === "v4" &&
+        isV4AsistenciaEnEspera(
+          conv.camposCapturados,
+          conv.estadoBot,
+          conv.motivoHandoff,
+        )
+      ) {
+        await this.store.update(conversacionId, { ultimaRuta: "safe" });
+        return this.finishReply({
+          conversacionId,
+          oportunidadId: conv.oportunidadId,
+          texto: COPY_V3_RAG_SAFE_FAQ,
+          ruta: "safe",
+          mensajeEntranteId,
+          pasoGuion: conv.pasoGuion,
+          registroRecuperacionId: result.registroRecuperacionId ?? null,
+        });
+      }
       if (this.flowOf(conv) === "v3") {
         const encaje = deriveEncajeV3(conv.camposCapturados);
         const texto =
@@ -1165,6 +1206,16 @@ export class OrchestratorService {
     const yaNutricion = conv.camposCapturados.rutaComercial === "nutricion";
 
     if (yaNutricion) {
+      if (
+        this.flowOf(conv) === "v4" &&
+        isV4AsistenciaEnEspera(
+          conv.camposCapturados,
+          conv.estadoBot,
+          conv.motivoHandoff,
+        )
+      ) {
+        return this.runRag(conversacionId, textoProspecto, mensajeEntranteId);
+      }
       const ficha = await this.fichaNutricionSiAplica(textoProspecto);
       if (ficha) {
         return this.finishReply({

@@ -11,9 +11,10 @@ import type { PanelUser } from "../auth/auth.types";
 import { toOportunidadResumen } from "./cliente.mapper";
 import type { ActualizarOportunidadDto } from "./dto/oportunidad.dto";
 import {
-  derivarInteligencia,
-  perfilDesdeOportunidad,
-} from "./inteligencia/playbook-evento";
+  camposCapturadosDe,
+  inteligenciaInputDe,
+} from "./inteligencia/inteligencia-input";
+import { derivarInteligencia } from "./inteligencia/playbook-evento";
 
 @Injectable()
 export class OportunidadService {
@@ -111,28 +112,27 @@ export class OportunidadService {
         ? new Date()
         : opp.propuestaEnviadaEn;
     const conv = opp.conversaciones[0];
-    const intel = derivarInteligencia({
-      tipoEvento: opp.tipoEvento,
-      calificacion: opp.calificacion,
-      listoParaCotizar: opp.listoParaCotizar,
-      paqueteTentativoId: opp.paqueteTentativoId,
-      etapa: nextEtapa,
-      propuestaEnviadaEn: nextPropuesta,
-      visitaEstado: nextVisita,
-      intencionVisita:
-        Boolean(data.intencionVisita) || opp.intencionVisita,
-      motivoHandoff: conv?.motivoHandoff ?? null,
-      ultimaRuta: conv?.ultimaRuta ?? null,
-      pasoGuion: conv?.pasoGuion ?? null,
-      perfilCompleto: perfilDesdeOportunidad({
+    const intel = derivarInteligencia(
+      inteligenciaInputDe({
         tipoEvento: opp.tipoEvento,
+        calificacion: opp.calificacion,
+        listoParaCotizar: opp.listoParaCotizar,
+        paqueteTentativoId: opp.paqueteTentativoId,
+        etapa: nextEtapa,
+        propuestaEnviadaEn: nextPropuesta,
+        visitaEstado: nextVisita,
+        intencionVisita: Boolean(data.intencionVisita) || opp.intencionVisita,
         fechaTentativa: opp.fechaTentativa,
         aforo: opp.aforo,
         sede: opp.sede,
+        campos: camposCapturadosDe(conv?.camposCapturados),
+        motivoHandoff: conv?.motivoHandoff ?? null,
+        ultimaRuta: conv?.ultimaRuta ?? null,
+        pasoGuion: conv?.pasoGuion ?? null,
+        ultimoContactoEn: opp.cliente.ultimoContactoEn,
+        estadoAtencion: opp.cliente.estadoAtencion,
       }),
-      ultimoContactoEn: opp.cliente.ultimoContactoEn,
-      estadoAtencion: opp.cliente.estadoAtencion,
-    });
+    );
     data.etapaCotizacion = intel.etapaCotizacion;
 
     const updated = await this.prisma!.oportunidad.update({

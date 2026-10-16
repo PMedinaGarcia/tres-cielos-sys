@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { MensajeAsesorAdjuntoRefSchema } from "./bandeja-media";
 import { ROL_USUARIO } from "./auth";
+import { ResumenComercialBotSchema } from "./comercial-bot";
 import {
   FechaEstadoSchema,
   RangoInversionSchema,
@@ -188,6 +189,7 @@ export const ClienteListItemSchema = z.object({
   visitaEstado: VisitaEstadoSchema,
   listoParaCotizar: z.boolean(),
   siguienteAccion: z.string(),
+  resumenComercial: ResumenComercialBotSchema.nullable(),
   estancado: z.boolean(),
   oportunidadId: z.string().nullable(),
   encajeEconomico: z.string().nullable().optional(),
@@ -219,6 +221,7 @@ export const OportunidadResumenDtoSchema = z.object({
   paqueteTentativoId: z.string().nullable(),
   motivoPerdido: z.string().nullable(),
   siguienteAccion: z.string(),
+  resumenComercial: ResumenComercialBotSchema.nullable(),
   estancado: z.boolean(),
   briefJson: z.unknown().nullable(),
 });
@@ -427,6 +430,7 @@ export const EnviarMensajeAsesorResponseSchema = z.object({
   mensaje: MensajeAsesorDtoSchema,
   estadoBot: z.literal("humano"),
   entrega: z.enum(ENTREGA_MENSAJE_ASESOR),
+  asesorAsignadoId: z.string().nullable().optional(),
 });
 export type EnviarMensajeAsesorResponse = z.infer<
   typeof EnviarMensajeAsesorResponseSchema

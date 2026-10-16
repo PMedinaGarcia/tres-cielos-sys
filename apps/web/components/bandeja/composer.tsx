@@ -206,7 +206,7 @@ export function Composer({
           : bloqueo
             ? bloqueo
             : botTieneControl
-              ? "Al enviar tomas el control."
+              ? "Al enviar tomas el control y quedas asignado a este cliente."
               : "Enter envía · Shift+Enter salto · hasta 25 GB por archivo"}
       </p>
     </form>

@@ -1,5 +1,6 @@
 export * from "./auth";
 export * from "./catalog";
+export * from "./comercial-bot";
 export * from "./cliente";
 export * from "./handoff";
 export * from "./orchestrator";

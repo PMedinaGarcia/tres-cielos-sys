@@ -195,6 +195,29 @@ export class InboundPipelineService {
     result.conversacionId = result.conversacionId ?? conv.id;
     this.quota.consumeAiTokens(conv.sedeId ?? "default", 500);
 
+    // El asesor puede tomar el hilo mientras el bot aún arma el RAG.
+    // No se pisa su mensaje: se descarta la salida del bot.
+    const dueno = this.conversations.getById(conv.id) ?? conv;
+    if (dueno.estadoBot === "humano") {
+      await this.audit.record({
+        tipo: "bot_decision",
+        actor: "bot",
+        conversacionId: conv.id,
+        payload: {
+          ruta: "silencio",
+          estadoBot: "humano",
+          motivo: "toma_control_en_vuelo",
+        },
+      });
+      return {
+        conversacionId: conv.id,
+        textoRespuesta: "",
+        ruta: "silencio",
+        estadoBot: "humano",
+        silencio: true,
+      };
+    }
+
     if (
       result.ruta === "handoff" ||
       (result.estadoBot === "escalado" && !result.silencio)

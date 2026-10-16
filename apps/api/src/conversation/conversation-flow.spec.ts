@@ -7,6 +7,8 @@ import {
   isCalificadoV3,
   isPrequalificadoV2,
   isHiloTerminado,
+  isV4AsistenciaEnEspera,
+  necesitaCierreNutricionV4,
   nextPasoGuionV2,
   nextPasoGuionV3,
   resolveConversationFlow,
@@ -173,6 +175,76 @@ describe("v3 score y fecha", () => {
     ).toBe(false);
     expect(
       isHiloTerminado({ estadoBot: "activo", camposCapturados: {} }),
+    ).toBe(false);
+  });
+
+  it("el cierre de nutrición v4 solo corre antes de marcar la ruta", () => {
+    expect(
+      necesitaCierreNutricionV4({
+        encajeEconomico: "no",
+        rangoPresupuestoFuera: "r250_300",
+      }),
+    ).toBe(true);
+    expect(
+      necesitaCierreNutricionV4({
+        encajeEconomico: "no",
+        rangoPresupuestoFuera: "r250_300",
+        rutaComercial: "nutricion",
+      }),
+    ).toBe(false);
+    expect(
+      necesitaCierreNutricionV4({
+        encajeEconomico: "no",
+        ctaGuion: "fuera_presupuesto",
+      }),
+    ).toBe(false);
+    expect(
+      necesitaCierreNutricionV4({
+        encajeEconomico: "confirmado",
+        rangoPresupuestoFuera: "r200_250",
+      }),
+    ).toBe(false);
+  });
+
+  it("asistencia en espera cubre nutrición con rango y handoff comercial, no humano ni fallo técnico", () => {
+    expect(
+      isV4AsistenciaEnEspera(
+        { rutaComercial: "nutricion", rangoPresupuestoFuera: "r200_250" },
+        "activo",
+      ),
+    ).toBe(true);
+    expect(
+      isV4AsistenciaEnEspera(
+        { rutaComercial: "handoff" },
+        "escalado",
+        "solicitud_usuario",
+      ),
+    ).toBe(true);
+    expect(
+      isV4AsistenciaEnEspera(
+        { rutaComercial: "handoff", rangoPresupuestoFuera: "fuera_rango" },
+        "humano",
+      ),
+    ).toBe(false);
+    expect(
+      isV4AsistenciaEnEspera(
+        { rutaComercial: "handoff" },
+        "escalado",
+        "cupo_ia",
+      ),
+    ).toBe(false);
+    expect(
+      isV4AsistenciaEnEspera(
+        { rutaComercial: "handoff" },
+        "escalado",
+        "proveedor_ia",
+      ),
+    ).toBe(false);
+    expect(
+      isV4AsistenciaEnEspera({ rutaComercial: "nutricion" }, "activo"),
+    ).toBe(false);
+    expect(
+      isV4AsistenciaEnEspera({ rutaComercial: "seguimiento" }, "activo"),
     ).toBe(false);
   });
 

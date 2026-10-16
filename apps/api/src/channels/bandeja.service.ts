@@ -123,11 +123,17 @@ export class BandejaService {
         motivo: body.motivo ?? null,
       },
     });
-    await this.expediente?.persistTomaControl({
+    const claimed = await this.expediente?.persistTomaControl({
       conversacionId: id,
       usuarioId: user.userId,
       motivo: body.motivo ?? null,
     });
+    if (claimed === false) {
+      throw conflict(
+        "OWNERSHIP_CONFLICT",
+        "Otro asesor ya tomó este hilo",
+      );
+    }
     return {
       id,
       estadoBot: "humano",
@@ -218,6 +224,12 @@ export class BandejaService {
       externalMessageId = sent.providerMessageId ?? null;
     }
 
+    const asesorAsignadoId = await this.expediente?.asignarSiSinDueno({
+      conversacionId: conv.id,
+      asesorId: user.userId,
+      motivo: "primer_mensaje_asesor",
+    });
+
     const prisma = this.db();
     const textoGuardado =
       contenido ||
@@ -298,6 +310,7 @@ export class BandejaService {
       },
       estadoBot: "humano",
       entrega,
+      asesorAsignadoId: asesorAsignadoId ?? conv.cliente.asesorAsignadoId,
     };
   }
 

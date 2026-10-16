@@ -4,7 +4,9 @@ import type {
   CamposCapturados,
   ConversacionState,
   EncajeEconomico,
+  EstadoBot,
   IntencionNivel,
+  MotivoHandoff,
   PasoGuion,
   RangoInversion,
   RangoPresupuestoFuera,
@@ -522,6 +524,43 @@ export function isCapturaPendienteV4(conv: ConversacionState): boolean {
   if (conv.pasoGuion === "faq_libre" || c.rutaComercial) return false;
   if (!c.ctaGuion) return true;
   return isPresupuestoFueraPendiente(c);
+}
+
+/**
+ * Primer turno tras capturar el rango fuera de piso: aún no hay ruta de nutrición,
+ * así que el cierre comercial se envía una sola vez.
+ */
+export function necesitaCierreNutricionV4(campos: CamposCapturados): boolean {
+  return (
+    campos.encajeEconomico === "no" &&
+    Boolean(campos.rangoPresupuestoFuera) &&
+    campos.rutaComercial !== "nutricion"
+  );
+}
+
+const MOTIVOS_HANDOFF_TECNICO = new Set<MotivoHandoff>([
+  "cupo_ia",
+  "proveedor_ia",
+]);
+
+/**
+ * El prospecto ya cerró (nutrición con rango, o handoff comercial) y puede seguir
+ * preguntando. No aplica si un asesor tomó el hilo o si el escalado fue técnico.
+ */
+export function isV4AsistenciaEnEspera(
+  campos: CamposCapturados,
+  estadoBot: EstadoBot,
+  motivoHandoff?: MotivoHandoff | null,
+): boolean {
+  if (estadoBot === "humano") return false;
+  if (motivoHandoff && MOTIVOS_HANDOFF_TECNICO.has(motivoHandoff)) return false;
+  if (
+    campos.rutaComercial === "nutricion" &&
+    Boolean(campos.rangoPresupuestoFuera)
+  ) {
+    return true;
+  }
+  return estadoBot === "escalado" && campos.rutaComercial === "handoff";
 }
 
 export function decideRutaComercialV4(campos: CamposCapturados): RutaComercial | null {

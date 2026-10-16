@@ -167,6 +167,16 @@ export function BandejaScreen() {
         queryClient.setQueryData(["bandeja", "historial", clienteId], ctx.previo);
       }
     },
+    onSuccess: (res) => {
+      if (!res.asesorAsignadoId || !clienteId) return;
+      queryClient.setQueryData(
+        ["bandeja", "cliente", clienteId],
+        (prev: typeof detalle.data) => {
+          if (!prev) return prev;
+          return { ...prev, asesorAsignadoId: res.asesorAsignadoId };
+        },
+      );
+    },
     onSettled: () => {
       void refreshCliente();
     },

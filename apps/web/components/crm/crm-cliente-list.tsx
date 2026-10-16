@@ -6,6 +6,7 @@ import {
   ETAPA_COTIZACION_LABEL,
   formatRelativo,
   formatWhen,
+  RUTA_COMERCIAL_LABEL,
   TIPO_EVENTO_LABEL,
   VISITA_LABEL,
 } from "@/components/crm/labels";
@@ -19,6 +20,10 @@ import Link from "next/link";
 
 const SEP = " \u00b7 ";
 const EM_DASH = "\u2014";
+
+/** Columnas alineadas entre cabecera y filas (lg+). */
+const LIST_GRID_COLS =
+  "lg:grid-cols-[minmax(0,1.15fr)_minmax(0,13.5rem)_minmax(0,7.75rem)_minmax(0,4.75rem)_minmax(0,6.75rem)]";
 
 type Props = {
   rows: ClienteListItem[];
@@ -54,7 +59,9 @@ export function CrmClienteList({
         </p>
       ) : null}
 
-      <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,9.5rem)_minmax(0,7.5rem)_minmax(0,5.5rem)_minmax(0,6.5rem)] gap-4 border-b border-white/40 px-6 py-2 text-[10px] font-medium uppercase tracking-wider text-ink/40 xl:grid">
+      <div
+        className={`hidden border-b border-white/40 px-5 py-2 text-[10px] font-medium uppercase tracking-wider text-ink/40 md:px-6 lg:grid lg:gap-x-4 ${LIST_GRID_COLS}`}
+      >
         <span>Cliente</span>
         <span>Etapa</span>
         <span>Atenci{"\u00f3"}n</span>
@@ -96,10 +103,13 @@ function ClienteRow({
   onDelete: (id: string, nombre: string) => void;
 }) {
   const nombre = displayName(c.nombre);
-  const etapa = c.etapaCotizacion
-    ? (ETAPA_COTIZACION_LABEL[c.etapaCotizacion as EtapaCotizacion] ??
-      c.etapaCotizacion)
-    : null;
+  const etapa =
+    c.resumenComercial?.titulo ??
+    (c.etapaCotizacion
+      ? (ETAPA_COTIZACION_LABEL[c.etapaCotizacion as EtapaCotizacion] ??
+        c.etapaCotizacion)
+      : null);
+  const accion = c.resumenComercial?.siguienteParaAsesor ?? c.siguienteAccion;
   const visita =
     c.visitaEstado && c.visitaEstado !== "no_solicitada"
       ? VISITA_LABEL[c.visitaEstado as VisitaEstado]
@@ -114,7 +124,10 @@ function ClienteRow({
   const contexto = [
     c.tipoEvento ? TIPO_EVENTO_LABEL[c.tipoEvento] ?? c.tipoEvento : null,
     visita,
-    c.rutaComercial ? c.rutaComercial.replace(/_/g, " ") : null,
+    c.rutaComercial
+      ? (RUTA_COMERCIAL_LABEL[c.rutaComercial as keyof typeof RUTA_COMERCIAL_LABEL] ??
+        c.rutaComercial.replace(/_/g, " "))
+      : null,
   ].filter((x): x is string => Boolean(x));
 
   return (
@@ -123,7 +136,9 @@ function ClienteRow({
         c.estancado ? "bg-amber-50/30" : ""
       }`}
     >
-      <div className="flex flex-col gap-3 px-5 py-4 sm:gap-4 xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(0,9.5rem)_minmax(0,7.5rem)_minmax(0,5.5rem)_minmax(0,6.5rem)] xl:items-center xl:gap-4 xl:px-6">
+      <div
+        className={`flex flex-col gap-3 px-5 py-4 sm:gap-4 md:px-6 lg:grid lg:items-start lg:gap-x-4 lg:gap-y-0 ${LIST_GRID_COLS}`}
+      >
         <div className="min-w-0">
           <Link
             href={`/crm/${c.id}`}
@@ -153,13 +168,16 @@ function ClienteRow({
                   {contacto}
                 </span>
               ) : null}
-              {c.siguienteAccion ? (
-                <span className="mt-1.5 line-clamp-2 text-xs leading-snug text-ink/70 xl:line-clamp-1">
-                  {c.siguienteAccion}
+              {accion ? (
+                <span
+                  className="mt-1.5 line-clamp-2 text-xs leading-snug text-ink/70 lg:line-clamp-1"
+                  title={accion}
+                >
+                  {accion}
                 </span>
               ) : null}
               {contexto.length > 0 ? (
-                <span className="mt-2 flex min-w-0 flex-wrap gap-1.5 xl:hidden">
+                <span className="mt-2 flex min-w-0 flex-wrap gap-1.5 lg:hidden">
                   {contexto.map((t) => (
                     <MetaChip key={t}>{t}</MetaChip>
                   ))}
@@ -169,26 +187,34 @@ function ClienteRow({
           </Link>
         </div>
 
-        <div className="hidden min-w-0 xl:block">
+        <div className="hidden min-w-0 lg:block">
           {etapa ? (
-            <span className="inline-flex max-w-full rounded-full bg-white/65 px-2.5 py-1 text-[11px] font-medium text-teal ring-1 ring-white/80">
-              <span className="truncate">{etapa}</span>
+            <span
+              className="inline-flex max-w-full rounded-2xl bg-white/65 px-2.5 py-1.5 text-[11px] font-medium leading-snug text-teal ring-1 ring-white/80"
+              title={etapa}
+            >
+              <span className="line-clamp-3 whitespace-normal text-left">
+                {etapa}
+              </span>
             </span>
           ) : (
             <span className="text-xs text-ink/35">{EM_DASH}</span>
           )}
           {contexto.length > 0 ? (
-            <p className="mt-1 truncate text-[10px] text-ink/45">
+            <p
+              className="mt-1.5 line-clamp-2 text-[10px] leading-snug text-ink/45"
+              title={contexto.join(SEP)}
+            >
               {contexto.join(SEP)}
             </p>
           ) : null}
         </div>
 
-        <div className="hidden min-w-0 xl:block">
+        <div className="hidden min-w-0 lg:block lg:pt-0.5">
           <EstadoPill estado={c.estadoAtencion} />
         </div>
 
-        <div className="flex min-w-0 items-center justify-between gap-3 xl:block xl:text-right">
+        <div className="flex min-w-0 items-center justify-between gap-3 lg:block lg:pt-0.5 lg:text-right">
           <time
             className="min-w-0 shrink truncate text-xs text-ink/45 tabular-nums"
             dateTime={c.ultimoContactoEn}
@@ -196,18 +222,21 @@ function ClienteRow({
           >
             {cuando || cuandoFull}
           </time>
-          <span className="shrink-0 xl:hidden">
+          <span className="shrink-0 lg:hidden">
             <EstadoPill estado={c.estadoAtencion} />
           </span>
         </div>
 
-        <div className="flex min-w-0 items-center gap-2 border-t border-white/30 pt-3 xl:border-0 xl:pt-0">
+        <div className="flex min-w-0 items-start gap-2 border-t border-white/30 pt-3 lg:border-0 lg:pt-0.5">
           {etapa ? (
-            <span className="min-w-0 flex-1 truncate text-[11px] text-teal xl:hidden">
+            <span
+              className="min-w-0 flex-1 text-[11px] leading-snug text-teal line-clamp-2 lg:hidden"
+              title={etapa}
+            >
               {etapa}
             </span>
           ) : (
-            <span className="min-w-0 flex-1 xl:hidden" aria-hidden />
+            <span className="min-w-0 flex-1 lg:hidden" aria-hidden />
           )}
           <div className="flex shrink-0 items-center justify-end gap-0.5">
             <Link

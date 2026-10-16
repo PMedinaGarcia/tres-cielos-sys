@@ -81,7 +81,8 @@ function build(row: Record<string, unknown> | null = hilo()) {
     appendMensaje: jest.fn(async () => ({ id: "msg-asesor" })),
   };
   const expediente = {
-    persistTomaControl: jest.fn(async () => undefined),
+    persistTomaControl: jest.fn(async () => true),
+    asignarSiSinDueno: jest.fn(async () => "asesor-1"),
     persistAfterTurn: jest.fn(async () => undefined),
   };
   const audit = { record: jest.fn(async () => ({ id: "ev-1" })) };
@@ -105,6 +106,11 @@ describe("BandejaService mensajes", () => {
     expect(res.estadoBot).toBe("humano");
     expect(res.entrega).toBe("enviado");
     expect(expediente.persistTomaControl).toHaveBeenCalled();
+    expect(expediente.asignarSiSinDueno).toHaveBeenCalledWith({
+      conversacionId: "c1",
+      asesorId: "asesor-1",
+      motivo: "primer_mensaje_asesor",
+    });
     expect(outbound.send).toHaveBeenCalledWith(
       expect.objectContaining({ texto: "Hola, te atiendo yo", canal: "whatsapp" }),
     );

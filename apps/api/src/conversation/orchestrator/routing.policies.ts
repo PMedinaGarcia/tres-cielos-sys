@@ -9,10 +9,13 @@ import {
   isCalificadoV3,
   isPrequalificadoV2,
   isPresupuestoFueraPendiente,
+  isV4AsistenciaEnEspera,
+  necesitaCierreNutricionV4,
 } from "../conversation-flow";
 import type {
   CamposCapturados,
   IntentClasificado,
+  MotivoHandoff,
   PasoGuion,
   RutaComercial,
 } from "../types";
@@ -130,8 +133,23 @@ export function decideRoute(input: {
   flow?: ConversationFlowVersion;
   campos?: CamposCapturados;
   adjuntoReintentos?: number;
+  motivoHandoff?: MotivoHandoff | null;
 }): RoutingDecision {
-  if (input.estadoBot !== "activo") return { kind: "silencio" };
+  if (input.estadoBot !== "activo") {
+    if (
+      !input.hardQuota &&
+      input.flow === "v4" &&
+      input.estadoBot === "escalado" &&
+      isV4AsistenciaEnEspera(
+        input.campos ?? {},
+        input.estadoBot,
+        input.motivoHandoff,
+      )
+    ) {
+      return decideRouteV4EnEspera(input);
+    }
+    return { kind: "silencio" };
+  }
   if (input.hardQuota) {
     return input.flow === "v3"
       ? { kind: "degrade_script" }
@@ -527,14 +545,18 @@ function decideRouteV4(
     return { kind: "guion" };
   }
 
-  if (
-    campos.rutaComercial === "nutricion" ||
-    (campos.encajeEconomico === "no" && !isPresupuestoFueraPendiente(campos))
-  ) {
+  if (necesitaCierreNutricionV4(campos)) {
     return { kind: "nutricion", motivo: "menor_piso" };
   }
   if (campos.ctaGuion && !campos.rutaComercial) return { kind: "guion" };
 
+  return decideRouteV4FaqLibre(input);
+}
+
+/** Preguntas sueltas cuando el guion v4 ya no captura. */
+function decideRouteV4FaqLibre(
+  input: Parameters<typeof decideRoute>[0],
+): RoutingDecision {
   const comercial = matchCommercialFaqTopic(input.texto);
   if (comercial) return { kind: "faq_comercial" };
   if (isIntencionVisita(input.texto)) return { kind: "jump_visita" };
@@ -545,6 +567,20 @@ function decideRouteV4(
   }
   if (input.intent === "ambiguo") return { kind: "rag" };
   return { kind: "safe" };
+}
+
+/**
+ * Hilo v4 ya escalado a comercial: el bot sigue contestando curiosidades
+ * sin volver a escalar ni prometer un handoff nuevo.
+ */
+function decideRouteV4EnEspera(
+  input: Parameters<typeof decideRoute>[0],
+): RoutingDecision {
+  const forced = detectForcedHandoff(input.texto, input.buttonPayload);
+  if (forced.handoff || input.intent === "solicitud_humana") {
+    return { kind: "safe" };
+  }
+  return decideRouteV4FaqLibre(input);
 }
 
 export function isAdjuntoSoportado(adj: {

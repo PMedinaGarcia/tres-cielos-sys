@@ -1,11 +1,30 @@
 import type {
   EstadoAtencion,
   EtapaCotizacion,
-  FechaEstado,
   RangoInversion,
   TipoInteraccion,
   VisitaEstado,
 } from "@tres-cielos/shared";
+import {
+  CTA_GUION_LABEL,
+  FECHA_ESTADO_LABEL,
+  PASO_GUION_LABEL,
+  RANGO_INVERSION_LABEL,
+  RANGO_PRESUPUESTO_FUERA_LABEL,
+  RUTA_COMERCIAL_LABEL,
+  VISITA_ESTADO_LABEL,
+  labelPresupuestoBrief,
+} from "@tres-cielos/shared";
+
+export {
+  CTA_GUION_LABEL,
+  FECHA_ESTADO_LABEL,
+  PASO_GUION_LABEL,
+  RANGO_INVERSION_LABEL,
+  RANGO_PRESUPUESTO_FUERA_LABEL,
+  RUTA_COMERCIAL_LABEL,
+  labelPresupuestoBrief,
+};
 
 export const ESTADO_ATENCION_LABEL: Record<EstadoAtencion, string> = {
   nuevo: "Nuevo",
@@ -46,14 +65,7 @@ export const ETAPA_COTIZACION_LABEL: Record<EtapaCotizacion, string> = {
   perdido: "Perdido",
 };
 
-export const VISITA_LABEL: Record<VisitaEstado, string> = {
-  no_solicitada: "Sin visita",
-  solicitada: "Visita sin agendar",
-  agendada: "Visita agendada",
-  realizada: "Visita realizada",
-  cancelada: "Visita cancelada",
-  no_asistio: "No asistió",
-};
+export const VISITA_LABEL: Record<VisitaEstado, string> = VISITA_ESTADO_LABEL;
 
 /** Textos cortos para paneles laterales y selects en columnas angostas. */
 export const ETAPA_COTIZACION_LABEL_COMPACT: Record<EtapaCotizacion, string> = {
@@ -94,33 +106,6 @@ export const COLA_LABEL: Record<string, string> = {
   estancados: "Estancados",
 };
 
-export const RANGO_INVERSION_LABEL: Record<RangoInversion, string> = {
-  r250_349: "250–349 mil",
-  r350_499: "350–499 mil",
-  r500_mas: "500 mil o más",
-  por_definir: "Por definir",
-  menor_250: "Menos de 250 mil",
-};
-
-export const RANGO_PRESUPUESTO_FUERA_LABEL: Record<string, string> = {
-  r200_250: "200–250 mil",
-  r250_300: "250–300 mil",
-  fuera_rango: "Fuera de rango",
-};
-
-export function labelPresupuestoBrief(conv: {
-  rangoInversion?: RangoInversion | null;
-  rangoPresupuestoFuera?: string | null;
-}): string | null {
-  if (conv.rangoPresupuestoFuera) {
-    return RANGO_PRESUPUESTO_FUERA_LABEL[conv.rangoPresupuestoFuera] ?? null;
-  }
-  if (conv.rangoInversion) {
-    return RANGO_INVERSION_LABEL[conv.rangoInversion];
-  }
-  return null;
-}
-
 /** Valor del `<select>` de presupuesto en bandeja (`pf:` = fuera de piso comercial). */
 export function presupuestoBriefSelectValue(conv: {
   rangoInversion?: RangoInversion | null;
@@ -130,13 +115,6 @@ export function presupuestoBriefSelectValue(conv: {
   if (conv.rangoInversion) return `inv:${conv.rangoInversion}`;
   return "";
 }
-
-export const FECHA_ESTADO_LABEL: Record<FechaEstado, string> = {
-  definida: "Definida",
-  ventana: "Ventana",
-  tentativa: "Tentativa",
-  sin_definir: "Sin definir",
-};
 
 export const ETAPA_LABEL: Record<string, string> = {
   nuevo_bot: "Nuevo / bot",

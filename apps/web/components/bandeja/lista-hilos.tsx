@@ -139,10 +139,13 @@ function HiloRow({
   const cuando = formatRelativo(ultimo?.creadoEn ?? row.ultimoContactoEn);
   const preview = ultimo
     ? `${ultimo.autor === "asesor" ? "T\u00fa: " : ultimo.autor === "bot" ? "Bot: " : ""}${ultimo.contenido}`
-    : row.siguienteAccion;
-  const etapa = row.etapaCotizacion
-    ? (ETAPA_COTIZACION_LABEL[row.etapaCotizacion as EtapaCotizacion] ?? row.etapaCotizacion)
-    : null;
+    : (row.resumenComercial?.siguienteParaAsesor ?? row.siguienteAccion);
+  const etapa =
+    row.resumenComercial?.titulo ??
+    (row.etapaCotizacion
+      ? (ETAPA_COTIZACION_LABEL[row.etapaCotizacion as EtapaCotizacion] ??
+        row.etapaCotizacion)
+      : null);
 
   return (
     <button

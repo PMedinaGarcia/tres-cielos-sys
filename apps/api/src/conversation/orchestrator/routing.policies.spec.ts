@@ -635,3 +635,108 @@ describe("routing.policies v3", () => {
   });
 });
 
+describe("routing.policies v4 asistencia en espera", () => {
+  const base = {
+    estadoBot: "activo" as const,
+    hardQuota: false,
+    adjuntoInvalido: false,
+    flow: "v4" as const,
+    pasoGuion: "faq_libre" as const,
+    capturaPendiente: false,
+    texto: "política de estacionamiento",
+  };
+
+  it("rango capturado sin ruta de nutrición cierra una sola vez", () => {
+    expect(
+      decideRoute({
+        ...base,
+        intent: "pregunta_documental",
+        campos: {
+          encajeEconomico: "no",
+          rangoPresupuestoFuera: "r250_300",
+          ctaGuion: "fuera_presupuesto",
+        },
+      }),
+    ).toEqual({ kind: "nutricion", motivo: "menor_piso" });
+  });
+
+  it("nutrición con rango y pregunta documental va a RAG", () => {
+    expect(
+      decideRoute({
+        ...base,
+        intent: "pregunta_documental",
+        campos: {
+          encajeEconomico: "no",
+          rangoPresupuestoFuera: "r200_250",
+          rutaComercial: "nutricion",
+          ctaGuion: "fuera_presupuesto",
+        },
+      }).kind,
+    ).toBe("rag");
+  });
+
+  it("nutrición con rango y texto ambiguo va a RAG", () => {
+    expect(
+      decideRoute({
+        ...base,
+        texto: "tienen capilla",
+        intent: "ambiguo",
+        campos: {
+          encajeEconomico: "no",
+          rangoPresupuestoFuera: "fuera_rango",
+          rutaComercial: "nutricion",
+        },
+      }).kind,
+    ).toBe("rag");
+  });
+
+  it("escalado comercial con pregunta ambigua va a RAG y no a silencio", () => {
+    expect(
+      decideRoute({
+        ...base,
+        estadoBot: "escalado",
+        texto: "y el jardín cómo es",
+        intent: "ambiguo",
+        motivoHandoff: "solicitud_usuario",
+        campos: { rutaComercial: "handoff", ctaGuion: "visita" },
+      }).kind,
+    ).toBe("rag");
+  });
+
+  it("escalado comercial que vuelve a pedir humano no re-escala", () => {
+    expect(
+      decideRoute({
+        ...base,
+        estadoBot: "escalado",
+        texto: "quiero hablar con un asesor",
+        intent: "solicitud_humana",
+        motivoHandoff: "solicitud_usuario",
+        campos: { rutaComercial: "handoff", ctaGuion: "ejecutivo" },
+      }).kind,
+    ).toBe("safe");
+  });
+
+  it("escalado por cupo o hilo humano sigue en silencio", () => {
+    expect(
+      decideRoute({
+        ...base,
+        estadoBot: "escalado",
+        intent: "ambiguo",
+        motivoHandoff: "cupo_ia",
+        campos: { rutaComercial: "handoff" },
+      }).kind,
+    ).toBe("silencio");
+    expect(
+      decideRoute({
+        ...base,
+        estadoBot: "humano",
+        intent: "pregunta_documental",
+        campos: {
+          rutaComercial: "nutricion",
+          rangoPresupuestoFuera: "r250_300",
+        },
+      }).kind,
+    ).toBe("silencio");
+  });
+});
+

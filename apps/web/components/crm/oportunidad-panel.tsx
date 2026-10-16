@@ -118,7 +118,9 @@ function OportunidadCard({
     <li className="rounded-2xl border border-white/60 bg-white/40 px-4 py-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-display text-teal">
-          {ETAPA_COTIZACION_LABEL[o.etapaCotizacion] ?? o.etapaCotizacion}
+          {o.resumenComercial?.titulo ??
+            ETAPA_COTIZACION_LABEL[o.etapaCotizacion] ??
+            o.etapaCotizacion}
         </span>
         {o.listoParaCotizar ? (
           <span className="rounded-full bg-teal/15 px-2 py-0.5 text-[11px] text-teal">
@@ -129,7 +131,9 @@ function OportunidadCard({
           Pipeline: {ETAPA_LABEL[o.etapa] ?? o.etapa}
         </span>
       </div>
-      <p className="mt-1 text-xs text-ink/70">{o.siguienteAccion}</p>
+      <p className="mt-1 text-xs text-ink/70">
+        {o.resumenComercial?.siguienteParaAsesor ?? o.siguienteAccion}
+      </p>
       <ol className="mt-3 space-y-1 text-xs">
         {playbook.map((paso) => (
           <li key={paso} className="flex items-center gap-2 text-ink/70">

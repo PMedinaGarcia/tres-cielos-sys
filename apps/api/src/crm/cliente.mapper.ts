@@ -13,12 +13,13 @@ import type {
   UltimoMensajeDto,
   VinculoClienteDto,
 } from "@tres-cielos/shared";
-import type { CamposCapturados } from "../conversation/types";
 import { labelFechaEventoBrief } from "../conversation/script/harvest-campos";
+import { derivarResumenComercialBot } from "./inteligencia/estado-comercial-bot";
 import {
-  derivarInteligencia,
-  perfilDesdeOportunidad,
-} from "./inteligencia/playbook-evento";
+  camposCapturadosDe,
+  inteligenciaInputDe,
+} from "./inteligencia/inteligencia-input";
+import { derivarInteligencia } from "./inteligencia/playbook-evento";
 
 type MensajePreview = {
   contenido: string;
@@ -48,9 +49,12 @@ export function toClienteListItem(
   tieneDuplicado = false,
 ): ClienteListItem {
   const opp = row.oportunidades?.[0];
-  const conv = row.conversaciones?.[0];
+  const conv =
+    row.conversaciones?.find((c) => opp && c.oportunidadId === opp.id) ??
+    row.conversaciones?.[0];
   const intel = intelDe(opp, row, conv);
-  const campos = camposFromJson(conv?.camposCapturados);
+  const campos = camposCapturadosDe(conv?.camposCapturados);
+  const resumenComercial = resumenDe(opp, row, conv, intel.etapaCotizacion);
   return {
     id: row.id,
     nombre: row.nombre,
@@ -70,6 +74,7 @@ export function toClienteListItem(
     visitaEstado: intel.visitaEstado,
     listoParaCotizar: opp?.listoParaCotizar ?? false,
     siguienteAccion: intel.siguienteAccion,
+    resumenComercial,
     estancado: intel.estancado,
     oportunidadId: opp?.id ?? null,
     encajeEconomico: conv?.encajeEconomico ?? campos.encajeEconomico ?? null,
@@ -87,6 +92,7 @@ export function toOportunidadResumen(
   ctx: { ultimoContactoEn: Date; estadoAtencion: string; conv?: Conversacion },
 ): OportunidadResumenDto {
   const intel = intelDe(o, ctx, ctx.conv);
+  const resumenComercial = resumenDe(o, ctx, ctx.conv, intel.etapaCotizacion);
   return {
     id: o.id,
     etapa: o.etapa,
@@ -106,6 +112,7 @@ export function toOportunidadResumen(
     paqueteTentativoId: o.paqueteTentativoId,
     motivoPerdido: o.motivoPerdido,
     siguienteAccion: intel.siguienteAccion,
+    resumenComercial,
     estancado: intel.estancado,
     briefJson: o.briefJson,
   };
@@ -147,7 +154,7 @@ export function toClienteDetail(
       }),
     ),
     conversaciones: row.conversaciones.map((c) => {
-      const campos = camposFromJson(c.camposCapturados);
+      const campos = camposCapturadosDe(c.camposCapturados);
       return {
         id: c.id,
         canal: c.canal,
@@ -207,42 +214,60 @@ function intelDe(
   ctx: { ultimoContactoEn: Date; estadoAtencion: string },
   conv?: Conversacion,
 ) {
-  if (!opp) {
-    return derivarInteligencia({
-      tipoEvento: null,
-      calificacion: "en_exploracion",
-      listoParaCotizar: false,
-      paqueteTentativoId: null,
-      etapa: "nuevo_bot",
-      propuestaEnviadaEn: null,
-      visitaEstado: "no_solicitada",
-      intencionVisita: false,
-      perfilCompleto: false,
-      ultimoContactoEn: ctx.ultimoContactoEn,
-      estadoAtencion: ctx.estadoAtencion,
-    });
-  }
-  return derivarInteligencia({
-    tipoEvento: opp.tipoEvento,
-    calificacion: opp.calificacion,
-    listoParaCotizar: opp.listoParaCotizar,
-    paqueteTentativoId: opp.paqueteTentativoId,
-    etapa: opp.etapa,
-    propuestaEnviadaEn: opp.propuestaEnviadaEn,
-    visitaEstado: opp.visitaEstado,
-    intencionVisita: opp.intencionVisita,
+  return derivarInteligencia(inteligenciaInputDe(fuenteDe(opp, ctx, conv)));
+}
+
+function resumenDe(
+  opp: Oportunidad | undefined,
+  ctx: { ultimoContactoEn: Date; estadoAtencion: string },
+  conv: Conversacion | undefined,
+  etapaCotizacion: ReturnType<typeof derivarInteligencia>["etapaCotizacion"],
+) {
+  if (!opp && !conv) return null;
+  const fuente = fuenteDe(opp, ctx, conv);
+  return derivarResumenComercialBot({
+    etapa: fuente.etapa,
+    etapaCotizacion,
+    listoParaCotizar: fuente.listoParaCotizar,
+    visitaEstado: fuente.visitaEstado,
+    intencionVisita: fuente.intencionVisita,
+    propuestaEnviadaEn: fuente.propuestaEnviadaEn,
+    pasoGuion: fuente.pasoGuion,
+    estadoBot: conv?.estadoBot ?? null,
+    estadoAtencion: ctx.estadoAtencion,
+    cola: conv?.cola ?? null,
+    rutaComercial: conv?.rutaComercial ?? fuente.campos?.rutaComercial ?? null,
+    encajeEconomico: conv?.encajeEconomico ?? fuente.campos?.encajeEconomico ?? null,
+    fechaColumna: fuente.fechaTentativa,
+    campos: fuente.campos ?? {},
+  });
+}
+
+function fuenteDe(
+  opp: Oportunidad | undefined,
+  ctx: { ultimoContactoEn: Date; estadoAtencion: string },
+  conv?: Conversacion,
+) {
+  const campos = camposCapturadosDe(conv?.camposCapturados);
+  return {
+    tipoEvento: opp?.tipoEvento ?? campos.tipoEvento ?? null,
+    calificacion: opp?.calificacion ?? "en_exploracion",
+    listoParaCotizar: opp?.listoParaCotizar ?? false,
+    paqueteTentativoId: opp?.paqueteTentativoId ?? null,
+    etapa: opp?.etapa ?? "nuevo_bot",
+    propuestaEnviadaEn: opp?.propuestaEnviadaEn ?? null,
+    visitaEstado: opp?.visitaEstado ?? "no_solicitada",
+    intencionVisita: opp?.intencionVisita ?? Boolean(campos.intencionVisita),
+    fechaTentativa: opp?.fechaTentativa ?? null,
+    aforo: opp?.aforo ?? campos.aforo ?? null,
+    sede: opp?.sede ?? campos.sedeNombre ?? null,
+    campos,
     motivoHandoff: conv?.motivoHandoff ?? null,
     ultimaRuta: conv?.ultimaRuta ?? null,
     pasoGuion: conv?.pasoGuion ?? null,
-    perfilCompleto: perfilDesdeOportunidad({
-      tipoEvento: opp.tipoEvento,
-      fechaTentativa: opp.fechaTentativa,
-      aforo: opp.aforo,
-      sede: opp.sede,
-    }),
     ultimoContactoEn: ctx.ultimoContactoEn,
     estadoAtencion: ctx.estadoAtencion,
-  });
+  };
 }
 
 function ultimoMensajeDe(
@@ -263,7 +288,3 @@ function previewMensaje(contenido: string): string {
   return t.length <= 120 ? t : `${t.slice(0, 119)}…`;
 }
 
-function camposFromJson(json: unknown): CamposCapturados {
-  if (!json || typeof json !== "object" || Array.isArray(json)) return {};
-  return json as CamposCapturados;
-}

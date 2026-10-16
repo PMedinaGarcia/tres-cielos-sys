@@ -62,6 +62,46 @@ export function EtapaCompacta({ oportunidad, busy, onPatch }: Props) {
         <h3 className="text-[11px] font-semibold uppercase tracking-wide text-teal">
           Etapa comercial
         </h3>
+        {oportunidad.resumenComercial ? (
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium leading-snug text-ink">
+              {oportunidad.resumenComercial.titulo}
+            </p>
+            {oportunidad.resumenComercial.subtitulo ? (
+              <p className="text-[11px] text-ink/45">
+                {oportunidad.resumenComercial.subtitulo}
+              </p>
+            ) : null}
+            <ul className="space-y-1" aria-label="Fecha, presupuesto y acción">
+              {oportunidad.resumenComercial.capturas.map((captura) => (
+                <li
+                  key={captura.id}
+                  className="flex min-w-0 items-baseline gap-2 text-[11px] leading-snug"
+                >
+                  <span
+                    className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${
+                      captura.estado === "ok"
+                        ? "bg-teal"
+                        : captura.estado === "na"
+                          ? "bg-ink/15"
+                          : "bg-amber-500"
+                    }`}
+                    aria-hidden
+                  />
+                  <span className="shrink-0 text-ink/45">{captura.etiqueta}</span>
+                  <span
+                    className={`min-w-0 truncate ${
+                      captura.estado === "ok" ? "text-ink/80" : "text-ink/40"
+                    }`}
+                  >
+                    {captura.valor ??
+                      (captura.estado === "pendiente" ? "Pendiente" : "—")}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         <ol className="space-y-1" aria-label="Progreso de cotización">
           {playbook.map((paso) => {
             const hecho = pasoHecho(paso, oportunidad.etapaCotizacion);
@@ -88,9 +128,14 @@ export function EtapaCompacta({ oportunidad, busy, onPatch }: Props) {
         </ol>
         <p
           className="line-clamp-3 break-words text-xs leading-snug text-ink/70"
-          title={oportunidad.siguienteAccion}
+          title={
+            oportunidad.resumenComercial?.siguienteParaAsesor ??
+            oportunidad.siguienteAccion
+          }
         >
-          Siguiente: {oportunidad.siguienteAccion}
+          Siguiente:{" "}
+          {oportunidad.resumenComercial?.siguienteParaAsesor ??
+            oportunidad.siguienteAccion}
         </p>
       </div>
 

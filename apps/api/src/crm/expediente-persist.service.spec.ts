@@ -307,7 +307,7 @@ describe("ExpedientePersistService", () => {
     });
   });
 
-  it("escalado actualiza estadoAtencion y no asigna si no hay asesor real", async () => {
+  it("escalado actualiza estadoAtencion sin asignar asesor (dueño al primer mensaje)", async () => {
     process.env.DATABASE_URL = "postgresql://test";
     const prisma = mockPrisma();
     const assignment = {
@@ -325,7 +325,7 @@ describe("ExpedientePersistService", () => {
         data: expect.objectContaining({ estadoAtencion: "escalado" }),
       }),
     );
-    expect(assignment.pickAsesorPersistible).toHaveBeenCalled();
+    expect(assignment.pickAsesorPersistible).not.toHaveBeenCalled();
     expect(prisma.asignacion.create).not.toHaveBeenCalled();
   });
 
