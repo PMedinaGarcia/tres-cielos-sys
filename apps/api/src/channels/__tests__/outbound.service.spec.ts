@@ -89,6 +89,36 @@ describe("buildTwilioForms", () => {
     );
     expect(forms[2]?.MediaUrl).toBeUndefined();
     expect(forms.some((f) => f.MediaUrl?.includes("cards"))).toBe(false);
+    expect(forms.some((f) => f.Body === "Jardín")).toBe(false);
+  });
+
+  it("la foto de una card sale sin pie y sin el nombre del archivo", () => {
+    const forms = buildTwilioForms({
+      from,
+      to,
+      texto: "Te comparto el jardín.",
+      wa: {
+        templateId: "canal.generic",
+        kind: "text",
+        body: "Te comparto el jardín.",
+        images: [
+          {
+            url: "https://api.trescielos.test/public/guion/cards/01-jardin-experiencia.jpg?v=2",
+            caption: "atlante-encuesta-borrador-sentimiento-aficion.png",
+          },
+        ],
+      },
+    });
+    expect(forms).toEqual([
+      { From: from, To: to, Body: "Te comparto el jardín." },
+      {
+        From: from,
+        To: to,
+        MediaUrl:
+          "https://api.trescielos.test/public/guion/i/01-jardin-experiencia",
+      },
+    ]);
+    expect(forms.some((form) => form.Body?.includes("atlante"))).toBe(false);
   });
 
   it("reintento de CTA no adjunta media", () => {
@@ -191,5 +221,41 @@ describe("OutboundService.send Twilio", () => {
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
       "/Accounts/ACtest/Messages.json",
     );
+  });
+
+  it("la foto enviada no incluye el nombre del archivo", async () => {
+    process.env.TWILIO_ACCOUNT_SID = "ACtest";
+    process.env.TWILIO_AUTH_TOKEN = "token";
+    process.env.TWILIO_WHATSAPP_FROM = "whatsapp:+15044147172";
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ sid: "SM1" }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const svc = new OutboundService();
+    const result = await svc.send({
+      canal: "whatsapp",
+      externalThreadId: "wa:+5215512345678",
+      texto: "foto",
+      waContent: {
+        templateId: "canal.generic",
+        kind: "text",
+        body: "foto",
+        images: [
+          {
+            url: "https://api.trescielos.test/public/guion/cards/01-jardin-experiencia.jpg",
+            caption: "atlante-encuesta-borrador.png",
+          },
+        ],
+      },
+    });
+    expect(result.ok).toBe(true);
+    const posted = fetchMock.mock.calls
+      .map((call) => String(call[1]?.body))
+      .join("\n");
+    expect(posted).toContain("01-jardin-experiencia");
+    expect(posted).not.toContain(".jpg");
+    expect(posted).not.toContain("atlante");
+    expect(posted).not.toContain("caption");
   });
 });

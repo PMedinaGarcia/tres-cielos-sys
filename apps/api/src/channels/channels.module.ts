@@ -15,6 +15,7 @@ import { ChannelSandboxController } from "./channel-sandbox.controller";
 import {
   GuionAssetsController,
   GuionShortLinkController,
+  WaImageRelayController,
 } from "./guion-assets.controller";
 import { MessageNormalizerService } from "./message-normalizer.service";
 import { OutboundService } from "./outbound.service";
@@ -55,6 +56,7 @@ import { AuthModule } from "../auth/auth.module";
     ChannelSandboxController,
     GuionAssetsController,
     GuionShortLinkController,
+    WaImageRelayController,
   ],
   providers: [
     MessageNormalizerService,

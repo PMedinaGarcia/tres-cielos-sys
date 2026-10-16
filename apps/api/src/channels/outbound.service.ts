@@ -1,6 +1,12 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { guionWhatsappLinkUrl, type WaContent } from "@tres-cielos/shared";
 import type { OutboundMessage } from "./types/inbound-message";
+import {
+  acceptImageMediaUrl,
+  countOutboundImages,
+  isImageFileName,
+  prepareOutboundImages,
+} from "./wa-image-alt";
 
 export interface OutboundSendResult {
   ok: boolean;
@@ -37,7 +43,16 @@ export class OutboundService {
     }
     const from = ensureWhatsappFrom(fromRaw);
     const to = toWhatsappAddress(message.externalThreadId);
-    const wa = message.waContent;
+    const requestedImages = countOutboundImages(message.waContent);
+    const wa = message.waContent
+      ? await prepareOutboundImages(message.waContent)
+      : undefined;
+    const deliveredImages = wa?.images?.length ?? 0;
+    if (requestedImages > deliveredImages) {
+      this.logger.warn(
+        `Se omitieron ${requestedImages - deliveredImages} imágenes para no mostrar el nombre del archivo`,
+      );
+    }
     if (
       wa &&
       (wa.kind === "list-picker" || wa.kind === "quick-reply") &&
@@ -106,6 +121,7 @@ export function ensureWhatsappFrom(from: string): string {
 /**
  * Parte un turno en mensajes de WhatsApp.
  * Con documentos: texto (plantilla o body), luego el PDF y al final el enlace.
+ * Las fotos van sin pie: el nombre del archivo no se manda en Body ni en la URL.
  * Una lista con ContentSid no repite el body.
  */
 export function buildTwilioForms(input: {
@@ -144,9 +160,16 @@ export function buildTwilioForms(input: {
     if (body) forms.push({ From: from, To: to, Body: body });
   }
   for (const document of media) {
+    if (isImageFileName(document.filename) || isImageFileName(document.url)) {
+      pushImageForm(forms, from, to, document.url);
+      continue;
+    }
     const form: TwilioForm = { From: from, To: to, MediaUrl: document.url };
     if (document.filename.trim()) form.Body = document.filename.trim();
     forms.push(form);
+  }
+  for (const image of wa?.images ?? []) {
+    pushImageForm(forms, from, to, image.url);
   }
   for (const document of links) {
     forms.push({
@@ -156,6 +179,18 @@ export function buildTwilioForms(input: {
     });
   }
   return forms;
+}
+
+/** La foto sale sin Body: ese campo es el pie, y WhatsApp lo rellena con el nombre. */
+function pushImageForm(
+  forms: TwilioForm[],
+  from: string,
+  to: string,
+  rawUrl: string,
+): void {
+  const mediaUrl = acceptImageMediaUrl(rawUrl);
+  if (!mediaUrl) return;
+  forms.push({ From: from, To: to, MediaUrl: mediaUrl });
 }
 
 async function postTwilioMessage(
