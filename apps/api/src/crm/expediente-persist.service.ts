@@ -33,6 +33,7 @@ import {
 } from "./cliente-identity";
 import { IdentidadService } from "./identidad.service";
 import { ClienteMemoriaService } from "../conversation/memoria/cliente-memoria.service";
+import { PanelRealtimeService } from "../panel-realtime/panel-realtime.service";
 import {
   derivarInteligencia,
   nextEtapaPipeline,
@@ -54,6 +55,8 @@ const TIPOS_EVENTO = new Set<TipoEvento>([
 
 export interface PersistTurnExtras {
   plantillaUtilityId?: string | null;
+  /** Quién provocó el turno. El brief editado en la bandeja queda como asesor. */
+  actor?: "bot" | "asesor" | "coordinador" | "admin";
 }
 
 const RECONTACTO_MS = 24 * 60 * 60 * 1000;
@@ -68,6 +71,7 @@ export class ExpedientePersistService {
     @Optional() private readonly assignment?: AssignmentService,
     @Optional() identidad?: IdentidadService,
     @Optional() private readonly memoria?: ClienteMemoriaService,
+    @Optional() private readonly realtime?: PanelRealtimeService,
   ) {
     this.identidad = identidad ?? (prisma ? new IdentidadService(prisma) : undefined);
   }
@@ -421,6 +425,7 @@ export class ExpedientePersistService {
       visitaEstado: comercial.visitaEstado,
       etapaChanged: comercial.etapaChanged,
       etapa: comercial.etapa,
+      actor: extras.actor ?? "bot",
     });
 
     if (conv.estadoBot === "escalado" || conv.estadoBot === "humano") {
@@ -809,6 +814,7 @@ export class ExpedientePersistService {
     visitaEstado: VisitaEstado;
     etapaChanged: boolean;
     etapa: EtapaPipeline;
+    actor: "bot" | "asesor" | "coordinador" | "admin";
   }): Promise<void> {
     const prisma = this.prisma!;
     const prev = input.previous;
@@ -878,7 +884,7 @@ export class ExpedientePersistService {
         oportunidadId: input.oportunidadId,
         conversacionId: input.conversacionId,
         tipo: "brief_actualizado",
-        actor: "bot",
+        actor: input.actor,
         resumen: `Brief actualizado (${campos.join(", ")})`,
         payload: { campos },
       },
@@ -982,6 +988,14 @@ export class ExpedientePersistService {
         plantillaUtilityId: plantilla,
       });
       if (!row.created) continue;
+
+      this.realtime?.emit({
+        type: "historial",
+        clienteId: input.clienteId,
+        conversacionId: input.conversacionId,
+        mensajeId: row.id,
+      });
+      this.realtime?.emit({ type: "bandeja", clienteId: input.clienteId });
 
       await prisma.interaccion.create({
         data: {

@@ -1,5 +1,11 @@
 import { z } from "zod";
+import { MensajeAsesorAdjuntoRefSchema } from "./bandeja-media";
 import { ROL_USUARIO } from "./auth";
+import {
+  FechaEstadoSchema,
+  RangoInversionSchema,
+  RangoPresupuestoFueraSchema,
+} from "./orchestrator";
 
 export const ESTADO_ATENCION = [
   "nuevo",
@@ -149,6 +155,20 @@ export type IdentificadorClienteDto = z.infer<
   typeof IdentificadorClienteDtoSchema
 >;
 
+export const AUTOR_MENSAJE = ["prospecto", "bot", "asesor"] as const;
+export type AutorMensaje = (typeof AUTOR_MENSAJE)[number];
+
+export const DIRECCION_MENSAJE = ["entrante", "saliente"] as const;
+export type DireccionMensaje = (typeof DIRECCION_MENSAJE)[number];
+
+export const UltimoMensajeDtoSchema = z.object({
+  contenido: z.string(),
+  autor: z.enum(AUTOR_MENSAJE),
+  direccion: z.enum(DIRECCION_MENSAJE),
+  creadoEn: z.string(),
+});
+export type UltimoMensajeDto = z.infer<typeof UltimoMensajeDtoSchema>;
+
 export const ClienteListItemSchema = z.object({
   id: z.string(),
   nombre: z.string().nullable(),
@@ -173,6 +193,10 @@ export const ClienteListItemSchema = z.object({
   encajeEconomico: z.string().nullable().optional(),
   intencionNivel: z.string().nullable().optional(),
   rutaComercial: z.string().nullable().optional(),
+  conversacionId: z.string().nullable().optional(),
+  estadoBot: z.string().nullable().optional(),
+  asesorLockId: z.string().nullable().optional(),
+  ultimoMensaje: UltimoMensajeDtoSchema.nullable().optional(),
 });
 export type ClienteListItem = z.infer<typeof ClienteListItemSchema>;
 
@@ -208,6 +232,14 @@ export const ConversacionResumenDtoSchema = z.object({
   encajeEconomico: z.string().nullable().optional(),
   intencionNivel: z.string().nullable().optional(),
   rutaComercial: z.string().nullable().optional(),
+  asesorLockId: z.string().nullable().optional(),
+  slaVenceEn: z.string().nullable().optional(),
+  motivoHandoff: z.string().nullable().optional(),
+  fechaEstado: FechaEstadoSchema.nullable().optional(),
+  fechaEvento: z.string().nullable().optional(),
+  rangoInversion: RangoInversionSchema.nullable().optional(),
+  rangoPresupuestoFuera: RangoPresupuestoFueraSchema.nullable().optional(),
+  pdfEnviado: z.boolean().optional(),
 });
 export type ConversacionResumenDto = z.infer<
   typeof ConversacionResumenDtoSchema
@@ -329,8 +361,11 @@ export const HISTORIAL_KIND = ["mensaje", "hecho"] as const;
 export type HistorialKind = (typeof HISTORIAL_KIND)[number];
 
 export const HistorialAdjuntoDtoSchema = z.object({
+  id: z.string().optional(),
   mimeType: z.string(),
   nombreOriginal: z.string().nullable(),
+  bytes: z.number().int().nullable().optional(),
+  url: z.string().nullable().optional(),
 });
 export type HistorialAdjuntoDto = z.infer<typeof HistorialAdjuntoDtoSchema>;
 
@@ -355,3 +390,65 @@ export const HistorialItemDtoSchema = z.object({
 export type HistorialItemDto = z.infer<typeof HistorialItemDtoSchema>;
 
 export const ROLES_CRM_PANEL = ROL_USUARIO;
+
+export const ENTREGA_MENSAJE_ASESOR = ["enviado", "omitido", "sandbox"] as const;
+export type EntregaMensajeAsesor = (typeof ENTREGA_MENSAJE_ASESOR)[number];
+
+export const EnviarMensajeAsesorRequestSchema = z
+  .object({
+    contenido: z.string().trim().max(4096).optional(),
+    adjuntos: z.array(MensajeAsesorAdjuntoRefSchema).max(10).optional(),
+  })
+  .superRefine((data, ctx) => {
+    const texto = data.contenido?.trim() ?? "";
+    const adj = data.adjuntos?.length ?? 0;
+    if (!texto && adj === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "CONTENIDO_O_ADJUNTO_REQUERIDO",
+      });
+    }
+  });
+export type EnviarMensajeAsesorRequest = z.infer<
+  typeof EnviarMensajeAsesorRequestSchema
+>;
+
+export const MensajeAsesorDtoSchema = z.object({
+  id: z.string(),
+  contenido: z.string(),
+  autor: z.literal("asesor"),
+  direccion: z.literal("saliente"),
+  creadoEn: z.string(),
+  conversacionId: z.string(),
+});
+export type MensajeAsesorDto = z.infer<typeof MensajeAsesorDtoSchema>;
+
+export const EnviarMensajeAsesorResponseSchema = z.object({
+  mensaje: MensajeAsesorDtoSchema,
+  estadoBot: z.literal("humano"),
+  entrega: z.enum(ENTREGA_MENSAJE_ASESOR),
+});
+export type EnviarMensajeAsesorResponse = z.infer<
+  typeof EnviarMensajeAsesorResponseSchema
+>;
+
+export const ActualizarBriefRequestSchema = z
+  .object({
+    nombre: z.string().trim().min(1).max(200).nullable().optional(),
+    tipoEvento: TipoEventoCrmSchema.nullable().optional(),
+    fechaTentativa: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .nullable()
+      .optional(),
+    fechaEstado: FechaEstadoSchema.nullable().optional(),
+    aforo: z.number().int().min(1).max(5000).nullable().optional(),
+    rangoInversion: RangoInversionSchema.nullable().optional(),
+    rangoPresupuestoFuera: RangoPresupuestoFueraSchema.nullable().optional(),
+  })
+  .refine((body) => Object.values(body).some((value) => value !== undefined), {
+    message: "BRIEF_VACIO",
+  });
+export type ActualizarBriefRequest = z.infer<
+  typeof ActualizarBriefRequestSchema
+>;

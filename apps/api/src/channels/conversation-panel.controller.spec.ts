@@ -1,5 +1,5 @@
-import { HttpException } from "@nestjs/common";
 import { ConversationPanelController } from "./conversation-panel.controller";
+import type { BandejaService } from "./bandeja.service";
 import type { ConversationStateStore } from "./conversation-state.store";
 import type { AuditService } from "../audit/audit.service";
 import type { ExpedientePersistService } from "../crm/expediente-persist.service";
@@ -51,30 +51,35 @@ function buildPanel(opts?: {
     conversacion: { findUnique: jest.fn(async () => ({ id: "c1" })) },
   } as unknown as PrismaService;
   const nurture = new NurtureWorkerService();
+  const bandeja = {
+    tomarControl: jest.fn(async () => ({
+      id: "c1",
+      estadoBot: "humano" as const,
+      eventoOperativoId: "ev-1",
+    })),
+  } as unknown as BandejaService;
   const ctrl = new ConversationPanelController(
     conversations,
     audit,
     expediente,
     orchStore,
     prisma,
+    bandeja,
     nurture,
   );
-  return { ctrl, expediente, orchStore, nurture };
+  return { ctrl, expediente, orchStore, nurture, bandeja };
 }
 
 describe("ConversationPanelController v3", () => {
-  it("otro asesor recibe 409 OWNERSHIP_CONFLICT", async () => {
-    const { ctrl } = buildPanel({ lock: "asesor-otro" });
-    await expect(ctrl.tomarControl("c1", {}, user)).rejects.toMatchObject({
-      status: 409,
-    });
-    try {
-      await ctrl.tomarControl("c1", {}, user);
-    } catch (e) {
-      expect((e as HttpException).getResponse()).toMatchObject({
-        error: { code: "OWNERSHIP_CONFLICT" },
-      });
-    }
+  it("tomar-control delega en la bandeja", async () => {
+    const { ctrl, bandeja } = buildPanel();
+    const res = await ctrl.tomarControl("c1", { motivo: "manual" }, user);
+    expect(res.estadoBot).toBe("humano");
+    expect(bandeja.tomarControl).toHaveBeenCalledWith(
+      "c1",
+      { motivo: "manual" },
+      user,
+    );
   });
 
   it("devolver-a-bot 200 con asesor_libera agenda nutrición", async () => {

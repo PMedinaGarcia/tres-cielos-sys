@@ -15,6 +15,7 @@ import { AuthModule } from "./auth/auth.module";
 import { UsersModule } from "./users/users.module";
 import { CrmModule } from "./crm/crm.module";
 import { KnowledgeIngestionModule } from "./knowledge-ingestion/knowledge-ingestion.module";
+import { PanelRealtimeModule } from "./panel-realtime/panel-realtime.module";
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { KnowledgeIngestionModule } from "./knowledge-ingestion/knowledge-ingest
       validate: validateEnv,
     }),
     PrismaModule,
+    PanelRealtimeModule,
     AiProvidersModule,
     HealthModule,
     CatalogSandboxModule,

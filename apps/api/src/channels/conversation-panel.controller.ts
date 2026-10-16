@@ -8,6 +8,7 @@ import {
   NotFoundException,
   Optional,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -16,12 +17,16 @@ import type { BriefCardDto } from "@tres-cielos/shared";
 import { ConversationStateStore } from "./conversation-state.store";
 import { AuditService } from "../audit/audit.service";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { Roles } from "../auth/decorators/roles.decorator";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import type { PanelUser } from "../auth/auth.types";
+import { BandejaService } from "./bandeja.service";
 import { ExpedientePersistService } from "../crm/expediente-persist.service";
 import { ConversationStoreService } from "../conversation/stubs/conversation-store.service";
 import { PrismaService } from "../prisma/prisma.service";
 import type { CamposCapturados } from "../conversation/types";
+import { labelFechaEventoBrief } from "../conversation/script/harvest-campos";
 import { NurtureWorkerService } from "../conversation/nurture/nurture.worker";
 
 const DEVOLVER_OK = new Set([
@@ -31,7 +36,8 @@ const DEVOLVER_OK = new Set([
 ]);
 
 @Controller("conversaciones")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles("asesor", "coordinador", "admin")
 export class ConversationPanelController {
   constructor(
     private readonly conversations: ConversationStateStore,
@@ -39,6 +45,7 @@ export class ConversationPanelController {
     private readonly expediente: ExpedientePersistService,
     private readonly orchStore: ConversationStoreService,
     private readonly prisma: PrismaService,
+    private readonly bandeja: BandejaService,
     @Optional() private readonly nurture?: NurtureWorkerService,
   ) {}
 
@@ -117,57 +124,31 @@ export class ConversationPanelController {
 
   @Post(":id/tomar-control")
   @HttpCode(200)
-  async tomarControl(
+  tomarControl(
     @Param("id") id: string,
     @Body() body: { motivo?: string },
     @CurrentUser() user: PanelUser,
   ) {
-    const lock = await this.expediente.findLock(id);
-    if (lock && lock !== user.userId) {
-      throw new HttpException(
-        {
-          error: {
-            code: "OWNERSHIP_CONFLICT",
-            message: "Otro asesor ya tomó este hilo",
-          },
-        },
-        HttpStatus.CONFLICT,
-      );
-    }
-    const canal = this.conversations.getById(id);
-    const orch = await this.orchStore.findById(id);
-    if (!canal && !orch && !(await this.prismaRow(id))) {
-      throw new NotFoundException("CONVERSACION_NOT_FOUND");
-    }
-    const anterior = orch?.estadoBot ?? canal?.estadoBot ?? "activo";
-    if (canal) this.conversations.setEstadoBot(id, "humano");
-    if (orch) {
-      await this.orchStore.update(id, {
-        estadoBot: "humano",
-        asesorLockId: user.userId,
-      });
-    }
-    const evento = await this.audit.record({
-      tipo: "toma_control",
-      actor: "asesor",
-      conversacionId: id,
-      payload: {
-        estadoBotAnterior: anterior,
-        estadoBotNuevo: "humano",
-        usuarioId: user.userId,
-        motivo: body.motivo ?? null,
-      },
-    });
-    await this.expediente.persistTomaControl({
-      conversacionId: id,
-      usuarioId: user.userId,
-      motivo: body.motivo ?? null,
-    });
-    return {
-      id,
-      estadoBot: "humano",
-      eventoOperativoId: evento.id,
-    };
+    return this.bandeja.tomarControl(id, body ?? {}, user);
+  }
+
+  @Post(":id/mensajes")
+  @HttpCode(200)
+  enviarMensaje(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @CurrentUser() user: PanelUser,
+  ) {
+    return this.bandeja.enviarMensaje(id, body, user);
+  }
+
+  @Patch(":id/brief")
+  actualizarBrief(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @CurrentUser() user: PanelUser,
+  ) {
+    return this.bandeja.actualizarBrief(id, body, user);
   }
 
   @Post(":id/devolver-a-bot")
@@ -215,15 +196,6 @@ export class ConversationPanelController {
       eventoOperativoId: evento.id,
     };
   }
-
-  private async prismaRow(id: string) {
-    if (!process.env.DATABASE_URL) return null;
-    try {
-      return await this.prisma.conversacion.findUnique({ where: { id } });
-    } catch {
-      return null;
-    }
-  }
 }
 
 function ultimaPregunta(conv: {
@@ -242,7 +214,7 @@ function briefFromCampos(
   return {
     nombre: campos.nombre ?? null,
     ocasion: campos.tipoEvento ?? null,
-    fechaEstado: campos.fechaEstado ?? null,
+    fechaEstado: labelFechaEventoBrief(campos),
     aforo: campos.aforo ?? null,
     rango: campos.rangoInversion ?? null,
     encaje: campos.encajeEconomico ?? null,

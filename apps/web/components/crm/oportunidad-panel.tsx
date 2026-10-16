@@ -35,11 +35,11 @@ const VISITA_ACCIONES: Array<{ id: VisitaEstado; label: string }> = [
   { id: "no_asistio", label: "No asistió" },
 ];
 
-function playbookDe(tipo: string | null): EtapaCotizacion[] {
+export function playbookDe(tipo: string | null): EtapaCotizacion[] {
   return tipo === "boda" ? PLAYBOOK_BODA : PLAYBOOK_SIN_TARIFA;
 }
 
-function pasoHecho(paso: EtapaCotizacion, actual: EtapaCotizacion): boolean {
+export function pasoHecho(paso: EtapaCotizacion, actual: EtapaCotizacion): boolean {
   const order: EtapaCotizacion[] = [
     "perfilando",
     "explorando",

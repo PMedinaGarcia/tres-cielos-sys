@@ -105,12 +105,13 @@ export async function deleteCliente(id: string): Promise<void> {
 
 export async function getClienteHistorial(
   id: string,
-  query: { page?: number; pageSize?: number; tipo?: string } = {},
+  query: { page?: number; pageSize?: number; tipo?: string; recientes?: boolean } = {},
 ): Promise<{ data: HistorialItemDto[]; meta: PageMeta }> {
   const params = new URLSearchParams();
   if (query.page) params.set("page", String(query.page));
   if (query.pageSize) params.set("pageSize", String(query.pageSize));
   if (query.tipo) params.set("tipo", query.tipo);
+  if (query.recientes) params.set("recientes", "true");
   const qs = params.toString();
   const res = await apiFetch(
     `/clientes/${id}/historial${qs ? `?${qs}` : ""}`,

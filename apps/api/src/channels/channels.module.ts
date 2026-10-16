@@ -11,6 +11,10 @@ import { OrchestratorService } from "../conversation/orchestrator/orchestrator.s
 import { MetaWebhookController } from "./meta.webhook.controller";
 import { TwilioWebhookController } from "./twilio.webhook.controller";
 import { ConversationPanelController } from "./conversation-panel.controller";
+import { BandejaAttachmentsController } from "./bandeja-attachments.controller";
+import { BandejaAttachmentsService } from "./bandeja-attachments.service";
+import { BandejaRealtimeController } from "./bandeja-realtime.controller";
+import { BandejaService } from "./bandeja.service";
 import { ChannelSandboxController } from "./channel-sandbox.controller";
 import {
   GuionAssetsController,
@@ -53,6 +57,8 @@ import { AuthModule } from "../auth/auth.module";
     MetaWebhookController,
     TwilioWebhookController,
     ConversationPanelController,
+    BandejaAttachmentsController,
+    BandejaRealtimeController,
     ChannelSandboxController,
     GuionAssetsController,
     GuionShortLinkController,
@@ -60,6 +66,8 @@ import { AuthModule } from "../auth/auth.module";
   ],
   providers: [
     MessageNormalizerService,
+    BandejaService,
+    BandejaAttachmentsService,
     OutboundService,
     IdempotencyService,
     ConversationStateStore,

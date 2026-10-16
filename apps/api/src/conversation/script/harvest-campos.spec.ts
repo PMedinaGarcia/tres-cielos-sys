@@ -2,9 +2,11 @@ import {
   composePedidoCatalogoFromCampos,
   evaluarPedidoCotizacion,
   extractNombre,
+  formatFechaHumana,
   harvestCamposLexical,
   isPerfilListo,
   isRecotizarPorSlots,
+  labelFechaEventoBrief,
   looksLikePersonName,
   nextPasoGuion,
   isReinicioGuion,
@@ -500,5 +502,45 @@ describe("evaluarPedidoCotizacion", () => {
     expect(isReinicioGuion("Volver al inicio")).toBe(true);
     expect(isReinicioGuion("quiero el inicio de la visita")).toBe(false);
     expect(isReinicioGuion("hola", "flujo.reiniciar")).toBe(true);
+  });
+
+  it("presupuesto_fuera guarda 200-250 sin mapear a r250_349", () => {
+    const r = harvestCamposLexical(
+      "200-250 mil",
+      { ctaGuion: "fuera_presupuesto" },
+      { focusedPaso: "presupuesto_fuera" },
+    );
+    expect(r.campos.rangoPresupuestoFuera).toBe("r200_250");
+    expect(r.campos.rangoInversion).toBeUndefined();
+    expect(r.campos.presupuestoOrientativo).toEqual({
+      tipo: "rango",
+      min: 200_000,
+      max: 250_000,
+      moneda: "MXN",
+    });
+  });
+
+  it("formatFechaHumana muestra ventanas del list-picker", () => {
+    expect(
+      formatFechaHumana({
+        tipo: "rango",
+        desde: "2027-01-01",
+        hasta: "2027-05-31",
+        anio: 2027,
+        flexible: true,
+      }),
+    ).toBe("Ene-May 2027");
+    expect(
+      labelFechaEventoBrief({
+        fechaTentativa: {
+          tipo: "rango",
+          desde: "2027-01-01",
+          hasta: "2027-05-31",
+          anio: 2027,
+          flexible: true,
+        },
+        fechaEstado: "ventana",
+      }),
+    ).toBe("Ene-May 2027");
   });
 });

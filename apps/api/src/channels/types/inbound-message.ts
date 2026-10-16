@@ -40,6 +40,13 @@ export interface InboundMessage {
   meta?: Record<string, unknown>;
 }
 
+export type OutboundMediaFile = {
+  url: string;
+  filename: string;
+  mime: string;
+  delivery: "media" | "link";
+};
+
 export interface OutboundMessage {
   canal: Canal;
   externalThreadId: string;
@@ -47,6 +54,8 @@ export interface OutboundMessage {
   plantillaUtilityId?: string;
   inReplyToExternalMessageId?: string;
   waContent?: import("@tres-cielos/shared").WaContent;
+  /** Adjuntos del asesor (bandeja) fuera del guion WA. */
+  mediaFiles?: OutboundMediaFile[];
 }
 
 export interface TurnResult {

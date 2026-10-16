@@ -3,6 +3,7 @@ import {
   REINICIO_GUION_PAYLOAD,
   SEDE_ID,
   SEDE_NOMBRE,
+  type FechaEstado,
 } from "@tres-cielos/shared";
 import {
   aforoBandaFrom,
@@ -292,17 +293,21 @@ export function harvestCamposLexical(
     }
   }
 
-  const rangoPatch = applyRangoHarvest(trimmed, next);
-  if (rangoPatch.rangoInversion && rangoPatch.rangoInversion !== next.rangoInversion) {
-    next.rangoInversion = rangoPatch.rangoInversion;
-    mark("rangoInversion");
-  }
-  if (
-    rangoPatch.encajeEconomico &&
-    rangoPatch.encajeEconomico !== next.encajeEconomico
-  ) {
-    next.encajeEconomico = rangoPatch.encajeEconomico;
-    mark("encajeEconomico");
+  const presupuestoFueraTexto =
+    focused === "presupuesto_fuera" || parseRangoPresupuestoFuera(trimmed) != null;
+  if (!presupuestoFueraTexto) {
+    const rangoPatch = applyRangoHarvest(trimmed, next);
+    if (rangoPatch.rangoInversion && rangoPatch.rangoInversion !== next.rangoInversion) {
+      next.rangoInversion = rangoPatch.rangoInversion;
+      mark("rangoInversion");
+    }
+    if (
+      rangoPatch.encajeEconomico &&
+      rangoPatch.encajeEconomico !== next.encajeEconomico
+    ) {
+      next.encajeEconomico = rangoPatch.encajeEconomico;
+      mark("encajeEconomico");
+    }
   }
 
   const nivel = parseIntencionNivel(trimmed);
@@ -386,7 +391,11 @@ export function harvestCamposLexical(
   }
 
   next.fechaEstado = fechaEstadoFrom(next);
-  if (next.rangoInversion) {
+  if (next.rangoPresupuestoFuera) {
+    next.presupuestoOrientativo = presupuestoFromRangoPresupuestoFuera(
+      next.rangoPresupuestoFuera,
+    );
+  } else if (next.rangoInversion) {
     next.presupuestoOrientativo = presupuestoFromRango(next.rangoInversion);
   }
   if (next.encajeEconomico === "confirmado" && next.aceptaPiso250k == null) {
@@ -912,6 +921,25 @@ function validateAforoNumber(
   return { ok: true, aforo: n };
 }
 
+const FECHA_ESTADO_LABEL: Record<FechaEstado, string> = {
+  definida: "Definida",
+  ventana: "Ventana",
+  tentativa: "Tentativa",
+  sin_definir: "Sin definir",
+};
+
+function ventanaComercialDesdeRango(
+  desde: string,
+  hasta: string,
+): string | null {
+  const d = desde.length >= 10 ? desde.slice(5) : desde;
+  const h = hasta.length >= 10 ? hasta.slice(5) : hasta;
+  if (d === "01-01" && h === "05-31") return "Ene-May";
+  if (d === "06-01" && h === "09-30") return "Jun-Sep";
+  if (d === "10-01" && h === "12-31") return "Oct-Dic";
+  return null;
+}
+
 export function formatFechaHumana(fecha: FechaTentativa | null): string | null {
   if (!fecha) return null;
   if (fecha.tipo === "dia" && fecha.fecha) {
@@ -921,12 +949,36 @@ export function formatFechaHumana(fecha: FechaTentativa | null): string | null {
     return `${d} de ${mes} de ${y}`;
   }
   if (fecha.tipo === "rango" && fecha.desde && fecha.hasta) {
+    const anio =
+      fecha.anio ??
+      (Number.parseInt(fecha.desde.slice(0, 4), 10) ||
+        Number.parseInt(fecha.hasta.slice(0, 4), 10));
+    const mismoAnio =
+      fecha.desde.slice(0, 4) === fecha.hasta.slice(0, 4) &&
+      fecha.desde.endsWith("01-01") &&
+      fecha.hasta.endsWith("12-31");
+    if (mismoAnio && anio) return String(anio);
+    const banda = ventanaComercialDesdeRango(fecha.desde, fecha.hasta);
+    if (banda && anio) return `${banda} ${anio}`;
     return `${fecha.desde} al ${fecha.hasta}`;
   }
   if (fecha.tipo === "mes" && fecha.mes && fecha.anio) {
     const mes = MESES_ES[fecha.mes - 1];
     if (!mes) return `${fecha.anio}`;
     return `${mes} de ${fecha.anio}`;
+  }
+  return null;
+}
+
+/** Texto para brief CRM / bandeja: rango del list-picker o fecha legible. */
+export function labelFechaEventoBrief(campos: {
+  fechaTentativa?: FechaTentativa | null;
+  fechaEstado?: FechaEstado | null;
+}): string | null {
+  const humana = formatFechaHumana(campos.fechaTentativa ?? null);
+  if (humana) return humana;
+  if (campos.fechaEstado) {
+    return FECHA_ESTADO_LABEL[campos.fechaEstado] ?? null;
   }
   return null;
 }
