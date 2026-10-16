@@ -33,6 +33,7 @@ import {
 } from "./cliente-identity";
 import { IdentidadService } from "./identidad.service";
 import { ClienteMemoriaService } from "../conversation/memoria/cliente-memoria.service";
+import { PanelRealtimeService } from "../panel-realtime/panel-realtime.service";
 import {
   derivarInteligencia,
   nextEtapaPipeline,
@@ -70,6 +71,7 @@ export class ExpedientePersistService {
     @Optional() private readonly assignment?: AssignmentService,
     @Optional() identidad?: IdentidadService,
     @Optional() private readonly memoria?: ClienteMemoriaService,
+    @Optional() private readonly realtime?: PanelRealtimeService,
   ) {
     this.identidad = identidad ?? (prisma ? new IdentidadService(prisma) : undefined);
   }
@@ -986,6 +988,14 @@ export class ExpedientePersistService {
         plantillaUtilityId: plantilla,
       });
       if (!row.created) continue;
+
+      this.realtime?.emit({
+        type: "historial",
+        clienteId: input.clienteId,
+        conversacionId: input.conversacionId,
+        mensajeId: row.id,
+      });
+      this.realtime?.emit({ type: "bandeja", clienteId: input.clienteId });
 
       await prisma.interaccion.create({
         data: {

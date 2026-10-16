@@ -26,7 +26,8 @@ import {
 import type { ActualizarOportunidadRequest, HistorialItemDto } from "@tres-cielos/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, type CSSProperties } from "react";
+import { usePanelRealtime } from "@/lib/use-panel-realtime";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 
 export function BandejaScreen() {
   const params = useSearchParams();
@@ -73,21 +74,47 @@ export function BandejaScreen() {
         page: 1,
         pageSize: 80,
       }),
-    refetchInterval: 15_000,
+    refetchInterval: false,
   });
 
   const detalle = useQuery({
     queryKey: ["bandeja", "cliente", clienteId],
     queryFn: () => getCliente(clienteId),
     enabled: Boolean(clienteId),
-    refetchInterval: 15_000,
+    refetchInterval: false,
   });
 
   const historial = useQuery({
     queryKey: ["bandeja", "historial", clienteId],
     queryFn: () => getClienteHistorial(clienteId, { recientes: true, pageSize: 80 }),
     enabled: Boolean(clienteId),
-    refetchInterval: 5_000,
+    refetchInterval: false,
+  });
+
+  const onRealtime = useCallback(
+    (event: { type: string; clienteId?: string }) => {
+      if (event.type === "bandeja") {
+        void queryClient.invalidateQueries({ queryKey: ["bandeja", "clientes"] });
+      }
+      if (
+        event.type === "historial" &&
+        (!clienteId || event.clienteId === clienteId)
+      ) {
+        void queryClient.invalidateQueries({
+          queryKey: ["bandeja", "historial", clienteId],
+        });
+        void queryClient.invalidateQueries({
+          queryKey: ["bandeja", "cliente", clienteId],
+        });
+      }
+    },
+    [clienteId, queryClient],
+  );
+
+  usePanelRealtime({
+    clienteId: clienteId || undefined,
+    enabled: true,
+    onEvent: onRealtime,
   });
 
   const cliente = detalle.data ?? null;
@@ -103,11 +130,12 @@ export function BandejaScreen() {
   }
 
   const envio = useMutation({
-    mutationFn: (contenido: string) => {
+    mutationFn: (input: { contenido?: string; adjuntos?: Array<{ uploadId: string }> }) => {
       if (!conv) throw new Error("SIN_HILO");
-      return enviarMensaje(conv.id, contenido);
+      return enviarMensaje(conv.id, input);
     },
-    onMutate: async (contenido) => {
+    onMutate: async (input) => {
+      const contenido = input.contenido?.trim() ?? "";
       await queryClient.cancelQueries({ queryKey: ["bandeja", "historial", clienteId] });
       const key = ["bandeja", "historial", clienteId] as const;
       const previo = queryClient.getQueryData<typeof historial.data>(key);
@@ -264,7 +292,7 @@ export function BandejaScreen() {
                   userId={user?.id}
                   sending={envio.isPending}
                   error={envio.error}
-                  onSend={(texto) => envio.mutate(texto)}
+                  onSend={(payload) => envio.mutate(payload)}
                 />
               ) : null
             }

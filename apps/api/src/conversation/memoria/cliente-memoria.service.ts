@@ -1,6 +1,7 @@
 import { Injectable, Logger, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../../prisma/prisma.service";
+import { PanelRealtimeService } from "../../panel-realtime/panel-realtime.service";
 import {
   identifiersFromThread,
   mapCanalCrm,
@@ -102,6 +103,7 @@ export class ClienteMemoriaService {
   constructor(
     @Optional() private readonly prisma?: PrismaService,
     @Optional() private readonly config?: ConfigService,
+    @Optional() private readonly realtime?: PanelRealtimeService,
   ) {}
 
   sessionGapMs(): number {
@@ -818,7 +820,9 @@ export class ClienteMemoriaService {
       conversacion?: {
         findUnique: (args: unknown) => Promise<{ id: string; canal: string } | null>;
       };
-      mensaje?: { create: (args: unknown) => Promise<unknown> };
+      mensaje?: {
+        create: (args: unknown) => Promise<{ id: string }>;
+      };
       cliente?: { update: (args: unknown) => Promise<unknown> };
     };
     if (!prisma.conversacion?.findUnique || !prisma.mensaje?.create) return;
@@ -833,7 +837,7 @@ export class ClienteMemoriaService {
         select: { id: true, canal: true },
       });
       if (!conv) return;
-      await prisma.mensaje.create({
+      const created = await prisma.mensaje.create({
         data: {
           conversacionId: conv.id,
           direccion: "entrante",
@@ -842,6 +846,15 @@ export class ClienteMemoriaService {
           contenido: input.texto,
         },
       });
+      if (perfil.clienteId) {
+        this.realtime?.emit({
+          type: "historial",
+          clienteId: perfil.clienteId,
+          conversacionId: conv.id,
+          mensajeId: created.id,
+        });
+        this.realtime?.emit({ type: "bandeja", clienteId: perfil.clienteId });
+      }
       if (prisma.cliente?.update && perfil.clienteId) {
         await prisma.cliente.update({
           where: { id: perfil.clienteId },

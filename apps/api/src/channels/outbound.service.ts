@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { guionWhatsappLinkUrl, type WaContent } from "@tres-cielos/shared";
-import type { OutboundMessage } from "./types/inbound-message";
+import { type WaContent } from "@tres-cielos/shared";
+import { cuerpoEnlaceAdjunto } from "./bandeja-media.util";
+import type { OutboundMediaFile, OutboundMessage } from "./types/inbound-message";
 
 export interface OutboundSendResult {
   ok: boolean;
@@ -52,6 +53,7 @@ export class OutboundService {
       to,
       texto: message.texto,
       wa,
+      mediaFiles: message.mediaFiles,
     });
     if (forms.length === 0) {
       return { ok: true, skipped: true, reason: "EMPTY_OUTBOUND" };
@@ -113,6 +115,7 @@ export function buildTwilioForms(input: {
   to: string;
   texto: string;
   wa?: WaContent;
+  mediaFiles?: OutboundMediaFile[];
 }): TwilioForm[] {
   const { from, to, wa } = input;
   const forms: TwilioForm[] = [];
@@ -152,8 +155,22 @@ export function buildTwilioForms(input: {
     forms.push({
       From: from,
       To: to,
-      Body: `${document.filename.trim()}\n${guionWhatsappLinkUrl(document.url)}`,
+      Body: cuerpoEnlaceAdjunto(document.filename, document.url),
     });
+  }
+  const extra = input.mediaFiles ?? [];
+  for (const file of extra) {
+    if (file.delivery === "link") {
+      forms.push({
+        From: from,
+        To: to,
+        Body: cuerpoEnlaceAdjunto(file.filename, file.url),
+      });
+    } else {
+      const form: TwilioForm = { From: from, To: to, MediaUrl: file.url };
+      if (file.filename.trim()) form.Body = file.filename.trim();
+      forms.push(form);
+    }
   }
   return forms;
 }

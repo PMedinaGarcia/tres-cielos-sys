@@ -1,9 +1,11 @@
 import {
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
   Optional,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import type { PanelUser } from "../auth/auth.types";
@@ -20,7 +22,14 @@ import type {
   ListClientesQueryDto,
   ReemplazarTagsDto,
 } from "./dto/cliente.dto";
-import type { HistorialItemDto, TipoInteraccion, ColaCrm } from "@tres-cielos/shared";
+import type {
+  HistorialAdjuntoDto,
+  HistorialItemDto,
+  TipoInteraccion,
+  ColaCrm,
+} from "@tres-cielos/shared";
+import { OBJECT_STORAGE_PORT } from "../ports/tokens";
+import type { ObjectStoragePort } from "../ports/object-storage.port";
 import { ESTANCAMIENTO_MS } from "./inteligencia/playbook-evento";
 
 const HECHOS_HISTORIAL: TipoInteraccion[] = [
@@ -55,6 +64,8 @@ export class ClienteService {
   constructor(
     @Optional() private readonly prisma?: PrismaService,
     @Optional() private readonly identidad?: IdentidadService,
+    @Optional() @Inject(OBJECT_STORAGE_PORT) private readonly storage?: ObjectStoragePort,
+    @Optional() private readonly config?: ConfigService,
   ) {}
 
   async list(actor: PanelUser, query: ListClientesQueryDto) {
@@ -253,10 +264,7 @@ export class ClienteService {
           vinculoClienteId: propio ? null : msg.conversacion.clienteId,
           direccion: msg.direccion,
           autorMensaje: msg.autor,
-          adjuntos: msg.adjuntos.map((a) => ({
-            mimeType: a.mimeType,
-            nombreOriginal: a.nombreOriginal,
-          })),
+          adjuntos: await this.adjuntosHistorial(msg.adjuntos),
         });
       }
     }
@@ -504,6 +512,45 @@ export class ClienteService {
 
   private async vinculosSafe(clienteId: string) {
     return (await this.identidad?.vinculosFor(clienteId)) ?? [];
+  }
+
+  private async adjuntosHistorial(
+    rows: Array<{
+      id: string;
+      mimeType: string;
+      nombreOriginal: string | null;
+      storageKey: string | null;
+      bytes: number | null;
+    }>,
+  ): Promise<HistorialAdjuntoDto[]> {
+    const publicBase = this.config?.get<string>("storage.publicBaseUrl")?.trim();
+    const out: HistorialAdjuntoDto[] = [];
+    for (const a of rows) {
+      let url: string | null = null;
+      if (a.storageKey) {
+        if (publicBase) {
+          url = `${publicBase.replace(/\/$/, "")}/${a.storageKey}`;
+        } else if (this.storage) {
+          try {
+            url = await this.storage.signedUrl({
+              key: a.storageKey,
+              operation: "get",
+              expiresInSec: 3600,
+            });
+          } catch {
+            url = null;
+          }
+        }
+      }
+      out.push({
+        id: a.id,
+        mimeType: a.mimeType,
+        nombreOriginal: a.nombreOriginal,
+        bytes: a.bytes,
+        url,
+      });
+    }
+    return out;
   }
 
   private assertDb(): void {

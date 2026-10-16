@@ -159,7 +159,7 @@ function Burbuja({ item }: { item: HistorialItemDto }) {
           {quien}
           <span className="ml-1">{formatWhen(item.creadoEn)}</span>
         </p>
-        <p
+        <div
           className={`whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm leading-snug ${
             asesor
               ? "rounded-br-md bg-teal text-white"
@@ -168,11 +168,66 @@ function Burbuja({ item }: { item: HistorialItemDto }) {
                 : "rounded-bl-md border border-white/70 bg-white/80 text-ink"
           }`}
         >
-          {item.contenido}
-        </p>
+          {item.contenido ? <p>{item.contenido}</p> : null}
+          {item.adjuntos.length > 0 ? (
+            <ul className={`mt-1 space-y-1 ${asesor ? "text-white/90" : ""}`}>
+              {item.adjuntos.map((adj, i) => (
+                <li key={adj.id ?? `${item.id}-adj-${i}`}>
+                  <AdjuntoBubble adj={adj} invertido={asesor} />
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
       </div>
     </div>
   );
+}
+
+function AdjuntoBubble({
+  adj,
+  invertido,
+}: {
+  adj: HistorialItemDto["adjuntos"][number];
+  invertido: boolean;
+}) {
+  const nombre = adj.nombreOriginal ?? adj.mimeType;
+  const esImagen = adj.mimeType.startsWith("image/");
+  const esVideo = adj.mimeType.startsWith("video/");
+  if (adj.url && esImagen) {
+    return (
+      <a href={adj.url} target="_blank" rel="noopener noreferrer" className="block">
+        <img
+          src={adj.url}
+          alt={nombre}
+          className="max-h-48 rounded-lg object-cover"
+        />
+      </a>
+    );
+  }
+  if (adj.url && esVideo) {
+    return (
+      <video
+        src={adj.url}
+        controls
+        className="max-h-48 max-w-full rounded-lg"
+        preload="metadata"
+      />
+    );
+  }
+  if (adj.url) {
+    return (
+      <a
+        href={adj.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`text-xs underline ${invertido ? "text-white" : "text-teal"}`}
+      >
+        {nombre}
+      </a>
+    );
+  }
+  return <span className="text-xs opacity-80">{nombre}</span>;
 }
 
 function ajeno(conv: ConversacionResumenDto, userId?: string): boolean {

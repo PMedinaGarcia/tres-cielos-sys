@@ -39,11 +39,14 @@ export async function tomarControl(
 
 export async function enviarMensaje(
   id: string,
-  contenido: string,
+  input: {
+    contenido?: string;
+    adjuntos?: Array<{ uploadId: string }>;
+  },
 ): Promise<EnviarMensajeAsesorResponse> {
   const res = await apiFetch(`/conversaciones/${id}/mensajes`, {
     method: "POST",
-    body: JSON.stringify({ contenido }),
+    body: JSON.stringify(input),
   });
   return readJson(res);
 }

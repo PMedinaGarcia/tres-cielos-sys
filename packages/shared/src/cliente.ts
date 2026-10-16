@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MensajeAsesorAdjuntoRefSchema } from "./bandeja-media";
 import { ROL_USUARIO } from "./auth";
 import {
   FechaEstadoSchema,
@@ -360,8 +361,11 @@ export const HISTORIAL_KIND = ["mensaje", "hecho"] as const;
 export type HistorialKind = (typeof HISTORIAL_KIND)[number];
 
 export const HistorialAdjuntoDtoSchema = z.object({
+  id: z.string().optional(),
   mimeType: z.string(),
   nombreOriginal: z.string().nullable(),
+  bytes: z.number().int().nullable().optional(),
+  url: z.string().nullable().optional(),
 });
 export type HistorialAdjuntoDto = z.infer<typeof HistorialAdjuntoDtoSchema>;
 
@@ -390,9 +394,21 @@ export const ROLES_CRM_PANEL = ROL_USUARIO;
 export const ENTREGA_MENSAJE_ASESOR = ["enviado", "omitido", "sandbox"] as const;
 export type EntregaMensajeAsesor = (typeof ENTREGA_MENSAJE_ASESOR)[number];
 
-export const EnviarMensajeAsesorRequestSchema = z.object({
-  contenido: z.string().trim().min(1).max(4096),
-});
+export const EnviarMensajeAsesorRequestSchema = z
+  .object({
+    contenido: z.string().trim().max(4096).optional(),
+    adjuntos: z.array(MensajeAsesorAdjuntoRefSchema).max(10).optional(),
+  })
+  .superRefine((data, ctx) => {
+    const texto = data.contenido?.trim() ?? "";
+    const adj = data.adjuntos?.length ?? 0;
+    if (!texto && adj === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "CONTENIDO_O_ADJUNTO_REQUERIDO",
+      });
+    }
+  });
 export type EnviarMensajeAsesorRequest = z.infer<
   typeof EnviarMensajeAsesorRequestSchema
 >;
