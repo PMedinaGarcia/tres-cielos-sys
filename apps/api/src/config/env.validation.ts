@@ -71,6 +71,10 @@ export const envSchema = z
     S3_SECRET_ACCESS_KEY: z.string().optional(),
     STORAGE_PUBLIC_BASE_URL: z.string().optional(),
     PUBLIC_API_URL: z.string().url().optional().or(z.literal("")),
+    /** Vacía en local: el aviso se omite y el webhook sigue. */
+    RESEND_API_KEY: z.string().optional(),
+    RESEND_FROM: z.string().optional(),
+    PANEL_PUBLIC_URL: z.string().url().optional().or(z.literal("")),
     /** memory = índice in-process; prisma = pgvector + FTS. Default: memory si fake, prisma si live. */
     RAG_STORE: z.enum(["memory", "prisma"]).optional(),
     FETCH_CHANNEL_MEDIA: z.enum(["0", "1"]).optional(),

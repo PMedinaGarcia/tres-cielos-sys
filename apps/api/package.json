@@ -43,6 +43,7 @@
     "ioredis": "^5.4.2",
     "openai": "^7.1.0",
     "reflect-metadata": "^0.2.2",
+    "resend": "^6.37.0",
     "rxjs": "^7.8.1",
     "zod": "^3.24.1"
   },

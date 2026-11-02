@@ -25,6 +25,7 @@ import { BandejaService } from "./bandeja.service";
 import { ExpedientePersistService } from "../crm/expediente-persist.service";
 import { ConversationStoreService } from "../conversation/stubs/conversation-store.service";
 import { PrismaService } from "../prisma/prisma.service";
+import type { Prisma } from "@prisma/client";
 import type { CamposCapturados } from "../conversation/types";
 import { labelFechaEventoBrief } from "../conversation/script/harvest-campos";
 import { NurtureWorkerService } from "../conversation/nurture/nurture.worker";
@@ -50,21 +51,56 @@ export class ConversationPanelController {
   ) {}
 
   @Get()
-  async listar(@Query("cola") cola?: string) {
+  async listar(
+    @CurrentUser() user: PanelUser,
+    @Query("cola") cola?: string,
+    @Query("asesorId") asesorId?: string,
+    @Query("sinAsignar") sinAsignar?: string,
+    @Query("fueraSla") fueraSla?: string,
+  ) {
     if (!process.env.DATABASE_URL) {
       return { data: [] };
     }
+    const ahora = new Date();
+    const where: Prisma.ConversacionWhereInput = {};
+    if (user.role !== "asesor") {
+      if (cola === "comercial" || cola === "atencion_general") {
+        where.cola = cola;
+      } else {
+        where.OR = [
+          { estadoBot: { in: ["escalado", "humano"] } },
+          { cola: { not: null } },
+        ];
+      }
+    } else if (cola === "comercial" || cola === "atencion_general") {
+      where.cola = cola;
+    }
+    const and: Prisma.ConversacionWhereInput[] = [];
+    if (user.role === "asesor") {
+      and.push({ cliente: { asesorAsignadoId: user.userId } });
+    } else if (user.sedeIds.length) {
+      and.push({
+        cliente: {
+          OR: [
+            { sedeInteresId: { in: user.sedeIds } },
+            { sedeInteresId: null },
+          ],
+        },
+      });
+    }
+    if (user.role !== "asesor") {
+      if (sinAsignar === "1" || sinAsignar === "true") {
+        and.push({ cliente: { asesorAsignadoId: null } });
+      } else if (asesorId) {
+        and.push({ cliente: { asesorAsignadoId: asesorId } });
+      }
+      if (fueraSla === "1" || fueraSla === "true") {
+        and.push({ estadoBot: "escalado", slaVenceEn: { lt: ahora } });
+      }
+    }
+    if (and.length) where.AND = and;
     const rows = await this.prisma.conversacion.findMany({
-      where: {
-        ...(cola === "comercial" || cola === "atencion_general"
-          ? { cola }
-          : {
-              OR: [
-                { estadoBot: { in: ["escalado", "humano"] } },
-                { cola: { not: null } },
-              ],
-            }),
-      },
+      where,
       orderBy: { actualizadoEn: "desc" },
       take: 80,
     });

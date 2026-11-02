@@ -82,8 +82,13 @@ function build(row: Record<string, unknown> | null = hilo()) {
   };
   const expediente = {
     persistTomaControl: jest.fn(async () => true),
-    asignarSiSinDueno: jest.fn(async () => "asesor-1"),
     persistAfterTurn: jest.fn(async () => undefined),
+  };
+  const assignment = {
+    marcarPrimerContacto: jest.fn(async () => ({
+      asesorId: "asesor-1",
+      primerContacto: true,
+    })),
   };
   const audit = { record: jest.fn(async () => ({ id: "ev-1" })) };
   const memoria = { aplicarCamposAsesor: jest.fn(async () => undefined) };
@@ -95,22 +100,21 @@ function build(row: Record<string, unknown> | null = hilo()) {
     expediente as never,
     audit as never,
     memoria as never,
+    undefined,
+    undefined,
+    assignment as never,
   );
-  return { svc, prisma, outbound, expediente, orchStore, memoria, orch };
+  return { svc, prisma, outbound, expediente, assignment, orchStore, memoria, orch };
 }
 
 describe("BandejaService mensajes", () => {
   it("toma el control al responder y guarda el mensaje con el mismo id", async () => {
-    const { svc, outbound, expediente, orchStore, prisma } = build();
+    const { svc, outbound, expediente, assignment, orchStore, prisma } = build();
     const res = await svc.enviarMensaje("c1", { contenido: "Hola, te atiendo yo" }, user);
     expect(res.estadoBot).toBe("humano");
     expect(res.entrega).toBe("enviado");
     expect(expediente.persistTomaControl).toHaveBeenCalled();
-    expect(expediente.asignarSiSinDueno).toHaveBeenCalledWith({
-      conversacionId: "c1",
-      asesorId: "asesor-1",
-      motivo: "primer_mensaje_asesor",
-    });
+    expect(assignment.marcarPrimerContacto).toHaveBeenCalledWith("c1");
     expect(outbound.send).toHaveBeenCalledWith(
       expect.objectContaining({ texto: "Hola, te atiendo yo", canal: "whatsapp" }),
     );
@@ -192,18 +196,13 @@ describe("BandejaService mensajes", () => {
     expect(prisma.mensaje.create).not.toHaveBeenCalled();
   });
 
-  it("limita al asesor a sus clientes o a los que no tienen dueño", async () => {
+  it("limita al asesor a sus propios leads", async () => {
     const { svc, prisma } = build();
     await svc.enviarMensaje("c1", { contenido: "hola" }, user);
     expect(prisma.conversacion.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          cliente: {
-            OR: [
-              { asesorAsignadoId: "asesor-1" },
-              { asesorAsignadoId: null },
-            ],
-          },
+          cliente: { asesorAsignadoId: "asesor-1" },
         }),
       }),
     );

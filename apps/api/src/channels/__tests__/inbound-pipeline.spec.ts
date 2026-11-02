@@ -5,7 +5,6 @@ import { AuditService } from "../../audit/audit.service";
 import { QuotaService } from "../../quota/quota.service";
 import { CrmCalificacionService } from "../../crm/calificacion.service";
 import { NotificationsService } from "../../notifications/notifications.service";
-import { AssignmentService } from "../../assignment/assignment.service";
 import { ChannelAttachmentService } from "../attachments/channel-attachment.service";
 import { ChannelAttachmentJobService } from "../../knowledge-ingestion/jobs/channel-attachment-job.service";
 import { InboundPipelineService } from "../inbound-pipeline.service";
@@ -35,7 +34,6 @@ describe("D-BOT-6 silencio humano", () => {
       new QuotaService(),
       new CrmCalificacionService(),
       new NotificationsService(),
-      new AssignmentService(),
       handler,
     );
 
@@ -88,7 +86,6 @@ describe("D-BOT-6 silencio humano", () => {
       new QuotaService(),
       new CrmCalificacionService(),
       new NotificationsService(),
-      new AssignmentService(),
       {
         async handleTurn() {
           throw new Error("no debe llamarse");
@@ -140,7 +137,6 @@ describe("RAG en espera no se solapa con el asesor", () => {
       new QuotaService(),
       new CrmCalificacionService(),
       new NotificationsService(),
-      new AssignmentService(),
       handler,
       undefined,
       prisma as never,
@@ -276,7 +272,6 @@ describe("Cupo hard → cupo_ia", () => {
       quota,
       new CrmCalificacionService(),
       new NotificationsService(),
-      new AssignmentService(),
       {
         async handleTurn() {
           return {
@@ -333,7 +328,6 @@ describe("cola por hilo", () => {
       new QuotaService(),
       new CrmCalificacionService(),
       new NotificationsService(),
-      new AssignmentService(),
       handler,
     );
     const base = {

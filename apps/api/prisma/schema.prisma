@@ -38,6 +38,9 @@ model Sede {
   actualizadoEn   DateTime      @updatedAt @map("actualizado_en")
   usuarios         UsuarioSede[]
   clientesInteres  Cliente[]
+  politica         PoliticaAsignacion?
+  horarios         HorarioAsesor[]
+  colasAsignacion  ColaAsignacion[]
 
   @@index([organizacionId])
   @@map("sedes")
@@ -62,6 +65,9 @@ model Usuario {
   oportunidadesAsignadas   Oportunidad[]  @relation("OportunidadAsesor")
   asignacionesDestino      Asignacion[]   @relation("AsignacionDestino")
   asignacionesActor        Asignacion[]   @relation("AsignacionActor")
+  asignacionesOrigen       Asignacion[]   @relation("AsignacionOrigen")
+  horarios                 HorarioAsesor[]
+  especialidades           AsesorEspecialidad[]
   notasCliente             NotaCliente[]
 
   @@index([organizacionId])
@@ -70,10 +76,16 @@ model Usuario {
 }
 
 model UsuarioSede {
-  usuarioId  String  @map("usuario_id")
-  usuario    Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  sedeId     String  @map("sede_id")
-  sede       Sede    @relation(fields: [sedeId], references: [id], onDelete: Cascade)
+  usuarioId                 String    @map("usuario_id")
+  usuario                   Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  sedeId                    String    @map("sede_id")
+  sede                      Sede      @relation(fields: [sedeId], references: [id], onDelete: Cascade)
+  /// 1 = un turno completo. Un medio tiempo usa un valor menor (por ejemplo 0.5) y recibe menos leads.
+  peso                      Decimal   @default(1) @db.Decimal(4, 2)
+  recibeAsignacion          Boolean   @default(true) @map("recibe_asignacion")
+  topeAbiertasOverride      Int?      @map("tope_abiertas_override")
+  topeSinContactarOverride  Int?      @map("tope_sin_contactar_override")
+  ultimoAsignadoEn          DateTime? @map("ultimo_asignado_en")
 
   @@id([usuarioId, sedeId])
   @@index([sedeId])
@@ -328,6 +340,34 @@ enum ReglaAsignacion {
   sede_disponibilidad_round_robin
   cola_coordinador
   manual
+  menor_carga_sede
+}
+
+enum EstrategiaAsignacion {
+  menor_carga
+}
+
+enum DisparadorAsignacion {
+  calificado
+  handoff
+  recontacto
+  sla
+  manual
+  drenado
+  exploracion
+}
+
+enum EstadoColaAsignacion {
+  esperando
+  asignada
+  cancelada
+}
+
+enum MotivoColaAsignacion {
+  sin_disponibles
+  todos_en_tope
+  en_exploracion
+  dueno_inactivo
 }
 
 enum ActorAsignacion {
@@ -621,6 +661,8 @@ model Interaccion {
   @@map("interacciones")
 }
 
+// Índice único parcial `asignaciones_una_vigente` (oportunidad_id WHERE vigente)
+// y `cola_asignacion_una_espera` viven en la migración SQL: Prisma 6.3 no modela índices parciales.
 model Asignacion {
   id               String          @id @default(cuid())
   clienteId        String          @map("cliente_id")
@@ -632,15 +674,82 @@ model Asignacion {
   actor            ActorAsignacion @default(sistema)
   actorUsuarioId   String?         @map("actor_usuario_id")
   actorUsuario     Usuario?        @relation("AsignacionActor", fields: [actorUsuarioId], references: [id], onDelete: SetNull)
+  usuarioOrigenId  String?         @map("usuario_origen_id")
+  usuarioOrigen    Usuario?        @relation("AsignacionOrigen", fields: [usuarioOrigenId], references: [id], onDelete: SetNull)
   regla            ReglaAsignacion
   vigente          Boolean         @default(true)
   motivo           String?
+  explicacion      Json?
   creadoEn         DateTime        @default(now()) @map("creado_en")
 
   @@index([oportunidadId, vigente])
   @@index([clienteId])
   @@index([usuarioDestinoId])
+  @@index([usuarioOrigenId])
   @@map("asignaciones")
+}
+
+/// Una fila por sede. El picker no hardcodea topes.
+model PoliticaAsignacion {
+  id                    String                @id @default(cuid())
+  sedeId                String                @unique @map("sede_id")
+  sede                  Sede                  @relation(fields: [sedeId], references: [id], onDelete: Cascade)
+  estrategia            EstrategiaAsignacion  @default(menor_carga)
+  topeSinContactar      Int                   @default(8) @map("tope_sin_contactar")
+  topeAbiertas          Int                   @default(40) @map("tope_abiertas")
+  topeNuevosDia         Int?                  @map("tope_nuevos_dia")
+  slaMinutos            Int                   @default(30) @map("sla_minutos")
+  slaReasignar          Boolean               @default(false) @map("sla_reasignar")
+  preferirEspecialidad  Boolean               @default(false) @map("preferir_especialidad")
+  creadoEn              DateTime              @default(now()) @map("creado_en")
+  actualizadoEn         DateTime              @updatedAt @map("actualizado_en")
+
+  @@map("politicas_asignacion")
+}
+
+/// Ventanas semanales. Sin filas, manda el flag `disponible`.
+model HorarioAsesor {
+  id             String   @id @default(cuid())
+  usuarioId      String   @map("usuario_id")
+  usuario        Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  sedeId         String   @map("sede_id")
+  sede           Sede     @relation(fields: [sedeId], references: [id], onDelete: Cascade)
+  /// 0 = domingo … 6 = sábado, en la zona horaria de la sede.
+  diaSemana      Int      @map("dia_semana")
+  inicioMinutos  Int      @map("inicio_minutos")
+  finMinutos     Int      @map("fin_minutos")
+
+  @@index([usuarioId, sedeId])
+  @@map("horarios_asesor")
+}
+
+model AsesorEspecialidad {
+  usuarioId   String     @map("usuario_id")
+  usuario     Usuario    @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tipoEvento  TipoEvento @map("tipo_evento")
+
+  @@id([usuarioId, tipoEvento])
+  @@map("asesor_especialidades")
+}
+
+model ColaAsignacion {
+  id             String                 @id @default(cuid())
+  oportunidadId  String                 @map("oportunidad_id")
+  oportunidad    Oportunidad            @relation(fields: [oportunidadId], references: [id], onDelete: Cascade)
+  sedeId         String                 @map("sede_id")
+  sede           Sede                   @relation(fields: [sedeId], references: [id], onDelete: Cascade)
+  disparador     DisparadorAsignacion
+  estado         EstadoColaAsignacion   @default(esperando)
+  motivo         MotivoColaAsignacion
+  detalle        Json?
+  intentos       Int                    @default(0)
+  creadoEn       DateTime               @default(now()) @map("creado_en")
+  actualizadoEn  DateTime               @updatedAt @map("actualizado_en")
+  asignadaEn     DateTime?              @map("asignada_en")
+
+  @@index([sedeId, estado])
+  @@index([oportunidadId])
+  @@map("cola_asignacion")
 }
 
 model Oportunidad {
@@ -668,18 +777,21 @@ model Oportunidad {
   canalOrigen        Canal?                  @map("canal_origen")
   sede               String?
   briefJson          Json?                   @map("brief_json")
-  asesorAsignadoId   String?                 @map("asesor_asignado_id")
-  asesorAsignado     Usuario?                @relation("OportunidadAsesor", fields: [asesorAsignadoId], references: [id], onDelete: SetNull)
-  creadoEn           DateTime                @default(now()) @map("creado_en")
+  asesorAsignadoId        String?                 @map("asesor_asignado_id")
+  asesorAsignado          Usuario?                @relation("OportunidadAsesor", fields: [asesorAsignadoId], references: [id], onDelete: SetNull)
+  primerContactoHumanoEn  DateTime?               @map("primer_contacto_humano_en")
+  creadoEn                DateTime                @default(now()) @map("creado_en")
   actualizadoEn      DateTime                @updatedAt @map("actualizado_en")
   conversaciones     Conversacion[]
   eventosOperativos  EventoOperativo[]
   interacciones      Interaccion[]
   asignaciones       Asignacion[]
+  colasAsignacion    ColaAsignacion[]
 
   @@index([clienteId])
   @@index([etapa])
   @@index([asesorAsignadoId])
+  @@index([asesorAsignadoId, etapa])
   @@index([visitaEstado])
   @@index([etapaCotizacion])
   @@map("oportunidades")

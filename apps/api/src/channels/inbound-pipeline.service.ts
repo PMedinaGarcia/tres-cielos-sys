@@ -11,7 +11,6 @@ import { mapCanalCrm } from "../crm/cliente-identity";
 import { ClienteMemoriaService } from "../conversation/memoria/cliente-memoria.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
-import { AssignmentService } from "../assignment/assignment.service";
 import type { InboundMessage, TurnResult } from "./types/inbound-message";
 import { attachWaContent } from "./wa-content.composer";
 import { resolveInteractiveInbound } from "./wa-templates.catalog";
@@ -35,7 +34,6 @@ export class InboundPipelineService {
     private readonly quota: QuotaService,
     private readonly crm: CrmCalificacionService,
     private readonly notifications: NotificationsService,
-    private readonly assignment: AssignmentService,
     @Inject(TURN_HANDLER) private readonly turnHandler: TurnHandler,
     @Optional() private readonly memoria?: ClienteMemoriaService,
     @Optional() private readonly prisma?: PrismaService,
@@ -104,6 +102,7 @@ export class InboundPipelineService {
         conversacionId: conv.id,
         motivo: "cupo_ia",
         ventanaMinutos: 15,
+        ...this.avisoDe(message),
       });
       await this.audit.record({
         tipo: "bot_handoff",
@@ -122,6 +121,10 @@ export class InboundPipelineService {
         externalThreadId: message.externalThreadId,
         texto: message.texto ?? "",
         telefono: message.perfilCanal?.waId ?? null,
+      });
+      this.notifications.avisarMensajeEntrante({
+        conversacionId: conv.id,
+        ...this.avisoDe(message),
       });
       const avisar = await this.debeAvisarSilencio(conv.id);
       const safe = {
@@ -239,17 +242,11 @@ export class InboundPipelineService {
       sedeId: conv.sedeId,
     });
     if (cal.listoParaCotizar || cal.calificacion === "calificado") {
-      const assigned = this.assignment.assign({
-        sedeId: conv.sedeId ?? "sede-default",
-        oportunidadId: cal.oportunidadId,
-        cola: conv.cola === "atencion_general" ? "atencion_general" : "comercial",
-      });
-      conv.asesorId = assigned.asesorId;
       await this.notifications.notifyCalificado({
         conversacionId: conv.id,
         oportunidadId: cal.oportunidadId,
-        asesorId: assigned.asesorId,
         listoParaCotizar: cal.listoParaCotizar,
+        ...this.avisoDe(message),
       });
     }
 
@@ -276,25 +273,17 @@ export class InboundPipelineService {
     motivo: string,
   ): Promise<void> {
     const conv = this.conversations.getById(conversacionId);
-    const assigned = this.assignment.assign({
-      sedeId: conv?.sedeId ?? "sede-default",
-      oportunidadId: conv?.oportunidadId,
-      motivoEscalacion: motivo,
-      cola: conv?.cola === "atencion_general" ? "atencion_general" : "comercial",
-    });
-    if (conv) conv.asesorId = assigned.asesorId;
-
     await this.notifications.notifyEscalacion({
       conversacionId,
       motivo,
-      ventanaMinutos: 20,
-      asesorId: assigned.asesorId,
+      ventanaMinutos: conv?.cola === "comercial" ? 15 : 30,
+      ...this.avisoDe(message),
     });
     await this.audit.record({
       tipo: "bot_handoff",
       actor: "bot",
       conversacionId,
-      payload: { motivoHandoff: motivo, asesorId: assigned.asesorId },
+      payload: { motivoHandoff: motivo },
     });
     if (result.textoRespuesta) {
       await this.sendOutbound(message, result);
@@ -347,6 +336,20 @@ export class InboundPipelineService {
         }`,
       );
     }
+  }
+
+  private avisoDe(message: InboundMessage): {
+    canal: InboundMessage["canal"];
+    externalMessageId: string;
+    texto: string;
+    sandbox: boolean;
+  } {
+    return {
+      canal: message.canal,
+      externalMessageId: message.externalMessageId,
+      texto: message.texto ?? "",
+      sandbox: message.meta?.sandbox === true,
+    };
   }
 
   private async sendOutbound(

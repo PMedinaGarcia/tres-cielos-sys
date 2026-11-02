@@ -337,12 +337,7 @@ export class BandejaAttachmentsService {
         id: conversacionId,
         ...(user.role === "asesor"
           ? {
-              cliente: {
-                OR: [
-                  { asesorAsignadoId: user.userId },
-                  { asesorAsignadoId: null },
-                ],
-              },
+              cliente: { asesorAsignadoId: user.userId },
             }
           : {}),
       },

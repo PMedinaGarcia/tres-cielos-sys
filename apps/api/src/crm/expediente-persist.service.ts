@@ -8,7 +8,7 @@ import type {
   TipoIdentificadorCliente,
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
-import { AssignmentService } from "../assignment/assignment.service";
+import { AssignmentEngine } from "../assignment/assignment-engine.service";
 import { fechaTentativaToIso } from "../conversation/script/fecha-tentativa.parser";
 import {
   isPerfilListo,
@@ -69,7 +69,7 @@ export class ExpedientePersistService {
 
   constructor(
     @Optional() private readonly prisma?: PrismaService,
-    @Optional() private readonly assignment?: AssignmentService,
+    @Optional() private readonly assignment?: AssignmentEngine,
     @Optional() identidad?: IdentidadService,
     @Optional() private readonly memoria?: ClienteMemoriaService,
     @Optional() private readonly realtime?: PanelRealtimeService,
@@ -161,47 +161,6 @@ export class ExpedientePersistService {
         }`,
       );
       return false;
-    }
-  }
-
-  /** Asigna cliente/oportunidad al asesor si aún no tienen dueño (primer mensaje tras el bot). */
-  async asignarSiSinDueno(input: {
-    conversacionId: string;
-    asesorId: string;
-    motivo?: string;
-  }): Promise<string | null> {
-    if (!this.canWrite()) return null;
-    const prisma = this.prisma!;
-    try {
-      const conv = await prisma.conversacion.findUnique({
-        where: { id: input.conversacionId },
-        select: { clienteId: true, oportunidadId: true },
-      });
-      if (!conv) return null;
-      const cliente = await prisma.cliente.findUnique({
-        where: { id: conv.clienteId },
-        select: { asesorAsignadoId: true },
-      });
-      if (!cliente) return null;
-      if (cliente.asesorAsignadoId) return cliente.asesorAsignadoId;
-      await this.applyAsignacion({
-        clienteId: conv.clienteId,
-        oportunidadId: conv.oportunidadId,
-        asesorId: input.asesorId,
-        regla: "manual",
-        actor: "sistema",
-        actorUsuarioId: input.asesorId,
-        motivo: input.motivo ?? "primer_mensaje_asesor",
-      });
-      this.realtime?.emit({ type: "bandeja", clienteId: conv.clienteId });
-      return input.asesorId;
-    } catch (err) {
-      this.logger.warn(
-        `No se pudo asignar por primer mensaje ${input.conversacionId}: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
-      );
-      return null;
     }
   }
 
@@ -478,7 +437,21 @@ export class ExpedientePersistService {
       actor: extras.actor ?? "bot",
     });
 
-    // Dueño comercial: primer asesor que envía mensaje (BandejaService), no round-robin en handoff.
+    // Dueño comercial: el motor asigna al calificar o al escalar. El primer mensaje solo estampa el contacto.
+    try {
+      await this.assignment?.asignarDesdeTurno({
+        oportunidadId,
+        calificacion: conv.calificado ? "calificado" : "en_exploracion",
+        estadoBot: conv.estadoBot,
+        sedeId: campos.sedeId ?? null,
+      });
+    } catch (err) {
+      this.logger.warn(
+        `No se pudo repartir ${oportunidadId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
   }
 
   private async resolveCliente(input: {
@@ -1208,107 +1181,6 @@ export class ExpedientePersistService {
     });
   }
 
-  private async assignOnHandoff(input: {
-    clienteId: string;
-    oportunidadId: string;
-    conversacionId: string;
-    sedeId: string | null;
-    motivo: string | null;
-    cola?: "comercial" | "atencion_general";
-    rutaComercial?: string | null;
-  }): Promise<void> {
-    const prisma = this.prisma!;
-    const cliente = await prisma.cliente.findUnique({
-      where: { id: input.clienteId },
-    });
-    if (!cliente || cliente.asesorAsignadoId) return;
-
-    const pick = await this.assignment?.pickAsesorPersistible({
-      sedeId: input.sedeId,
-    });
-    if (!pick) return;
-
-    await this.applyAsignacion({
-      clienteId: input.clienteId,
-      oportunidadId: input.oportunidadId,
-      asesorId: pick.asesorId,
-      regla: pick.regla,
-      actor: "sistema",
-      motivo: input.motivo ?? "handoff",
-    });
-    await prisma.interaccion.create({
-      data: {
-        clienteId: input.clienteId,
-        oportunidadId: input.oportunidadId,
-        conversacionId: input.conversacionId,
-        tipo: "handoff",
-        actor: "sistema",
-        resumen: "Handoff: cliente asignado a asesor",
-        payload: {
-          asesorId: pick.asesorId,
-          regla: pick.regla,
-          motivo: input.motivo,
-          cola: input.cola ?? "comercial",
-          rutaComercial: input.rutaComercial ?? null,
-        },
-      },
-    });
-  }
-
-  private async applyAsignacion(input: {
-    clienteId: string;
-    oportunidadId: string;
-    asesorId: string;
-    regla: "sede_disponibilidad_round_robin" | "cola_coordinador" | "manual";
-    actor: "sistema" | "coordinador" | "admin";
-    actorUsuarioId?: string;
-    motivo?: string;
-  }): Promise<void> {
-    const prisma = this.prisma!;
-    const usuario = await prisma.usuario.findUnique({
-      where: { id: input.asesorId },
-      select: { id: true },
-    });
-    if (!usuario) return;
-
-    await prisma.asignacion.updateMany({
-      where: { oportunidadId: input.oportunidadId, vigente: true },
-      data: { vigente: false },
-    });
-    await prisma.asignacion.create({
-      data: {
-        clienteId: input.clienteId,
-        oportunidadId: input.oportunidadId,
-        usuarioDestinoId: input.asesorId,
-        regla: input.regla,
-        actor: input.actor,
-        actorUsuarioId: input.actorUsuarioId,
-        motivo: input.motivo,
-        vigente: true,
-      },
-    });
-    await prisma.cliente.update({
-      where: { id: input.clienteId },
-      data: { asesorAsignadoId: input.asesorId },
-    });
-    await prisma.oportunidad.update({
-      where: { id: input.oportunidadId },
-      data: { asesorAsignadoId: input.asesorId },
-    });
-    await prisma.interaccion.create({
-      data: {
-        clienteId: input.clienteId,
-        oportunidadId: input.oportunidadId,
-        tipo: "asignacion",
-        actor: "sistema",
-        resumen: "Asesor asignado",
-        payload: {
-          asesorId: input.asesorId,
-          regla: input.regla,
-        },
-      },
-    });
-  }
 }
 
 export function mapCanal(canal: string): Canal {

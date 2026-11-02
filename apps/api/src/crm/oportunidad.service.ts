@@ -162,12 +162,7 @@ export class OportunidadService {
 
   private clienteScope(actor: PanelUser): Prisma.ClienteWhereInput {
     if (actor.role === "asesor") {
-      return {
-        OR: [
-          { asesorAsignadoId: actor.userId },
-          { asesorAsignadoId: null },
-        ],
-      };
+      return { asesorAsignadoId: actor.userId };
     }
     if (!actor.sedeIds.length) return {};
     return {

@@ -307,11 +307,11 @@ describe("ExpedientePersistService", () => {
     });
   });
 
-  it("escalado actualiza estadoAtencion sin asignar asesor (dueño al primer mensaje)", async () => {
+  it("escalado pide el reparto al motor", async () => {
     process.env.DATABASE_URL = "postgresql://test";
     const prisma = mockPrisma();
     const assignment = {
-      pickAsesorPersistible: jest.fn(async () => null),
+      asignarDesdeTurno: jest.fn(async () => ({ estado: "asignado" })),
     };
     const svc = new ExpedientePersistService(
       prisma as never,
@@ -325,7 +325,13 @@ describe("ExpedientePersistService", () => {
         data: expect.objectContaining({ estadoAtencion: "escalado" }),
       }),
     );
-    expect(assignment.pickAsesorPersistible).not.toHaveBeenCalled();
+    expect(assignment.asignarDesdeTurno).toHaveBeenCalledWith(
+      expect.objectContaining({
+        oportunidadId: "opp-1",
+        estadoBot: "escalado",
+        calificacion: "en_exploracion",
+      }),
+    );
     expect(prisma.asignacion.create).not.toHaveBeenCalled();
   });
 

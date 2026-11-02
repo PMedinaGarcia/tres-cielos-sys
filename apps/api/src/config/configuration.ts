@@ -77,6 +77,11 @@ export default () => {
       cookieDomain: env.AUTH_COOKIE_DOMAIN || undefined,
     },
     publicApiUrl: env.PUBLIC_API_URL || undefined,
+    email: {
+      resendApiKey: env.RESEND_API_KEY || undefined,
+      from: env.RESEND_FROM || "Tres Cielos <avisos@trescielosbot.org>",
+      panelPublicUrl: env.PANEL_PUBLIC_URL || undefined,
+    },
     queue: {
       driver: (env.QUEUE_DRIVER ?? "inline") as "inline" | "bullmq",
     },

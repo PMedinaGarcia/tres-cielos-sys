@@ -3,9 +3,11 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { AssignmentEngine } from "../assignment/assignment-engine.service";
 import { AuthService } from "../auth/auth.service";
 import { assertPasswordPolicy } from "../auth/crypto.util";
 import { hashPassword } from "../auth/password";
@@ -20,6 +22,7 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auth: AuthService,
+    @Optional() private readonly assignment?: AssignmentEngine,
   ) {}
 
   async list(orgId: string) {
@@ -99,6 +102,11 @@ export class UsersService {
     });
     if (dto.activo === false) {
       await this.auth.revokeAllRefresh(id);
+    }
+    if (dto.disponible === true && existing.disponible === false) {
+      for (const sede of user.sedes) {
+        await this.assignment?.drenarSede(sede.sedeId);
+      }
     }
     return toUserDto(user);
   }

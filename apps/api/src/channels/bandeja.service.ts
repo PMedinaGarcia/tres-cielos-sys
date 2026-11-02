@@ -16,6 +16,7 @@ import {
   type EntregaMensajeAsesor,
 } from "@tres-cielos/shared";
 import type { PanelUser } from "../auth/auth.types";
+import { AssignmentEngine } from "../assignment/assignment-engine.service";
 import { AuditService } from "../audit/audit.service";
 import { ClienteMemoriaService } from "../conversation/memoria/cliente-memoria.service";
 import {
@@ -88,6 +89,7 @@ export class BandejaService {
     @Optional() private readonly memoria?: ClienteMemoriaService,
     @Optional() private readonly adjuntos?: BandejaAttachmentsService,
     @Optional() private readonly realtime?: PanelRealtimeService,
+    @Optional() private readonly assignment?: AssignmentEngine,
   ) {}
 
   async tomarControl(
@@ -96,12 +98,7 @@ export class BandejaService {
     user: PanelUser,
   ): Promise<{ id: string; estadoBot: "humano"; eventoOperativoId: string }> {
     const conv = await this.load(id, user);
-    if (conv.asesorLockId && conv.asesorLockId !== user.userId) {
-      throw conflict(
-        "OWNERSHIP_CONFLICT",
-        "Otro asesor ya tomó este hilo",
-      );
-    }
+    this.assertPuedeAtender(conv, user);
     const anterior = conv.estadoBot;
     const canal = this.conversations?.getById(id);
     if (canal) this.conversations?.setEstadoBot(id, "humano");
@@ -153,9 +150,7 @@ export class BandejaService {
     const contenido = parsed.data.contenido?.trim() ?? "";
     const refs = parsed.data.adjuntos ?? [];
     const conv = await this.load(id, user);
-    if (conv.asesorLockId && conv.asesorLockId !== user.userId) {
-      throw conflict("OWNERSHIP_CONFLICT", "Otro asesor ya tomó este hilo");
-    }
+    this.assertPuedeAtender(conv, user);
     if (conv.cliente.optOutMensajeria) {
       throw conflict(
         "OPT_OUT",
@@ -224,11 +219,7 @@ export class BandejaService {
       externalMessageId = sent.providerMessageId ?? null;
     }
 
-    const asesorAsignadoId = await this.expediente?.asignarSiSinDueno({
-      conversacionId: conv.id,
-      asesorId: user.userId,
-      motivo: "primer_mensaje_asesor",
-    });
+    const contacto = await this.assignment?.marcarPrimerContacto(conv.id);
 
     const prisma = this.db();
     const textoGuardado =
@@ -310,7 +301,7 @@ export class BandejaService {
       },
       estadoBot: "humano",
       entrega,
-      asesorAsignadoId: asesorAsignadoId ?? conv.cliente.asesorAsignadoId,
+      asesorAsignadoId: contacto?.asesorId ?? conv.cliente.asesorAsignadoId,
     };
   }
 
@@ -418,14 +409,22 @@ export class BandejaService {
     }
   }
 
+  private assertPuedeAtender(conv: HiloRow, user: PanelUser): void {
+    if (
+      user.role === "asesor" &&
+      conv.cliente.asesorAsignadoId &&
+      conv.cliente.asesorAsignadoId !== user.userId
+    ) {
+      throw conflict("OWNERSHIP_CONFLICT", "Este lead ya tiene asesor");
+    }
+    if (conv.asesorLockId && conv.asesorLockId !== user.userId) {
+      throw conflict("OWNERSHIP_CONFLICT", "Otro asesor ya tomó este hilo");
+    }
+  }
+
   private clienteScope(actor: PanelUser): Prisma.ClienteWhereInput {
     if (actor.role === "asesor") {
-      return {
-        OR: [
-          { asesorAsignadoId: actor.userId },
-          { asesorAsignadoId: null },
-        ],
-      };
+      return { asesorAsignadoId: actor.userId };
     }
     if (!actor.sedeIds.length) return {};
     return {
