@@ -10,6 +10,7 @@ import {
 } from "@/lib/auth-api";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/http";
+import { panelHomePath } from "@/lib/panel-routes";
 import type { RolUsuario, SedeDto, UserDto } from "@tres-cielos/shared";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -36,7 +37,7 @@ export default function AdminUsuariosPage() {
   useEffect(() => {
     if (loading) return;
     if (!user || user.rol !== "admin") {
-      router.replace("/");
+      router.replace(panelHomePath());
     }
   }, [loading, user, router]);
 

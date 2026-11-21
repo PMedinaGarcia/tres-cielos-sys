@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { RolUsuario } from "@tres-cielos/shared";
 import { Logo } from "./logo";
 import { useAuth } from "@/lib/auth-context";
+import { devRoutesEnabled, isDevOnlyPath, panelHomePath } from "@/lib/panel-routes";
 
 const links = [
   { href: "/", label: "Inicio", shortLabel: "Inicio" },
@@ -13,6 +14,10 @@ const links = [
   { href: "/crm", label: "CRM", shortLabel: "CRM" },
   { href: "/bandeja", label: "Bandeja", shortLabel: "Bandeja" },
 ] as const;
+
+const visibleLinks = devRoutesEnabled()
+  ? links
+  : links.filter((link) => !isDevOnlyPath(link.href));
 
 const ROL_LABEL: Record<RolUsuario, string> = {
   admin: "Administrador",
@@ -160,7 +165,7 @@ export function Header() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-6">
           <div className="flex min-w-0 items-center justify-between gap-3 lg:shrink-0">
             <Link
-              href="/"
+              href={panelHomePath()}
               className="flex min-w-0 items-center gap-3 sm:gap-4 lg:border-r lg:border-ink/10 lg:pr-6"
             >
               <Logo size="sm" />
@@ -182,7 +187,7 @@ export function Header() {
             className="min-w-0 lg:min-w-[280px] lg:flex-1 lg:px-2"
           >
             <div className="flex w-full items-stretch gap-0.5 overflow-x-auto rounded-2xl bg-white/40 p-1 ring-1 ring-inset ring-white/80 sm:w-max sm:max-w-full sm:items-center lg:mx-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {links.map((link) => {
+              {visibleLinks.map((link) => {
                 const active = isActive(pathname, link.href);
                 return (
                   <Link

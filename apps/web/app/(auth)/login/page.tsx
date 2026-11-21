@@ -5,13 +5,19 @@ import { GlassPanel } from "@/components/glass-panel";
 import { loginRequest } from "@/lib/auth-api";
 import { ApiError } from "@/lib/http";
 import { useAuth } from "@/lib/auth-context";
+import { devRoutesEnabled, isDevOnlyPath, panelHomePath } from "@/lib/panel-routes";
 import { FormEvent, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
 function safeNext(raw: string | null): string {
+  const fallback = panelHomePath();
   if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.includes("://")) {
-    return "/";
+    return fallback;
+  }
+  const path = raw.split("?")[0]?.split("#")[0] ?? raw;
+  if (!devRoutesEnabled() && isDevOnlyPath(path)) {
+    return fallback;
   }
   return raw;
 }

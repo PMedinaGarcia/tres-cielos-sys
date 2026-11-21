@@ -1,5 +1,7 @@
+import { redirect } from "next/navigation";
 import { GlassPanel } from "@/components/glass-panel";
 import { internalApiUrl, publicApiUrl } from "@/lib/api-url";
+import { devRoutesEnabled, panelHomePath } from "@/lib/panel-routes";
 
 const apiUrl = publicApiUrl();
 
@@ -21,6 +23,10 @@ async function fetchHealth(): Promise<{
 }
 
 export default async function HomePage() {
+  if (!devRoutesEnabled()) {
+    redirect(panelHomePath());
+  }
+
   const health = await fetchHealth();
 
   return (

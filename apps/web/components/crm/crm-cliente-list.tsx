@@ -74,7 +74,7 @@ export function CrmClienteList({
           No hay clientes en esta cola.
           <br />
           <span className="text-ink/45">
-            Prueba otra cola o genera un expediente desde el chat sandbox.
+            Prueba otra cola o ajusta los filtros.
           </span>
         </p>
       ) : (
