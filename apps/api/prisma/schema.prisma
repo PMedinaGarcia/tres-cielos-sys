@@ -628,8 +628,9 @@ model NotaCliente {
   id        String   @id @default(cuid())
   clienteId String   @map("cliente_id")
   cliente   Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  autorId   String   @map("autor_id")
-  autor     Usuario  @relation(fields: [autorId], references: [id], onDelete: Restrict)
+  /// Nulo si el autor fue eliminado de la base. El texto de la nota se conserva.
+  autorId   String?  @map("autor_id")
+  autor     Usuario? @relation(fields: [autorId], references: [id], onDelete: SetNull)
   cuerpo    String
   creadoEn  DateTime @default(now()) @map("creado_en")
 
@@ -669,8 +670,9 @@ model Asignacion {
   cliente          Cliente         @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   oportunidadId    String          @map("oportunidad_id")
   oportunidad      Oportunidad     @relation(fields: [oportunidadId], references: [id], onDelete: Cascade)
-  usuarioDestinoId String          @map("usuario_destino_id")
-  usuarioDestino   Usuario         @relation("AsignacionDestino", fields: [usuarioDestinoId], references: [id], onDelete: Restrict)
+  /// Nulo si el asesor destino fue eliminado. La fila de historial se conserva.
+  usuarioDestinoId String?         @map("usuario_destino_id")
+  usuarioDestino   Usuario?        @relation("AsignacionDestino", fields: [usuarioDestinoId], references: [id], onDelete: SetNull)
   actor            ActorAsignacion @default(sistema)
   actorUsuarioId   String?         @map("actor_usuario_id")
   actorUsuario     Usuario?        @relation("AsignacionActor", fields: [actorUsuarioId], references: [id], onDelete: SetNull)

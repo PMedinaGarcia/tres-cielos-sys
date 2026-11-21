@@ -45,6 +45,7 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsArray()
+  @ArrayMinSize(1)
   @IsString({ each: true })
   sedeIds?: string[];
 }

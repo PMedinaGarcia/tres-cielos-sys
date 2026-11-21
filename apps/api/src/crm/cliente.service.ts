@@ -334,7 +334,7 @@ export class ClienteService {
     return {
       data: {
         id: nota.id,
-        autorId: nota.autorId,
+        autorId: actor.userId,
         cuerpo: nota.cuerpo,
         creadoEn: nota.creadoEn.toISOString(),
       },

@@ -276,7 +276,7 @@ export type BandejaItem = z.infer<typeof BandejaItemSchema>;
 
 export const NotaClienteDtoSchema = z.object({
   id: z.string(),
-  autorId: z.string(),
+  autorId: z.string().nullable(),
   cuerpo: z.string(),
   creadoEn: z.string(),
 });

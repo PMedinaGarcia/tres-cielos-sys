@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -80,7 +81,29 @@ export class UsersService {
     if (dto.activo === false && existing.id === actor.userId) {
       throw new ForbiddenException("No puedes desactivar tu propia cuenta");
     }
+    if (dto.rol && dto.rol !== existing.rol) {
+      if (existing.id === actor.userId) {
+        throw new ForbiddenException("No puedes cambiar tu propio rol");
+      }
+      if (existing.rol === "admin" && dto.rol !== "admin") {
+        const otrosAdmins = await this.prisma.usuario.count({
+          where: {
+            organizacionId: actor.orgId,
+            rol: "admin",
+            id: { not: existing.id },
+          },
+        });
+        if (otrosAdmins === 0) {
+          throw new ForbiddenException(
+            "No puedes quitar el rol al único administrador",
+          );
+        }
+      }
+    }
     if (dto.sedeIds) {
+      if (dto.sedeIds.length === 0) {
+        throw new BadRequestException("Selecciona al menos una sede");
+      }
       await this.assertSedesInOrg(actor.orgId, dto.sedeIds);
     }
     const user = await this.prisma.usuario.update({
@@ -123,6 +146,58 @@ export class UsersService {
       data: { passwordHash, passwordChangedAt: new Date() },
     });
     await this.auth.revokeAllRefresh(id);
+  }
+
+  async remove(actor: PanelUser, id: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.usuario.findFirst({
+        where: { id, organizacionId: actor.orgId },
+        select: { id: true, rol: true },
+      });
+      if (!existing) throw new NotFoundException("Usuario no encontrado");
+      if (existing.rol === "admin") {
+        const otrosAdmins = await tx.usuario.count({
+          where: {
+            organizacionId: actor.orgId,
+            rol: "admin",
+            id: { not: id },
+          },
+        });
+        if (otrosAdmins === 0) {
+          throw new ForbiddenException(
+            "No puedes eliminar al único administrador",
+          );
+        }
+      }
+      if (existing.id === actor.userId) {
+        throw new ForbiddenException("No puedes eliminar tu propia cuenta");
+      }
+      await tx.asignacion.updateMany({
+        where: { usuarioDestinoId: id, vigente: true },
+        data: { vigente: false },
+      });
+      await tx.conversacion.updateMany({
+        where: { asesorLockId: id },
+        data: { asesorLockId: null },
+      });
+      await tx.memoriaCliente.updateMany({
+        where: { asesorLockId: id },
+        data: { asesorLockId: null },
+      });
+      try {
+        await tx.usuario.delete({ where: { id } });
+      } catch (e) {
+        if (
+          e instanceof Prisma.PrismaClientKnownRequestError &&
+          e.code === "P2003"
+        ) {
+          throw new ConflictException(
+            "No se pudo eliminar el usuario porque aún tiene registros vinculados",
+          );
+        }
+        throw e;
+      }
+    });
   }
 
   private async assertSedesInOrg(orgId: string, sedeIds: string[]) {

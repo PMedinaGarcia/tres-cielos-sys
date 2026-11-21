@@ -60,6 +60,11 @@ export async function setCredentials(
   await readJson(res);
 }
 
+export async function deleteUser(id: string): Promise<void> {
+  const res = await apiFetch(`/usuarios/${id}`, { method: "DELETE" });
+  await readJson(res);
+}
+
 export async function listSedes(): Promise<SedeDto[]> {
   const res = await apiFetch("/sedes");
   const json = await readJson<{ data: SedeDto[] }>(res);

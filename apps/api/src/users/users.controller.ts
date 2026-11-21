@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Param,
@@ -42,6 +43,12 @@ export class UsersController {
     @Body() dto: UpdateUserDto,
   ) {
     return { data: await this.users.update(actor, id, dto) };
+  }
+
+  @Delete("usuarios/:id")
+  @HttpCode(204)
+  async remove(@CurrentUser() actor: PanelUser, @Param("id") id: string) {
+    await this.users.remove(actor, id);
   }
 
   @Post("usuarios/:id/credenciales")
