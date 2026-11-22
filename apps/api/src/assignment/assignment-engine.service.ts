@@ -684,7 +684,9 @@ export class AssignmentEngine implements OnModuleInit, OnModuleDestroy {
     const sinDe = mapa(sinContactar);
     const nuevosDe = new Map<string, number>();
     for (const fila of nuevos) {
-      nuevosDe.set(fila.usuarioDestinoId, fila._count._all);
+      if (fila.usuarioDestinoId) {
+        nuevosDe.set(fila.usuarioDestinoId, fila._count._all);
+      }
     }
 
     return elegirAsesor({

@@ -58,7 +58,7 @@ function SessionCluster({
       } ${prominent ? "w-full text-center" : "rounded-xl px-2.5 py-1.5 sm:rounded-full sm:px-3.5 sm:py-2"}`}
     >
       <span className="sm:hidden">Usuarios</span>
-      <span className="hidden sm:inline">Crear usuarios</span>
+      <span className="hidden sm:inline">Usuarios</span>
     </Link>
   );
 
