@@ -121,14 +121,18 @@ function ClienteRow({
     .filter(Boolean)
     .join(SEP);
 
-  const contexto = [
-    c.tipoEvento ? TIPO_EVENTO_LABEL[c.tipoEvento] ?? c.tipoEvento : null,
-    visita,
-    c.rutaComercial
-      ? (RUTA_COMERCIAL_LABEL[c.rutaComercial as keyof typeof RUTA_COMERCIAL_LABEL] ??
-        c.rutaComercial.replace(/_/g, " "))
-      : null,
-  ].filter((x): x is string => Boolean(x));
+  const contexto = c.resumenComercial
+    ? c.resumenComercial.subtitulo
+      ? [c.resumenComercial.subtitulo]
+      : []
+    : [
+        c.tipoEvento ? TIPO_EVENTO_LABEL[c.tipoEvento] ?? c.tipoEvento : null,
+        visita,
+        c.rutaComercial
+          ? (RUTA_COMERCIAL_LABEL[c.rutaComercial as keyof typeof RUTA_COMERCIAL_LABEL] ??
+            c.rutaComercial.replace(/_/g, " "))
+          : null,
+      ].filter((x): x is string => Boolean(x));
 
   return (
     <li

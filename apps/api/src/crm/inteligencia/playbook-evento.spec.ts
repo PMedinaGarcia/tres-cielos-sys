@@ -235,7 +235,12 @@ describe("derivarResumenComercialBot", () => {
     });
     expect(r.titulo).toBe("Listo para cotizar — 350–499 mil");
     expect(r.siguienteParaAsesor).toBe("Agendar visita");
-    expect(r.capturas.map((c) => c.estado)).toEqual(["ok", "ok", "ok"]);
+    expect(
+      ["fecha", "presupuesto", "accion"].map(
+        (id) => r.capturas.find((c) => c.id === id)?.estado,
+      ),
+    ).toEqual(["ok", "ok", "ok"]);
+    expect(r.capturas).toHaveLength(6);
     expect(r.capturas.find((c) => c.id === "presupuesto")?.valor).toBe(
       "350–499 mil",
     );
@@ -254,6 +259,68 @@ describe("derivarResumenComercialBot", () => {
     });
     expect(r.titulo).toBe("Atención general");
     expect(r.siguienteParaAsesor).toBe("Contactar (atención general)");
+  });
+
+  it("faq_libre con CTA de visita no hereda el handoff de ejecutivo", () => {
+    const r = derivarResumenComercialBot({
+      ...resumenBase,
+      pasoGuion: "faq_libre",
+      estadoBot: "escalado",
+      visitaEstado: "solicitada",
+      intencionVisita: true,
+      rutaComercial: "handoff",
+      tipoEvento: "boda",
+      campos: {
+        ctaGuion: "visita",
+        rutaComercial: "handoff",
+        fechaEstado: "ventana",
+        pdfEnviado: true,
+        tipoEvento: "boda",
+      },
+    });
+    expect(r.titulo).toBe("Pidió agendar visita");
+    expect(r.subtitulo).toContain("Preguntas abiertas");
+    expect(r.subtitulo).toContain("presupuesto");
+    expect(r.capturas.find((c) => c.id === "fecha")).toMatchObject({
+      valor: "Ventana",
+      estado: "ok",
+    });
+    expect(r.capturas.find((c) => c.id === "presupuesto")?.estado).toBe(
+      "pendiente",
+    );
+    expect(r.capturas.find((c) => c.id === "accion")?.valor).toBe(
+      "Agendar visita",
+    );
+    expect(r.capturas.find((c) => c.id === "ocasion")).toMatchObject({
+      valor: "Boda",
+      estado: "ok",
+    });
+    expect(r.siguienteParaAsesor).toBe("Agendar visita");
+    expect(JSON.stringify(r)).not.toContain("Hablar con un ejecutivo");
+  });
+
+  it("visita agendada sustituye el pedido de agendar", () => {
+    const r = derivarResumenComercialBot({
+      ...resumenBase,
+      pasoGuion: "faq_libre",
+      estadoBot: "escalado",
+      visitaEstado: "agendada",
+      intencionVisita: true,
+      rutaComercial: "handoff",
+      campos: {
+        ctaGuion: "visita",
+        rutaComercial: "handoff",
+        fechaEstado: "ventana",
+        pdfEnviado: true,
+      },
+    });
+    expect(r.titulo).toBe("Visita agendada");
+    expect(r.capturas.find((c) => c.id === "accion")?.valor).toBe(
+      "Visita agendada",
+    );
+    expect(r.siguienteParaAsesor).toBe("Dar seguimiento de la visita");
+    expect(JSON.stringify(r)).not.toContain("Hablar con un ejecutivo");
+    expect(JSON.stringify(r)).not.toContain("Pidió agendar visita");
   });
 
   it("v2 en aclaración de piso sin rango aún no salta a nutrición", () => {

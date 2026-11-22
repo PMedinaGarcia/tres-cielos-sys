@@ -239,6 +239,9 @@ function resumenDe(
     rutaComercial: conv?.rutaComercial ?? fuente.campos?.rutaComercial ?? null,
     encajeEconomico: conv?.encajeEconomico ?? fuente.campos?.encajeEconomico ?? null,
     fechaColumna: fuente.fechaTentativa,
+    tipoEvento: fuente.tipoEvento,
+    aforo: fuente.aforo,
+    sede: fuente.sede,
     campos: fuente.campos ?? {},
   });
 }

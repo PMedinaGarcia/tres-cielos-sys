@@ -1,6 +1,7 @@
 import { Test } from "@nestjs/testing";
 import { OportunidadService } from "./oportunidad.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { PanelRealtimeService } from "../panel-realtime/panel-realtime.service";
 import type { PanelUser } from "../auth/auth.types";
 
 const asesor: PanelUser = {
@@ -42,7 +43,15 @@ function oppRow(overrides: Record<string, unknown> = {}) {
       ultimoContactoEn: now,
       estadoAtencion: "escalado",
     },
-    conversaciones: [],
+    conversaciones: [
+      {
+        id: "conv-1",
+        camposCapturados: null,
+        pasoGuion: "faq_libre",
+        motivoHandoff: null,
+        ultimaRuta: null,
+      },
+    ],
     ...overrides,
   };
 }
@@ -55,6 +64,7 @@ describe("OportunidadService", () => {
     },
     interaccion: { create: jest.fn() },
   };
+  const realtime = { emit: jest.fn() };
   let service: OportunidadService;
 
   beforeEach(async () => {
@@ -63,6 +73,7 @@ describe("OportunidadService", () => {
       providers: [
         OportunidadService,
         { provide: PrismaService, useValue: prisma },
+        { provide: PanelRealtimeService, useValue: realtime },
       ],
     }).compile();
     service = module.get(OportunidadService);
@@ -97,6 +108,15 @@ describe("OportunidadService", () => {
         data: expect.objectContaining({ tipo: "cambio_visita" }),
       }),
     );
+    expect(realtime.emit).toHaveBeenCalledWith({
+      type: "historial",
+      clienteId: "cli-1",
+      conversacionId: "conv-1",
+    });
+    expect(realtime.emit).toHaveBeenCalledWith({
+      type: "bandeja",
+      clienteId: "cli-1",
+    });
   });
 
   it("marcar propuesta avanza etapa a propuesta", async () => {
@@ -122,6 +142,9 @@ describe("OportunidadService", () => {
       expect.objectContaining({
         data: expect.objectContaining({ tipo: "propuesta_enviada" }),
       }),
+    );
+    expect(realtime.emit).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "bandeja", clienteId: "cli-1" }),
     );
   });
 });
