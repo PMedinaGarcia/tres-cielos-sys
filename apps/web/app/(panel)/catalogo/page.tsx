@@ -1,9 +1,15 @@
+import { redirect } from "next/navigation";
 import { GlassPanel } from "@/components/glass-panel";
 import { publicApiUrl } from "@/lib/api-url";
+import { devRoutesEnabled, panelHomePath } from "@/lib/panel-routes";
 
 const apiUrl = publicApiUrl();
 
 export default function CatalogoPage() {
+  if (!devRoutesEnabled()) {
+    redirect(panelHomePath());
+  }
+
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-6 py-10">
       <GlassPanel className="space-y-3 px-8 py-8">
