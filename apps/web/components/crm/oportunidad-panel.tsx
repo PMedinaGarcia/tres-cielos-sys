@@ -39,18 +39,67 @@ export function playbookDe(tipo: string | null): EtapaCotizacion[] {
   return tipo === "boda" ? PLAYBOOK_BODA : PLAYBOOK_SIN_TARIFA;
 }
 
-export function pasoHecho(paso: EtapaCotizacion, actual: EtapaCotizacion): boolean {
-  const order: EtapaCotizacion[] = [
-    "perfilando",
-    "explorando",
-    "sin_tarifa",
-    "listo_para_cotizar",
+export type PasoEvidencia = {
+  fechaOk: boolean;
+  ocasionOk: boolean;
+  pdfEnviado: boolean;
+  listoParaCotizar: boolean;
+  propuestaEnviada: boolean;
+  sinTarifa: boolean;
+};
+
+export function evidenciaDe(o: {
+  tipoEvento: string | null;
+  fechaTentativa: string | null;
+  listoParaCotizar: boolean;
+  propuestaEnviadaEn: string | null;
+  etapaCotizacion: EtapaCotizacion;
+  resumenComercial: {
+    pdfEnviado: boolean;
+    capturas: Array<{ id: string; estado: string }>;
+  } | null;
+}): PasoEvidencia {
+  const capturaOk = (id: string) =>
+    o.resumenComercial?.capturas.some((c) => c.id === id && c.estado === "ok") ??
+    false;
+  const tieneTarifa = o.tipoEvento === "boda";
+  const propuesta =
+    Boolean(o.propuestaEnviadaEn) || o.etapaCotizacion === "propuesta_enviada";
+  const etapasConTarifaCerrada = new Set<EtapaCotizacion>([
     "propuesta_enviada",
     "negociacion",
     "ganado",
-    "perdido",
-  ];
-  return order.indexOf(paso) <= order.indexOf(actual);
+  ]);
+  return {
+    fechaOk: capturaOk("fecha") || Boolean(o.fechaTentativa),
+    ocasionOk: capturaOk("ocasion") || Boolean(o.tipoEvento),
+    pdfEnviado: Boolean(o.resumenComercial?.pdfEnviado),
+    listoParaCotizar: o.listoParaCotizar,
+    propuestaEnviada: propuesta,
+    sinTarifa:
+      o.etapaCotizacion === "sin_tarifa" ||
+      (!tieneTarifa &&
+        Boolean(o.tipoEvento) &&
+        etapasConTarifaCerrada.has(o.etapaCotizacion)),
+  };
+}
+
+/** Un paso se pinta hecho solo con evidencia del hilo, no por el índice de la etapa. */
+export function pasoHecho(paso: EtapaCotizacion, ev: PasoEvidencia): boolean {
+  switch (paso) {
+    case "perfilando":
+      return ev.fechaOk || ev.ocasionOk;
+    case "explorando":
+      return ev.pdfEnviado;
+    case "listo_para_cotizar":
+      return ev.listoParaCotizar;
+    case "propuesta_enviada":
+      return ev.propuestaEnviada;
+    case "sin_tarifa":
+      return ev.sinTarifa;
+    default:
+      return false;
+  }
 }
 
 function skuFromBrief(brief: unknown): string | null {
@@ -104,6 +153,7 @@ function OportunidadCard({
 }) {
   const [visitaEn, setVisitaEn] = useState("");
   const playbook = playbookDe(o.tipoEvento);
+  const evidencia = evidenciaDe(o);
   const sku = o.paqueteTentativoId ?? skuFromBrief(o.briefJson);
 
   async function onVisita(e: FormEvent, estado: VisitaEstado) {
@@ -139,7 +189,7 @@ function OportunidadCard({
           <li key={paso} className="flex items-center gap-2 text-ink/70">
             <span
               className={`inline-block h-2 w-2 rounded-full ${
-                pasoHecho(paso, o.etapaCotizacion) ? "bg-teal" : "bg-ink/20"
+                pasoHecho(paso, evidencia) ? "bg-teal" : "bg-ink/20"
               }`}
             />
             {ETAPA_COTIZACION_LABEL[paso]}

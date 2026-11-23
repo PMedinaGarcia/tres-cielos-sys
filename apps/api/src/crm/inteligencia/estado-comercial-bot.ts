@@ -32,6 +32,9 @@ export type ResumenComercialInput = {
   rutaComercial?: string | null;
   encajeEconomico?: string | null;
   fechaColumna?: Date | string | null;
+  tipoEvento?: string | null;
+  aforo?: number | null;
+  sede?: string | null;
   campos: {
     fechaTentativa?: unknown;
     fechaEstado?: string | null;
@@ -42,8 +45,22 @@ export type ResumenComercialInput = {
     encajeEconomico?: string | null;
     pdfEnviado?: boolean | null;
     intencionVisita?: boolean | null;
+    tipoEvento?: string | null;
+    aforo?: number | null;
+    sedeNombre?: string | null;
   };
 };
+
+const TIPO_EVENTO_LABEL: Record<string, string> = {
+  boda: "Boda",
+  xv: "XV años",
+  corporativo: "Corporativo",
+  social: "Social",
+  otro: "Otro",
+  multi: "Solo renta",
+};
+
+const VISITA_MOVIDA = new Set(["agendada", "realizada", "cancelada", "no_asistio"]);
 
 type Relato = { titulo: string; siguienteParaAsesor: string };
 
@@ -71,12 +88,16 @@ export function derivarResumenComercialBot(
     capturaFecha(input),
     capturaPresupuesto(input, presupuesto),
     capturaAccion(input, cta, ruta),
+    capturaTexto(input, "ocasion", "Ocasión", labelOcasion(input)),
+    capturaTexto(input, "aforo", "Aforo", labelAforo(input)),
+    capturaTexto(input, "sede", "Sede", labelSede(input)),
   ];
   return {
     titulo: relato.titulo,
-    subtitulo: pasoLabel && pasoLabel !== relato.titulo ? pasoLabel : null,
+    subtitulo: subtituloDe(pasoLabel, relato.titulo, capturas),
     capturas,
     siguienteParaAsesor: ajustarSiguienteVisita(input, cta, ruta, relato.siguienteParaAsesor),
+    pdfEnviado: Boolean(input.campos.pdfEnviado),
   };
 }
 
@@ -127,6 +148,9 @@ function relatoDe(
     };
   }
 
+  const visitaMovida = relatoVisitaMovida(input.visitaEstado);
+  if (visitaMovida) return visitaMovida;
+
   if (escalado && pidioVisita && input.cta !== "ejecutivo" && input.cta !== "fuera_presupuesto") {
     return {
       titulo: "Pidi\u00f3 agendar visita",
@@ -143,7 +167,12 @@ function relatoDe(
       siguienteParaAsesor: "Contactar (atenci\u00f3n general)",
     };
   }
-  if (input.cta === "ejecutivo" || input.ruta === "handoff") {
+  if (
+    input.cta === "ejecutivo" ||
+    (input.ruta === "handoff" &&
+      input.cta !== "visita" &&
+      input.cta !== "fuera_presupuesto")
+  ) {
     return {
       titulo: "Pidi\u00f3 hablar con ejecutivo",
       siguienteParaAsesor: "Contactar (ejecutivo)",
@@ -329,6 +358,14 @@ function capturaAccion(
       estado: "na",
     };
   }
+  if (VISITA_MOVIDA.has(input.visitaEstado)) {
+    return {
+      id: "accion",
+      etiqueta: "Acción siguiente",
+      valor: visitaEtiqueta(input.visitaEstado),
+      estado: "ok",
+    };
+  }
   if (cta) {
     return {
       id: "accion",
@@ -362,6 +399,85 @@ function capturaAccion(
     etiqueta: "Acción siguiente",
     valor: null,
     estado: "pendiente",
+  };
+}
+
+function relatoVisitaMovida(estado: string): Relato | null {
+  if (estado === "agendada") {
+    return {
+      titulo: "Visita agendada",
+      siguienteParaAsesor: "Dar seguimiento de la visita",
+    };
+  }
+  if (estado === "realizada") {
+    return {
+      titulo: "Visita realizada",
+      siguienteParaAsesor: "Dar seguimiento de la visita",
+    };
+  }
+  if (estado === "cancelada") {
+    return {
+      titulo: "Visita cancelada",
+      siguienteParaAsesor: "Reagendar visita",
+    };
+  }
+  if (estado === "no_asistio") {
+    return { titulo: "No asistió", siguienteParaAsesor: "Reagendar visita" };
+  }
+  return null;
+}
+
+function subtituloDe(
+  pasoLabel: string | null,
+  titulo: string,
+  capturas: ResumenComercialCaptura[],
+): string | null {
+  const faltan = capturas
+    .filter((c) => c.estado === "pendiente")
+    .map((c) => c.etiqueta.toLocaleLowerCase("es-MX"));
+  const falta = faltan.length > 0 ? `falta ${listaHumana(faltan)}` : null;
+  const paso = pasoLabel && pasoLabel !== titulo ? pasoLabel : null;
+  if (paso && falta) return `${paso} · ${falta}`;
+  if (paso) return paso;
+  if (falta) return falta.charAt(0).toUpperCase() + falta.slice(1);
+  return null;
+}
+
+function listaHumana(items: string[]): string {
+  if (items.length === 1) return items[0]!;
+  if (items.length === 2) return `${items[0]} y ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")} y ${items[items.length - 1]}`;
+}
+
+function labelOcasion(input: ResumenComercialInput): string | null {
+  const tipo = input.tipoEvento ?? input.campos.tipoEvento ?? null;
+  if (!tipo) return null;
+  return TIPO_EVENTO_LABEL[tipo] ?? tipo;
+}
+
+function labelAforo(input: ResumenComercialInput): string | null {
+  const aforo = input.aforo ?? input.campos.aforo ?? null;
+  if (aforo == null || !Number.isFinite(aforo)) return null;
+  return String(aforo);
+}
+
+function labelSede(input: ResumenComercialInput): string | null {
+  const sede = (input.sede ?? input.campos.sedeNombre ?? "").trim();
+  return sede || null;
+}
+
+function capturaTexto(
+  input: ResumenComercialInput,
+  id: ResumenComercialCaptura["id"],
+  etiqueta: string,
+  valor: string | null,
+): ResumenComercialCaptura {
+  if (valor) return { id, etiqueta, valor, estado: "ok" };
+  return {
+    id,
+    etiqueta,
+    valor: null,
+    estado: esCerrado(input) ? "na" : "pendiente",
   };
 }
 

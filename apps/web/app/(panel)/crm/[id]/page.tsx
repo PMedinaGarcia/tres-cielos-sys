@@ -15,6 +15,7 @@ import {
   replaceTagsCliente,
 } from "@/lib/crm-api";
 import { ApiError } from "@/lib/http";
+import { usePanelRealtime } from "@/lib/use-panel-realtime";
 import type { ClienteDetail, HistorialItemDto } from "@tres-cielos/shared";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -40,20 +41,23 @@ export default function CrmExpedientePage() {
     setCliente(data);
   }, [id]);
 
-  const loadHistorial = useCallback(async () => {
-    setHistLoading(true);
-    try {
-      const res = await getClienteHistorial(id, {
-        page: 1,
-        pageSize: 200,
-        tipo: tipo || undefined,
-      });
-      setHistorial(res.data);
-      setTotal(res.meta.total);
-    } finally {
-      setHistLoading(false);
-    }
-  }, [id, tipo]);
+  const loadHistorial = useCallback(
+    async (quiet = false) => {
+      if (!quiet) setHistLoading(true);
+      try {
+        const res = await getClienteHistorial(id, {
+          page: 1,
+          pageSize: 200,
+          tipo: tipo || undefined,
+        });
+        setHistorial(res.data);
+        setTotal(res.meta.total);
+      } finally {
+        if (!quiet) setHistLoading(false);
+      }
+    },
+    [id, tipo],
+  );
 
   useEffect(() => {
     setError(null);
@@ -67,6 +71,16 @@ export default function CrmExpedientePage() {
       setError(e instanceof ApiError ? e.message : "No se pudo cargar el historial"),
     );
   }, [loadHistorial]);
+
+  usePanelRealtime({
+    clienteId: id,
+    enabled: Boolean(id),
+    onEvent: (event) => {
+      if (event.type !== "historial" || event.clienteId !== id) return;
+      void loadCliente().catch(() => undefined);
+      void loadHistorial(true).catch(() => undefined);
+    },
+  });
 
   async function wrap(fn: () => Promise<void>) {
     setBusy(true);

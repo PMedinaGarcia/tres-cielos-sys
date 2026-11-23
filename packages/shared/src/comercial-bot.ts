@@ -88,7 +88,14 @@ export function labelPresupuestoBrief(conv: {
   return null;
 }
 
-export const CAPTURA_COMERCIAL_ID = ["fecha", "presupuesto", "accion"] as const;
+export const CAPTURA_COMERCIAL_ID = [
+  "fecha",
+  "presupuesto",
+  "accion",
+  "ocasion",
+  "aforo",
+  "sede",
+] as const;
 export type CapturaComercialId = (typeof CAPTURA_COMERCIAL_ID)[number];
 
 export const CAPTURA_ESTADO = ["ok", "pendiente", "na"] as const;
@@ -104,12 +111,13 @@ export type ResumenComercialCaptura = z.infer<typeof ResumenComercialCapturaSche
 
 /**
  * Vista comercial del hilo: no sustituye `etapaCotizacion` ni las colas.
- * Resume fecha, presupuesto y la acción que el bot ya ofreció.
+ * Resume el paso de la conversación y los datos que el hilo ya guardó.
  */
 export const ResumenComercialBotSchema = z.object({
   titulo: z.string(),
   subtitulo: z.string().nullable(),
-  capturas: z.array(ResumenComercialCapturaSchema).length(3),
+  capturas: z.array(ResumenComercialCapturaSchema).length(CAPTURA_COMERCIAL_ID.length),
   siguienteParaAsesor: z.string(),
+  pdfEnviado: z.boolean(),
 });
 export type ResumenComercialBot = z.infer<typeof ResumenComercialBotSchema>;

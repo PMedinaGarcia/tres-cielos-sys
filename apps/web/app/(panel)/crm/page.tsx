@@ -5,7 +5,8 @@ import { CrmPageToolbar } from "@/components/crm/crm-page-toolbar";
 import { ConfirmDeleteDialog } from "@/components/crm/confirm-delete";
 import { deleteCliente, listClientes } from "@/lib/crm-api";
 import { ApiError } from "@/lib/http";
-import { FormEvent, useEffect, useState } from "react";
+import { usePanelRealtime } from "@/lib/use-panel-realtime";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 
 export default function CrmPage() {
   const [q, setQ] = useState("");
@@ -24,32 +25,40 @@ export default function CrmPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  async function load(nextQ = qApplied) {
-    setError(null);
-    setLoading(true);
-    try {
-      const res = await listClientes({
-        q: nextQ || undefined,
-        estadoAtencion: estado || undefined,
-        cola: cola || undefined,
-        tipoEvento: tipoEvento || undefined,
-        sinAsignar: sinAsignar || undefined,
-        page: 1,
-        pageSize: 40,
-      });
-      setRows(res.data);
-      setTotal(res.meta.total);
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "No se pudo cargar el CRM");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const load = useCallback(
+    async (nextQ = qApplied, opts?: { silent?: boolean }) => {
+      setError(null);
+      if (!opts?.silent) setLoading(true);
+      try {
+        const res = await listClientes({
+          q: nextQ || undefined,
+          estadoAtencion: estado || undefined,
+          cola: cola || undefined,
+          tipoEvento: tipoEvento || undefined,
+          sinAsignar: sinAsignar || undefined,
+          page: 1,
+          pageSize: 40,
+        });
+        setRows(res.data);
+        setTotal(res.meta.total);
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "No se pudo cargar el CRM");
+      } finally {
+        if (!opts?.silent) setLoading(false);
+      }
+    },
+    [qApplied, estado, cola, tipoEvento, sinAsignar],
+  );
 
   useEffect(() => {
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [estado, sinAsignar, qApplied, cola, tipoEvento]);
+  }, [load]);
+
+  usePanelRealtime({
+    onEvent: (event) => {
+      if (event.type === "bandeja") void load(qApplied, { silent: true });
+    },
+  });
 
   function onSearch(e: FormEvent) {
     e.preventDefault();

@@ -8,7 +8,7 @@ import {
   VISITA_LABEL_COMPACT,
   formatWhen,
 } from "@/components/crm/labels";
-import { pasoHecho, playbookDe } from "@/components/crm/oportunidad-panel";
+import { evidenciaDe, pasoHecho, playbookDe } from "@/components/crm/oportunidad-panel";
 import type {
   ActualizarOportunidadRequest,
   EtapaPipeline,
@@ -45,6 +45,7 @@ export function EtapaCompacta({ oportunidad, busy, onPatch }: Props) {
   );
   const [pedirMotivo, setPedirMotivo] = useState(false);
   const playbook = playbookDe(oportunidad.tipoEvento);
+  const evidencia = evidenciaDe(oportunidad);
 
   async function cambiarEtapa(etapa: EtapaPipeline) {
     if (etapa === oportunidad.etapa && etapa !== "perdido") return;
@@ -68,11 +69,12 @@ export function EtapaCompacta({ oportunidad, busy, onPatch }: Props) {
               {oportunidad.resumenComercial.titulo}
             </p>
             {oportunidad.resumenComercial.subtitulo ? (
-              <p className="text-[11px] text-ink/45">
+              <p className="text-[11px] leading-snug text-ink/55">
+                <span className="font-medium text-ink/45">Conversación: </span>
                 {oportunidad.resumenComercial.subtitulo}
               </p>
             ) : null}
-            <ul className="space-y-1" aria-label="Fecha, presupuesto y acción">
+            <ul className="space-y-1" aria-label="Datos de la conversación">
               {oportunidad.resumenComercial.capturas.map((captura) => (
                 <li
                   key={captura.id}
@@ -102,9 +104,12 @@ export function EtapaCompacta({ oportunidad, busy, onPatch }: Props) {
             </ul>
           </div>
         ) : null}
+        <p className="pt-1 text-[10px] font-semibold uppercase tracking-wide text-ink/40">
+          Cotización
+        </p>
         <ol className="space-y-1" aria-label="Progreso de cotización">
           {playbook.map((paso) => {
-            const hecho = pasoHecho(paso, oportunidad.etapaCotizacion);
+            const hecho = pasoHecho(paso, evidencia);
             const largo = ETAPA_COTIZACION_LABEL[paso];
             const corto = ETAPA_COTIZACION_LABEL_COMPACT[paso];
             return (

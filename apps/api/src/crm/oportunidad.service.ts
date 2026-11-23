@@ -15,10 +15,14 @@ import {
   inteligenciaInputDe,
 } from "./inteligencia/inteligencia-input";
 import { derivarInteligencia } from "./inteligencia/playbook-evento";
+import { PanelRealtimeService } from "../panel-realtime/panel-realtime.service";
 
 @Injectable()
 export class OportunidadService {
-  constructor(@Optional() private readonly prisma?: PrismaService) {}
+  constructor(
+    @Optional() private readonly prisma?: PrismaService,
+    @Optional() private readonly realtime?: PanelRealtimeService,
+  ) {}
 
   async update(actor: PanelUser, id: string, dto: ActualizarOportunidadDto) {
     this.assertDb();
@@ -150,6 +154,14 @@ export class OportunidadService {
           payload: hecho.payload,
         },
       });
+    }
+    if (hechos.length > 0) {
+      this.realtime?.emit({
+        type: "historial",
+        clienteId: opp.clienteId,
+        conversacionId: conv?.id ?? "",
+      });
+      this.realtime?.emit({ type: "bandeja", clienteId: opp.clienteId });
     }
     return {
       data: toOportunidadResumen(updated, {
